@@ -24,6 +24,11 @@ cat <<EOF >> /opt/media-stack/docker-compose.yml
    - ./config/plex:/config
    - /mnt/media:/media
   restart: unless-stopped
+  healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:32400"]
+  interval: 30s
+  timeout: 10s
+  retries: 5
 
 EOF
 
