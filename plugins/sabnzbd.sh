@@ -22,6 +22,11 @@ cat <<EOF >> /opt/media-stack/docker-compose.yml
    - /mnt/media/downloads:/downloads
    - /mnt/media/downloads/incomplete:/incomplete-downloads
   restart: unless-stopped
+  healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:8080"]
+  interval: 30s
+  timeout: 10s
+  retries: 5
 
 EOF
 
