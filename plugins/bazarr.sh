@@ -22,6 +22,11 @@ cat <<EOF >> /opt/media-stack/docker-compose.yml
    - /mnt/media/movies:/movies
    - /mnt/media/tv:/tv
   restart: unless-stopped
+  healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:6767"]
+  interval: 30s
+  timeout: 10s
+  retries: 5
 
 EOF
 
