@@ -1,50 +1,17 @@
 # Media Stack Installer
 
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)]()
+[![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu%20%7C%20Devuan-green.svg)]()
+[![Docker](https://img.shields.io/badge/docker-required-blue)]()
+[![Install](https://img.shields.io/badge/install-one%20command-brightgreen)]()
+
 Automated deployment platform for a complete self-hosted media stack.
 
-## One Command Install
+This installer deploys a fully automated media ecosystem including media management, downloads, monitoring, dashboards, and remote access.
 
+---
+
+# One Command Install
+
+```bash
 curl -fsSL https://raw.githubusercontent.com/FugginOld/media-server-installer/main/install.sh | bash
-
-## Included Services
-
-Media
-- Plex
-
-Automation
-- Radarr
-- Sonarr
-- Prowlarr
-- Bazarr
-
-Downloads
-- SABnzbd
-- Unpackerr
-
-System
-- Homepage
-- Watchtower
-- Tailscale
-
-Monitoring
-- Prometheus
-- Grafana
-- Node Exporter
-- Tautulli
-
-## CLI Management
-
-media-stack install  
-media-stack update  
-media-stack status  
-media-stack services  
-
-## Features
-
-- Plugin based architecture
-- GPU transcoding detection
-- TRaSH directory layout support
-- NAS platform detection
-- Automatic monitoring stack
-- Dynamic dashboards
-- One command installer
