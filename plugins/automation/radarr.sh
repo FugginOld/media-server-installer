@@ -1,11 +1,9 @@
 PLUGIN_NAME="radarr"
-PLUGIN_DESCRIPTION="Movie automation service"
+PLUGIN_DESCRIPTION="Movie automation"
 PLUGIN_CATEGORY="Automation"
 PLUGIN_DEPENDS=("sabnzbd")
 
 install_service() {
-
-echo "Installing Radarr..."
 
 mkdir -p /opt/media-stack/config/radarr
 
@@ -17,7 +15,6 @@ cat <<EOF >> /opt/media-stack/docker-compose.yml
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=UTC
     volumes:
       - ./config/radarr:/config
       - $MOVIES_PATH:/movies
@@ -29,11 +26,19 @@ cat <<EOF >> /opt/media-stack/docker-compose.yml
       - media-network
 
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7878/api/v3/system/status"]
+      test: ["CMD","curl","-f","http://localhost:7878/api/v3/system/status"]
       interval: 30s
       timeout: 10s
       retries: 5
 
 EOF
+
+source ./scripts/service-registry.sh
+
+register_service \
+"Radarr" \
+"http://localhost:7878" \
+"Automation" \
+"radarr.png"
 
 }

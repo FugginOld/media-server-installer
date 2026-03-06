@@ -23,74 +23,61 @@ source ./core/hardware.sh
 source ./core/docker.sh
 
 ########################################
-# Detect system
+# Prepare stack directory
 ########################################
 
-echo "Detecting system configuration..."
-
-detect_platform
-configure_storage_paths
-
-select_directory_layout
-configure_media_directories
-create_media_folders
-
-detect_gpu
-configure_gpu_devices
-
-########################################
-# Prepare docker compose
-########################################
-
-echo "Preparing docker stack..."
+prepare_stack() {
 
 mkdir -p $STACK_DIR
 mkdir -p $STACK_DIR/config
 
 cp $TEMPLATE_FILE $STACK_DIR/docker-compose.yml
 
+}
+
 ########################################
 # Discover plugins
 ########################################
 
-echo "Discovering plugins..."
+discover_plugins() {
 
 MENU_OPTIONS=()
 
-for FILE in $(find $PLUGIN_DIR -name "*.sh")
+while IFS= read -r FILE
 do
 
 unset PLUGIN_NAME
 unset PLUGIN_DESCRIPTION
 unset PLUGIN_CATEGORY
-unset PLUGIN_DEPENDS
 
 source "$FILE"
 
 MENU_OPTIONS+=("$PLUGIN_NAME" "$PLUGIN_CATEGORY - $PLUGIN_DESCRIPTION" OFF)
 
-done
+done < <(find $PLUGIN_DIR -name "*.sh")
+
+}
 
 ########################################
-# Service selection menu
+# Show selection menu
 ########################################
 
-SELECTED=$(whiptail \
+select_services() {
+
+CHOICES=$(whiptail \
 --title "Media Stack Installer" \
---checklist "Select services to install:" \
+--checklist "Select services to install" \
 25 80 18 \
 "${MENU_OPTIONS[@]}" \
 3>&1 1>&2 2>&3)
 
-########################################
-# Convert selection
-########################################
-
-for SERVICE in $SELECTED
+for SERVICE in $CHOICES
 do
 SERVICE=$(echo $SERVICE | tr -d '"')
 SELECTED_SERVICES+=("$SERVICE")
 done
+
+}
 
 ########################################
 # Dependency resolver
@@ -133,10 +120,8 @@ done
 
 }
 
-resolve_dependencies
-
 ########################################
-# Install plugins
+# Install plugin
 ########################################
 
 install_plugin() {
@@ -151,7 +136,7 @@ PLUGIN_FILE=$(find $PLUGIN_DIR -name "$SERVICE.sh")
 
 source "$PLUGIN_FILE"
 
-echo "Installing $SERVICE"
+echo "Installing $SERVICE..."
 
 install_service
 
@@ -159,14 +144,24 @@ INSTALLED_SERVICES+=("$SERVICE")
 
 }
 
+########################################
+# Install selected services
+########################################
+
+install_services() {
+
 for SERVICE in "${SELECTED_SERVICES[@]}"
 do
 install_plugin "$SERVICE"
 done
 
+}
+
 ########################################
-# Deploy containers
+# Start docker stack
 ########################################
+
+deploy_stack() {
 
 echo "Starting containers..."
 
@@ -174,9 +169,13 @@ cd $STACK_DIR
 
 docker compose up -d
 
+}
+
 ########################################
-# Run post install automation
+# Run automation
 ########################################
+
+post_install() {
 
 if [ -f "./scripts/post-install.sh" ]; then
 
@@ -186,15 +185,18 @@ bash ./scripts/post-install.sh
 
 fi
 
+}
+
 ########################################
-# Finish
+# Display results
 ########################################
+
+summary() {
 
 echo ""
-echo "-----------------------------------"
-echo " Media Stack Installation Complete "
-echo "-----------------------------------"
-
+echo "----------------------------------"
+echo " Media Stack Installation Complete"
+echo "----------------------------------"
 echo ""
 
 echo "Installed services:"
@@ -206,7 +208,88 @@ done
 
 echo ""
 
-echo "Docker stack location:"
+echo "Stack location:"
 echo "$STACK_DIR"
 
 echo ""
+
+}
+
+########################################
+# Main
+########################################
+
+echo ""
+echo "================================="
+echo " Media Stack Installer"
+echo "================================="
+echo ""
+
+########################################
+# Detect system
+########################################
+
+detect_platform
+configure_storage_paths
+
+select_directory_layout
+configure_media_directories
+create_media_folders
+
+detect_gpu
+configure_gpu_devices
+
+########################################
+# Docker setup
+########################################
+
+check_docker
+create_docker_network
+
+########################################
+# Stack preparation
+########################################
+
+prepare_stack
+
+########################################
+# Plugin discovery
+########################################
+
+discover_plugins
+
+########################################
+# User service selection
+########################################
+
+select_services
+
+########################################
+# Dependency resolution
+########################################
+
+resolve_dependencies
+
+########################################
+# Install services
+########################################
+
+install_services
+
+########################################
+# Deploy stack
+########################################
+
+deploy_stack
+
+########################################
+# Automation
+########################################
+
+post_install
+
+########################################
+# Summary
+########################################
+
+summary

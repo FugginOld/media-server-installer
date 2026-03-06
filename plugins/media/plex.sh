@@ -29,29 +29,36 @@ cat <<EOF >> /opt/media-stack/docker-compose.yml
 EOF
 
 ########################################
-# Add GPU support if detected
+# GPU Support (retain existing feature)
 ########################################
 
 if [ "$GPU_TYPE" != "none" ]; then
-
 echo "$GPU_DEVICES" >> /opt/media-stack/docker-compose.yml
-
 fi
 
 ########################################
-# Add health check
+# Health Check (retain existing feature)
 ########################################
 
 cat <<EOF >> /opt/media-stack/docker-compose.yml
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:32400/web/index.html"]
+      test: ["CMD","curl","-f","http://localhost:32400/web/index.html"]
       interval: 30s
       timeout: 10s
       retries: 5
 
-    networks:
-      - media-network
-
 EOF
+
+########################################
+# Register service (NEW ADDITION ONLY)
+########################################
+
+source ./scripts/service-registry.sh
+
+register_service \
+"Plex" \
+"http://localhost:32400/web" \
+"Media" \
+"plex.png"
 
 }
