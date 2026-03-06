@@ -3,11 +3,17 @@
 STACK_DIR="/opt/media-stack"
 REGISTRY_FILE="$STACK_DIR/services.json"
 
+########################################
+# Initialize registry
+########################################
+
 init_registry() {
+
+mkdir -p "$STACK_DIR"
 
 if [ ! -f "$REGISTRY_FILE" ]; then
 
-cat <<EOF > $REGISTRY_FILE
+cat <<EOF > "$REGISTRY_FILE"
 {
   "services": []
 }
@@ -16,6 +22,10 @@ EOF
 fi
 
 }
+
+########################################
+# Register service
+########################################
 
 register_service() {
 
@@ -33,14 +43,39 @@ jq ".services += [{
   \"url\": \"$URL\",
   \"category\": \"$CATEGORY\",
   \"icon\": \"$ICON\"
-}]" $REGISTRY_FILE > $TMP_FILE
+}]" "$REGISTRY_FILE" > "$TMP_FILE"
 
-mv $TMP_FILE $REGISTRY_FILE
+mv "$TMP_FILE" "$REGISTRY_FILE"
+
+echo "Registered service: $NAME"
 
 }
 
+########################################
+# Remove service
+########################################
+
+remove_service() {
+
+NAME=$1
+
+TMP_FILE=$(mktemp)
+
+jq "del(.services[] | select(.name == \"$NAME\"))" \
+"$REGISTRY_FILE" > "$TMP_FILE"
+
+mv "$TMP_FILE" "$REGISTRY_FILE"
+
+}
+
+########################################
+# List services
+########################################
+
 list_services() {
 
-cat $REGISTRY_FILE
+init_registry
+
+cat "$REGISTRY_FILE"
 
 }

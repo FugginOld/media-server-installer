@@ -7,20 +7,22 @@ install_service() {
 
 echo "Installing Web Installer..."
 
+########################################
+# Create directories
+########################################
+
 mkdir -p /opt/media-stack/webinstaller
 mkdir -p /opt/media-stack/webinstaller/templates
 
 ########################################
-# Create Flask backend
+# Flask backend
 ########################################
 
 cat <<'EOF' > /opt/media-stack/webinstaller/app.py
 from flask import Flask, render_template, request
-from flask_socketio import SocketIO
 import subprocess
 
 app = Flask(__name__)
-socketio = SocketIO(app)
 
 @app.route("/")
 def index():
@@ -29,106 +31,48 @@ def index():
 @app.route("/install", methods=["POST"])
 def install():
 
-    platform = request.form.get("platform")
-    layout = request.form.get("layout")
     services = request.form.getlist("services")
 
-    cmd = ["bash","/installer/installer.sh",platform,layout] + services
+    cmd = ["bash", "/installer/installer.sh"] + services
 
-    process = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True
-    )
-
-    for line in process.stdout:
-        socketio.emit("log", {"data": line})
+    subprocess.Popen(cmd)
 
     return "Installation started"
 
-@socketio.on("connect")
-def connected():
-    print("Client connected")
-
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=8080)
+    app.run(host="0.0.0.0", port=8080)
 EOF
 
 ########################################
-# Create Web UI
+# Web UI
 ########################################
 
 cat <<'EOF' > /opt/media-stack/webinstaller/templates/index.html
 <!DOCTYPE html>
 <html>
-
 <head>
 <title>Media Stack Installer</title>
-<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
 
 <body>
 
-<h1>Media Server Setup</h1>
+<h1>Media Server Installer</h1>
 
-<form id="installForm">
+<form method="post" action="/install">
 
-Platform
-<select name="platform">
-<option value="baremetal">Baremetal</option>
-<option value="unraid">Unraid</option>
-<option value="truenas">TrueNAS</option>
-</select>
+<h3>Select Services</h3>
 
-<br><br>
+<input type="checkbox" name="services" value="plex"> Plex<br>
+<input type="checkbox" name="services" value="radarr"> Radarr<br>
+<input type="checkbox" name="services" value="sonarr"> Sonarr<br>
+<input type="checkbox" name="services" value="sabnzbd"> SABnzbd<br>
+<input type="checkbox" name="services" value="prowlarr"> Prowlarr<br>
+<input type="checkbox" name="services" value="bazarr"> Bazarr<br>
 
-Directory Layout
-<select name="layout">
-<option value="default">Default</option>
-<option value="trash">TRaSH</option>
-</select>
-
-<br><br>
-
-Services
-<input type="checkbox" name="services" value="plex"> Plex
-<input type="checkbox" name="services" value="radarr"> Radarr
-<input type="checkbox" name="services" value="sonarr"> Sonarr
-<input type="checkbox" name="services" value="sabnzbd"> SABnzbd
-<input type="checkbox" name="services" value="prowlarr"> Prowlarr
-
-<br><br>
-
+<br>
 <button type="submit">Install</button>
 
 </form>
-
-<h2>Installer Output</h2>
-<pre id="logs"></pre>
-
-<script>
-
-const socket = io();
-
-socket.on("log", function(msg) {
-    document.getElementById("logs").innerHTML += msg.data;
-});
-
-document.getElementById("installForm").onsubmit = async function(e){
-
-    e.preventDefault();
-
-    const formData = new FormData(this);
-
-    await fetch("/install", {
-        method: "POST",
-        body: formData
-    });
-
-}
-
-</script>
 
 </body>
 </html>
@@ -149,17 +93,29 @@ cat <<EOF >> /opt/media-stack/docker-compose.yml
       - /opt/media-server-installer:/installer
       - ./webinstaller:/app
     working_dir: /app
-    command: bash -c "pip install flask flask-socketio eventlet && python app.py"
+    command: bash -c "pip install flask && python app.py"
     restart: unless-stopped
     networks:
       - media-network
 
     healthcheck:
-      test: ["CMD", "wget", "--spider", "http://localhost:8080"]
+      test: ["CMD","wget","--spider","http://localhost:8080"]
       interval: 30s
       timeout: 10s
       retries: 5
 
 EOF
+
+########################################
+# Register service
+########################################
+
+source ./scripts/service-registry.sh
+
+register_service \
+"Web Installer" \
+"http://localhost:8088" \
+"System" \
+"webinstaller.png"
 
 }

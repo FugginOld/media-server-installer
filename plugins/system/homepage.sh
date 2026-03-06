@@ -5,54 +5,33 @@ PLUGIN_DEPENDS=()
 
 install_service() {
 
-echo "Installing Homepage Dashboard..."
+echo "Installing Homepage dashboard..."
+
+########################################
+# Create config directory
+########################################
 
 mkdir -p /opt/media-stack/config/homepage
 
 ########################################
-# Create Homepage configuration
+# Generate services dashboard
 ########################################
 
-cat <<EOF > /opt/media-stack/config/homepage/services.yaml
-- Media:
-    - Plex:
-        icon: plex.png
-        href: http://localhost:32400/web
-        description: Plex Media Server
+source ./scripts/service-registry.sh
 
-- Automation:
-    - Radarr:
-        icon: radarr.png
-        href: http://localhost:7878
-        description: Movie Automation
+SERVICES=$(list_services)
 
-    - Sonarr:
-        icon: sonarr.png
-        href: http://localhost:8989
-        description: TV Automation
+echo "Generating Homepage dashboard..."
 
-    - Prowlarr:
-        icon: prowlarr.png
-        href: http://localhost:9696
-        description: Index Manager
-
-- Downloads:
-    - SABnzbd:
-        icon: sabnzbd.png
-        href: http://localhost:8080
-        description: Usenet Downloader
-
-- Monitoring:
-    - Grafana:
-        icon: grafana.png
-        href: http://localhost:3001
-        description: Metrics Dashboard
-
-    - Prometheus:
-        icon: prometheus.png
-        href: http://localhost:9090
-        description: Metrics Collector
-EOF
+echo "$SERVICES" | jq -r '
+.services
+| group_by(.category)
+| .[]
+| "- \(.[0].category):"
+  + ( .[]
+      | "\n    - \(.name):\n        icon: \(.icon)\n        href: \(.url)"
+    )
+' > /opt/media-stack/config/homepage/services.yaml
 
 ########################################
 # Add container
@@ -72,11 +51,21 @@ cat <<EOF >> /opt/media-stack/docker-compose.yml
       - media-network
 
     healthcheck:
-      test: ["CMD", "wget", "--spider", "http://localhost:3000"]
+      test: ["CMD","wget","--spider","http://localhost:3000"]
       interval: 30s
       timeout: 10s
       retries: 5
 
 EOF
+
+########################################
+# Register service
+########################################
+
+register_service \
+"Homepage" \
+"http://localhost:3000" \
+"System" \
+"homepage.png"
 
 }

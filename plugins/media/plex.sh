@@ -7,7 +7,15 @@ install_service() {
 
 echo "Installing Plex Media Server..."
 
+########################################
+# Create config directory
+########################################
+
 mkdir -p /opt/media-stack/config/plex
+
+########################################
+# Add container to docker-compose
+########################################
 
 cat <<EOF >> /opt/media-stack/docker-compose.yml
 
@@ -29,18 +37,21 @@ cat <<EOF >> /opt/media-stack/docker-compose.yml
 EOF
 
 ########################################
-# GPU Support (retain existing feature)
+# GPU Support (Intel / AMD / NVIDIA)
 ########################################
 
 if [ "$GPU_TYPE" != "none" ]; then
+
 echo "$GPU_DEVICES" >> /opt/media-stack/docker-compose.yml
+
 fi
 
 ########################################
-# Health Check (retain existing feature)
+# Health Check
 ########################################
 
 cat <<EOF >> /opt/media-stack/docker-compose.yml
+
     healthcheck:
       test: ["CMD","curl","-f","http://localhost:32400/web/index.html"]
       interval: 30s
@@ -50,7 +61,7 @@ cat <<EOF >> /opt/media-stack/docker-compose.yml
 EOF
 
 ########################################
-# Register service (NEW ADDITION ONLY)
+# Register service
 ########################################
 
 source ./scripts/service-registry.sh

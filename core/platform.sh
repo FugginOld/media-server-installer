@@ -1,212 +1,98 @@
 #!/usr/bin/env bash
 
-set -e
-
 ########################################
-# Variables
+# Platform detection
 ########################################
 
-STACK_DIR="/opt/media-stack"
-PLUGIN_DIR="./plugins"
-TEMPLATE_FILE="./templates/docker-compose.base.yml"
+HOST_PLATFORM="baremetal"
 
-SELECTED_SERVICES=()
-INSTALLED_SERVICES=()
+detect_platform() {
 
-########################################
-# Load core modules
-########################################
+echo "Detecting host platform..."
 
-source ./core/platform.sh
-source ./core/directories.sh
-source ./core/hardware.sh
-source ./core/docker.sh
+if [ -f /etc/unraid-version ]; then
 
-########################################
-# Detect system
-########################################
+    HOST_PLATFORM="unraid"
 
-echo "Detecting system configuration..."
+elif grep -qi truenas /etc/os-release 2>/dev/null; then
 
-detect_platform
-configure_storage_paths
+    HOST_PLATFORM="truenas"
 
-select_directory_layout
-configure_media_directories
-create_media_folders
+elif grep -qi openmediavault /etc/os-release 2>/dev/null; then
 
-detect_gpu
-configure_gpu_devices
+    HOST_PLATFORM="openmediavault"
 
-########################################
-# Prepare docker compose
-########################################
+elif grep -qi proxmox /etc/os-release 2>/dev/null; then
 
-echo "Preparing docker stack..."
+    HOST_PLATFORM="proxmox"
 
-mkdir -p $STACK_DIR
-mkdir -p $STACK_DIR/config
+elif grep -qi synology /etc/os-release 2>/dev/null; then
 
-cp $TEMPLATE_FILE $STACK_DIR/docker-compose.yml
+    HOST_PLATFORM="synology"
 
-########################################
-# Discover plugins
-########################################
+else
 
-echo "Discovering plugins..."
-
-MENU_OPTIONS=()
-
-for FILE in $(find $PLUGIN_DIR -name "*.sh")
-do
-
-unset PLUGIN_NAME
-unset PLUGIN_DESCRIPTION
-unset PLUGIN_CATEGORY
-unset PLUGIN_DEPENDS
-
-source "$FILE"
-
-MENU_OPTIONS+=("$PLUGIN_NAME" "$PLUGIN_CATEGORY - $PLUGIN_DESCRIPTION" OFF)
-
-done
-
-########################################
-# Service selection menu
-########################################
-
-SELECTED=$(whiptail \
---title "Media Stack Installer" \
---checklist "Select services to install:" \
-25 80 18 \
-"${MENU_OPTIONS[@]}" \
-3>&1 1>&2 2>&3)
-
-########################################
-# Convert selection
-########################################
-
-for SERVICE in $SELECTED
-do
-SERVICE=$(echo $SERVICE | tr -d '"')
-SELECTED_SERVICES+=("$SERVICE")
-done
-
-########################################
-# Dependency resolver
-########################################
-
-resolve_dependencies() {
-
-CHANGED=true
-
-while [ "$CHANGED" = true ]
-do
-
-CHANGED=false
-
-for SERVICE in "${SELECTED_SERVICES[@]}"
-do
-
-PLUGIN_FILE=$(find $PLUGIN_DIR -name "$SERVICE.sh")
-
-unset PLUGIN_DEPENDS
-source "$PLUGIN_FILE"
-
-for DEP in "${PLUGIN_DEPENDS[@]}"
-do
-
-if [[ ! " ${SELECTED_SERVICES[@]} " =~ " ${DEP} " ]]; then
-
-echo "Adding dependency: $DEP"
-
-SELECTED_SERVICES+=("$DEP")
-CHANGED=true
+    HOST_PLATFORM="baremetal"
 
 fi
 
-done
-
-done
-
-done
+echo "Detected platform: $HOST_PLATFORM"
 
 }
 
-resolve_dependencies
-
 ########################################
-# Install plugins
+# Storage path configuration
 ########################################
 
-install_plugin() {
+configure_storage_paths() {
 
-SERVICE=$1
+case "$HOST_PLATFORM" in
 
-if [[ " ${INSTALLED_SERVICES[@]} " =~ " ${SERVICE} " ]]; then
-return
-fi
+baremetal)
 
-PLUGIN_FILE=$(find $PLUGIN_DIR -name "$SERVICE.sh")
+    MEDIA_PATH="/mnt/media"
+    DOWNLOAD_PATH="/mnt/downloads"
+    ;;
 
-source "$PLUGIN_FILE"
+proxmox)
 
-echo "Installing $SERVICE"
+    MEDIA_PATH="/mnt/media"
+    DOWNLOAD_PATH="/mnt/downloads"
+    ;;
 
-install_service
+unraid)
 
-INSTALLED_SERVICES+=("$SERVICE")
+    MEDIA_PATH="/mnt/user/media"
+    DOWNLOAD_PATH="/mnt/user/downloads"
+    ;;
+
+truenas)
+
+    MEDIA_PATH="/mnt/tank/media"
+    DOWNLOAD_PATH="/mnt/tank/downloads"
+    ;;
+
+openmediavault)
+
+    MEDIA_PATH="/srv/dev-disk-by-label-media"
+    DOWNLOAD_PATH="/srv/dev-disk-by-label-downloads"
+    ;;
+
+synology)
+
+    MEDIA_PATH="/volume1/media"
+    DOWNLOAD_PATH="/volume1/downloads"
+    ;;
+
+*)
+
+    MEDIA_PATH="/mnt/media"
+    DOWNLOAD_PATH="/mnt/downloads"
+    ;;
+
+esac
+
+echo "Media path: $MEDIA_PATH"
+echo "Download path: $DOWNLOAD_PATH"
 
 }
-
-for SERVICE in "${SELECTED_SERVICES[@]}"
-do
-install_plugin "$SERVICE"
-done
-
-########################################
-# Deploy containers
-########################################
-
-echo "Starting containers..."
-
-cd $STACK_DIR
-
-docker compose up -d
-
-########################################
-# Run post install automation
-########################################
-
-if [ -f "./scripts/post-install.sh" ]; then
-
-echo "Running post-install configuration..."
-
-bash ./scripts/post-install.sh
-
-fi
-
-########################################
-# Finish
-########################################
-
-echo ""
-echo "-----------------------------------"
-echo " Media Stack Installation Complete "
-echo "-----------------------------------"
-
-echo ""
-
-echo "Installed services:"
-
-for SERVICE in "${INSTALLED_SERVICES[@]}"
-do
-echo " - $SERVICE"
-done
-
-echo ""
-
-echo "Docker stack location:"
-echo "$STACK_DIR"
-
-echo ""

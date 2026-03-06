@@ -1,20 +1,14 @@
 #!/usr/bin/env bash
 
-########################################
-# Post Install Automation
-########################################
-
 STACK_DIR="/opt/media-stack"
 
-RADARR_URL="http://radarr:7878"
-SONARR_URL="http://sonarr:8989"
-PROWLARR_URL="http://prowlarr:9696"
-SAB_URL="http://sabnzbd:8080"
-
-echo "Starting post-install configuration..."
+RADARR_URL="http://localhost:7878"
+SONARR_URL="http://localhost:8989"
+PROWLARR_URL="http://localhost:9696"
+SAB_URL="http://localhost:8080"
 
 ########################################
-# Wait for services to start
+# Wait for services
 ########################################
 
 wait_for_service() {
@@ -24,44 +18,98 @@ NAME=$2
 
 echo "Waiting for $NAME..."
 
-until curl -s $URL >/dev/null
+until curl -s "$URL" >/dev/null
 do
 sleep 5
 done
 
-echo "$NAME is ready."
+echo "$NAME is ready"
 
 }
 
+########################################
+# Detect installed services
+########################################
+
+SERVICES_FILE="$STACK_DIR/services.json"
+
+has_service() {
+
+jq -e ".services[] | select(.name == \"$1\")" \
+$SERVICES_FILE >/dev/null
+
+}
+
+########################################
+# Wait for core services
+########################################
+
+if has_service "Radarr"; then
 wait_for_service "$RADARR_URL/api/v3/system/status" "Radarr"
+fi
+
+if has_service "Sonarr"; then
 wait_for_service "$SONARR_URL/api/v3/system/status" "Sonarr"
+fi
+
+if has_service "Prowlarr"; then
 wait_for_service "$PROWLARR_URL/api/v1/system/status" "Prowlarr"
+fi
+
+if has_service "SABnzbd"; then
 wait_for_service "$SAB_URL" "SABnzbd"
+fi
 
 ########################################
-# Retrieve API Keys
+# Retrieve API keys
 ########################################
 
-echo "Retrieving API keys..."
+get_api_key() {
 
-RADARR_KEY=$(docker exec radarr grep ApiKey /config/config.xml | sed -e 's/.*<ApiKey>//' -e 's/<\/ApiKey>//')
-SONARR_KEY=$(docker exec sonarr grep ApiKey /config/config.xml | sed -e 's/.*<ApiKey>//' -e 's/<\/ApiKey>//')
-PROWLARR_KEY=$(docker exec prowlarr grep ApiKey /config/config.xml | sed -e 's/.*<ApiKey>//' -e 's/<\/ApiKey>//')
+CONTAINER=$1
+FILE=$2
+
+docker exec $CONTAINER grep ApiKey $FILE \
+| sed -e 's/.*<ApiKey>//' -e 's/<\/ApiKey>//'
+
+}
 
 ########################################
-# Configure SABnzbd categories
+# Extract keys
 ########################################
+
+if has_service "Radarr"; then
+RADARR_KEY=$(get_api_key radarr /config/config.xml)
+fi
+
+if has_service "Sonarr"; then
+SONARR_KEY=$(get_api_key sonarr /config/config.xml)
+fi
+
+if has_service "Prowlarr"; then
+PROWLARR_KEY=$(get_api_key prowlarr /config/config.xml)
+fi
+
+########################################
+# Configure SAB categories
+########################################
+
+if has_service "SABnzbd"; then
 
 echo "Configuring SABnzbd categories..."
 
 curl -s "$SAB_URL/api?mode=set_config&section=categories&name=movies&dir=movies"
 curl -s "$SAB_URL/api?mode=set_config&section=categories&name=tv&dir=tv"
 
+fi
+
 ########################################
-# Add SABnzbd to Radarr
+# Connect Radarr to SAB
 ########################################
 
-echo "Connecting Radarr → SABnzbd..."
+if has_service "Radarr" && has_service "SABnzbd"; then
+
+echo "Connecting Radarr → SABnzbd"
 
 curl -s -X POST "$RADARR_URL/api/v3/downloadclient" \
 -H "X-Api-Key: $RADARR_KEY" \
@@ -77,11 +125,15 @@ curl -s -X POST "$RADARR_URL/api/v3/downloadclient" \
 ]
 }'
 
+fi
+
 ########################################
-# Add SABnzbd to Sonarr
+# Connect Sonarr to SAB
 ########################################
 
-echo "Connecting Sonarr → SABnzbd..."
+if has_service "Sonarr" && has_service "SABnzbd"; then
+
+echo "Connecting Sonarr → SABnzbd"
 
 curl -s -X POST "$SONARR_URL/api/v3/downloadclient" \
 -H "X-Api-Key: $SONARR_KEY" \
@@ -97,11 +149,15 @@ curl -s -X POST "$SONARR_URL/api/v3/downloadclient" \
 ]
 }'
 
+fi
+
 ########################################
 # Link Prowlarr to Radarr
 ########################################
 
-echo "Connecting Prowlarr → Radarr..."
+if has_service "Prowlarr" && has_service "Radarr"; then
+
+echo "Connecting Prowlarr → Radarr"
 
 curl -s -X POST "$PROWLARR_URL/api/v1/applications" \
 -H "X-Api-Key: $PROWLARR_KEY" \
@@ -116,11 +172,15 @@ curl -s -X POST "$PROWLARR_URL/api/v1/applications" \
 ]
 }"
 
+fi
+
 ########################################
 # Link Prowlarr to Sonarr
 ########################################
 
-echo "Connecting Prowlarr → Sonarr..."
+if has_service "Prowlarr" && has_service "Sonarr"; then
+
+echo "Connecting Prowlarr → Sonarr"
 
 curl -s -X POST "$PROWLARR_URL/api/v1/applications" \
 -H "X-Api-Key: $PROWLARR_KEY" \
@@ -135,16 +195,18 @@ curl -s -X POST "$PROWLARR_URL/api/v1/applications" \
 ]
 }"
 
+fi
+
 ########################################
-# Grafana dashboard provisioning
+# Dynamic Grafana dashboards
 ########################################
 
-if docker ps | grep -q grafana; then
+if has_service "Grafana"; then
 
-echo "Provisioning Grafana dashboards..."
+echo "Configuring Grafana dashboards..."
 
-mkdir -p $STACK_DIR/config/grafana/dashboards
+bash ./scripts/grafana-dynamic.sh
 
 fi
 
-echo "Post-install automation complete."
+echo "Post-install configuration complete"

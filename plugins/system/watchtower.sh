@@ -7,6 +7,10 @@ install_service() {
 
 echo "Installing Watchtower..."
 
+########################################
+# Add container to docker-compose
+########################################
+
 cat <<EOF >> /opt/media-stack/docker-compose.yml
 
   watchtower:
@@ -20,11 +24,23 @@ cat <<EOF >> /opt/media-stack/docker-compose.yml
       - media-network
 
     healthcheck:
-      test: ["CMD", "pgrep", "watchtower"]
+      test: ["CMD","pgrep","watchtower"]
       interval: 60s
       timeout: 10s
       retries: 3
 
 EOF
+
+########################################
+# Register service
+########################################
+
+source ./scripts/service-registry.sh
+
+register_service \
+"Watchtower" \
+"http://localhost" \
+"System" \
+"watchtower.png"
 
 }

@@ -7,7 +7,15 @@ install_service() {
 
 echo "Installing Prowlarr..."
 
+########################################
+# Create config directory
+########################################
+
 mkdir -p /opt/media-stack/config/prowlarr
+
+########################################
+# Add container
+########################################
 
 cat <<EOF >> /opt/media-stack/docker-compose.yml
 
@@ -27,11 +35,23 @@ cat <<EOF >> /opt/media-stack/docker-compose.yml
       - media-network
 
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9696/api/v1/system/status"]
+      test: ["CMD","curl","-f","http://localhost:9696/api/v1/system/status"]
       interval: 30s
       timeout: 10s
       retries: 5
 
 EOF
+
+########################################
+# Register service
+########################################
+
+source ./scripts/service-registry.sh
+
+register_service \
+"Prowlarr" \
+"http://localhost:9696" \
+"Automation" \
+"prowlarr.png"
 
 }

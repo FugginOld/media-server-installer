@@ -12,34 +12,46 @@ detect_gpu() {
 echo "Detecting GPU..."
 
 if ! command -v lspci >/dev/null 2>&1; then
-    echo "lspci not found, skipping GPU detection."
+    echo "pciutils not installed, skipping GPU detection."
     return
 fi
 
+########################################
+# NVIDIA detection
+########################################
+
 if lspci | grep -qi nvidia; then
 
-GPU_TYPE="nvidia"
+    GPU_TYPE="nvidia"
+
+########################################
+# Intel detection
+########################################
 
 elif lspci | grep -Ei "vga|display" | grep -qi intel; then
 
-GPU_TYPE="intel"
+    GPU_TYPE="intel"
+
+########################################
+# AMD detection
+########################################
 
 elif lspci | grep -Ei "vga|display" | grep -qi amd; then
 
-GPU_TYPE="amd"
+    GPU_TYPE="amd"
 
 else
 
-GPU_TYPE="none"
+    GPU_TYPE="none"
 
 fi
 
-echo "GPU detected: $GPU_TYPE"
+echo "Detected GPU: $GPU_TYPE"
 
 }
 
 ########################################
-# Configure Docker GPU Settings
+# Configure GPU for Docker containers
 ########################################
 
 configure_gpu_devices() {
@@ -49,8 +61,8 @@ case "$GPU_TYPE" in
 intel|amd)
 
 GPU_DEVICES="
-  devices:
-   - /dev/dri:/dev/dri
+    devices:
+      - /dev/dri:/dev/dri
 "
 
 ;;
@@ -58,10 +70,10 @@ GPU_DEVICES="
 nvidia)
 
 GPU_DEVICES="
-  runtime: nvidia
-  environment:
-   - NVIDIA_VISIBLE_DEVICES=all
-   - NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
 "
 
 ;;
@@ -77,7 +89,7 @@ esac
 }
 
 ########################################
-# Install NVIDIA Runtime (if needed)
+# Install NVIDIA runtime if needed
 ########################################
 
 install_nvidia_runtime() {

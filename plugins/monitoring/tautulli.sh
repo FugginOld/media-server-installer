@@ -1,26 +1,34 @@
-PLUGIN_NAME="tautulli"
-PLUGIN_DESCRIPTION="Plex monitoring and analytics"
+PLUGIN_NAME="grafana"
+PLUGIN_DESCRIPTION="Metrics dashboard"
 PLUGIN_CATEGORY="Monitoring"
-PLUGIN_DEPENDS=("plex")
+PLUGIN_DEPENDS=("prometheus")
 
 install_service() {
 
-echo "Installing Tautulli..."
-
-mkdir -p /opt/media-stack/config/tautulli
-mkdir -p /opt/media-stack/config/tautulli/geoip
+echo "Installing Grafana..."
 
 ########################################
-# Download GeoIP database
+# Create config directories
 ########################################
 
-echo "Downloading GeoIP database..."
+mkdir -p /opt/media-stack/config/grafana
+mkdir -p /opt/media-stack/config/grafana/provisioning/datasources
+mkdir -p /opt/media-stack/config/grafana/dashboards
 
-curl -L \
-https://geolite.maxmind.com/download/geoip/database/GeoLite2-City.tar.gz \
--o /tmp/geoip.tar.gz
+########################################
+# Configure Prometheus datasource
+########################################
 
-tar -xzf /tmp/geoip.tar.gz -C /opt/media-stack/config/tautulli/geoip --strip-components=1
+cat <<EOF > /opt/media-stack/config/grafana/provisioning/datasources/prometheus.yml
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+EOF
 
 ########################################
 # Add container
@@ -28,27 +36,35 @@ tar -xzf /tmp/geoip.tar.gz -C /opt/media-stack/config/tautulli/geoip --strip-com
 
 cat <<EOF >> /opt/media-stack/docker-compose.yml
 
-  tautulli:
-    image: lscr.io/linuxserver/tautulli
-    container_name: tautulli
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=UTC
-    volumes:
-      - ./config/tautulli:/config
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
     ports:
-      - "8181:8181"
+      - "3001:3000"
+    volumes:
+      - ./config/grafana:/var/lib/grafana
     restart: unless-stopped
     networks:
       - media-network
 
     healthcheck:
-      test: ["CMD", "wget", "--spider", "http://localhost:8181"]
+      test: ["CMD","wget","--spider","http://localhost:3000"]
       interval: 30s
       timeout: 10s
       retries: 5
 
 EOF
+
+########################################
+# Register service
+########################################
+
+source ./scripts/service-registry.sh
+
+register_service \
+"Grafana" \
+"http://localhost:3001" \
+"Monitoring" \
+"grafana.png"
 
 }

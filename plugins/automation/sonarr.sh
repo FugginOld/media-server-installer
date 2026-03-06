@@ -1,44 +1,59 @@
-PLUGIN_NAME="sonarr"
-PLUGIN_DESCRIPTION="TV automation"
+PLUGIN_NAME="radarr"
+PLUGIN_DESCRIPTION="Movie automation service"
 PLUGIN_CATEGORY="Automation"
 PLUGIN_DEPENDS=("sabnzbd")
 
 install_service() {
 
-mkdir -p /opt/media-stack/config/sonarr
+echo "Installing Radarr..."
+
+########################################
+# Create config directory
+########################################
+
+mkdir -p /opt/media-stack/config/radarr
+
+########################################
+# Add container
+########################################
 
 cat <<EOF >> /opt/media-stack/docker-compose.yml
 
-  sonarr:
-    image: lscr.io/linuxserver/sonarr
-    container_name: sonarr
+  radarr:
+    image: lscr.io/linuxserver/radarr
+    container_name: radarr
     environment:
       - PUID=1000
       - PGID=1000
+      - TZ=UTC
     volumes:
-      - ./config/sonarr:/config
-      - $TV_PATH:/tv
+      - ./config/radarr:/config
+      - $MOVIES_PATH:/movies
       - $DOWNLOADS_PATH:/downloads
     ports:
-      - "8989:8989"
+      - "7878:7878"
     restart: unless-stopped
     networks:
       - media-network
 
     healthcheck:
-      test: ["CMD","curl","-f","http://localhost:8989/api/v3/system/status"]
+      test: ["CMD","curl","-f","http://localhost:7878/api/v3/system/status"]
       interval: 30s
       timeout: 10s
       retries: 5
 
 EOF
 
+########################################
+# Register service
+########################################
+
 source ./scripts/service-registry.sh
 
 register_service \
-"Sonarr" \
-"http://localhost:8989" \
+"Radarr" \
+"http://localhost:7878" \
 "Automation" \
-"sonarr.png"
+"radarr.png"
 
 }

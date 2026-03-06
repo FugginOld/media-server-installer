@@ -7,7 +7,15 @@ install_service() {
 
 echo "Installing Tailscale..."
 
+########################################
+# Create config directory
+########################################
+
 mkdir -p /opt/media-stack/config/tailscale
+
+########################################
+# Add container to docker-compose
+########################################
 
 cat <<EOF >> /opt/media-stack/docker-compose.yml
 
@@ -29,11 +37,23 @@ cat <<EOF >> /opt/media-stack/docker-compose.yml
       - media-network
 
     healthcheck:
-      test: ["CMD", "tailscale", "status"]
+      test: ["CMD","tailscale","status"]
       interval: 60s
       timeout: 10s
       retries: 3
 
 EOF
+
+########################################
+# Register service
+########################################
+
+source ./scripts/service-registry.sh
+
+register_service \
+"Tailscale" \
+"http://localhost" \
+"System" \
+"tailscale.png"
 
 }

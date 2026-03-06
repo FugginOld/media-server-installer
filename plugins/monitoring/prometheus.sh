@@ -7,10 +7,14 @@ install_service() {
 
 echo "Installing Prometheus..."
 
+########################################
+# Create config directory
+########################################
+
 mkdir -p /opt/media-stack/config/prometheus
 
 ########################################
-# Create Prometheus configuration
+# Generate Prometheus config
 ########################################
 
 cat <<EOF > /opt/media-stack/config/prometheus/prometheus.yml
@@ -26,10 +30,11 @@ scrape_configs:
   - job_name: 'plex'
     static_configs:
       - targets: ['plex-exporter:9594']
+
 EOF
 
 ########################################
-# Add container to docker-compose
+# Add container
 ########################################
 
 cat <<EOF >> /opt/media-stack/docker-compose.yml
@@ -46,11 +51,23 @@ cat <<EOF >> /opt/media-stack/docker-compose.yml
       - media-network
 
     healthcheck:
-      test: ["CMD", "wget", "--spider", "http://localhost:9090"]
+      test: ["CMD","wget","--spider","http://localhost:9090"]
       interval: 30s
       timeout: 10s
       retries: 5
 
 EOF
+
+########################################
+# Register service
+########################################
+
+source ./scripts/service-registry.sh
+
+register_service \
+"Prometheus" \
+"http://localhost:9090" \
+"Monitoring" \
+"prometheus.png"
 
 }
