@@ -1,53 +1,97 @@
+# =============================
 # OS files
+# =============================
 .DS_Store
 Thumbs.db
 
+# =============================
 # Editor / IDE
+# =============================
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
+# =============================
 # Logs
+# =============================
 *.log
 logs/
 
-# Backup files
+# =============================
+# Backup / archives
+# =============================
 *.tar
 *.tar.gz
 *.zip
 backup/
 backups/
 
+# =============================
 # Temporary files
+# =============================
 tmp/
 temp/
 
-# Docker runtime data
+# =============================
+# Runtime stack directories
+# (created during installation)
+# =============================
+/opt/media-stack/
+/opt/media-server-installer/
+
+# Local testing directories
 docker-data/
 volumes/
 containers/
 
-# Media directories (local testing)
+# =============================
+# Media directories
+# (prevent committing large files)
+# =============================
 mnt/
 media/
 downloads/
 
+# =============================
 # Environment files
+# =============================
 .env
 .env.*
 
-# Node/npm artifacts (if ever used)
-node_modules/
+# stack runtime config
+stack.env
 
-# Python artifacts (if ever used)
+# =============================
+# Python artifacts
+# =============================
 __pycache__/
 *.pyc
 
+# =============================
+# Node/npm artifacts
+# =============================
+node_modules/
+
+# =============================
 # Build artifacts
+# =============================
 dist/
 build/
 
-# Installer test files
+# =============================
+# Installer testing
+# =============================
 test-install/
+
+# =============================
+# Docker compose runtime files
+# =============================
+docker-compose.override.yml
+
+# =============================
+# Monitoring data
+# =============================
+prometheus-data/
+grafana-data/

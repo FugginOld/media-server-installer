@@ -1,21 +1,50 @@
-# Media Server Installer
+# Media Stack Installer
 
-One-command Plex automation stack installer.
+Automated deployment platform for a complete self-hosted media stack.
 
-Supported services:
+## One Command Install
 
+curl -fsSL https://raw.githubusercontent.com/FugginOld/media-server-installer/main/install.sh | bash
+
+## Included Services
+
+Media
 - Plex
+
+Automation
 - Radarr
 - Sonarr
-- SABnzbd
 - Prowlarr
 - Bazarr
-- Overseerr
-- Tdarr
-- Tailscale
-- Glances
+
+Downloads
+- SABnzbd
+- Unpackerr
+
+System
+- Homepage
 - Watchtower
+- Tailscale
 
-## Install
+Monitoring
+- Prometheus
+- Grafana
+- Node Exporter
+- Tautulli
 
-curl -fsSL https://raw.githubusercontent.com/FugginOld/media-server-installer/main/install.sh | sudo bash
+## CLI Management
+
+media-stack install  
+media-stack update  
+media-stack status  
+media-stack services  
+
+## Features
+
+- Plugin based architecture
+- GPU transcoding detection
+- TRaSH directory layout support
+- NAS platform detection
+- Automatic monitoring stack
+- Dynamic dashboards
+- One command installer
