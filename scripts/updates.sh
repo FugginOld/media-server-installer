@@ -1,14 +1,24 @@
 #!/usr/bin/env bash
 
-STACK_DIR="/opt/media-stack"
+INSTALL_DIR="/opt/media-server-installer"
 
-echo "Pulling latest container images..."
+echo ""
+echo "Updating Media Stack"
+echo ""
 
-cd "$STACK_DIR"
-docker compose pull
+cd "$INSTALL_DIR" || exit
 
-echo "Recreating containers..."
+echo "Pulling latest installer..."
+git pull
 
-docker compose up -d
+echo "Validating plugins..."
+bash scripts/plugin-validator.sh
 
-echo "Update finished."
+echo "Updating containers..."
+bash scripts/compose.sh pull
+
+echo "Restarting containers..."
+bash scripts/compose.sh up
+
+echo ""
+echo "Update complete."

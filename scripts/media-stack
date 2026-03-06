@@ -3,29 +3,26 @@
 STACK_DIR="/opt/media-stack"
 INSTALL_DIR="/opt/media-server-installer"
 CLI="/usr/local/bin/media-stack"
-NETWORK="media-network"
 
 show_help() {
 
 echo ""
 echo "Media Stack CLI"
 echo ""
-echo "Usage:"
+echo "Commands:"
 echo ""
-echo "media-stack install       Run installer"
-echo "media-stack update        Update stack and containers"
-echo "media-stack status        Show running containers"
-echo "media-stack services      Show service URLs"
-echo "media-stack restart       Restart stack containers"
-echo "media-stack logs          View container logs"
-echo "media-stack maintenance   Cleanup and maintenance"
-echo "media-stack reset         Remove entire stack (dev use)"
+echo "media-stack install"
+echo "media-stack update"
+echo "media-stack status"
+echo "media-stack services"
+echo "media-stack restart"
+echo "media-stack logs"
+echo "media-stack maintenance"
+echo "media-stack backup"
+echo "media-stack reset"
 echo ""
-}
 
-########################################
-# Install
-########################################
+}
 
 install_stack() {
 
@@ -34,44 +31,17 @@ bash installer.sh
 
 }
 
-########################################
-# Update
-########################################
-
 update_stack() {
 
-echo "Updating installer..."
-
-cd "$INSTALL_DIR" || exit
-git pull
-
-echo "Validating plugins..."
-bash scripts/plugin-validator.sh
-
-echo "Updating containers..."
-
-cd "$STACK_DIR" || exit
-
-docker compose pull
-docker compose up -d
-
-echo "Update complete."
+bash "$INSTALL_DIR/scripts/updates.sh"
 
 }
-
-########################################
-# Status
-########################################
 
 status_stack() {
 
-docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+bash "$INSTALL_DIR/scripts/compose.sh" status
 
 }
-
-########################################
-# Services
-########################################
 
 services_stack() {
 
@@ -82,114 +52,44 @@ cat "$STACK_DIR/services.json" \
 
 else
 
-echo "services.json not found."
+echo "services.json not found"
 
 fi
 
 }
 
-########################################
-# Restart
-########################################
-
 restart_stack() {
 
-cd "$STACK_DIR" || exit
-docker compose restart
+bash "$INSTALL_DIR/scripts/compose.sh" restart
 
 }
-
-########################################
-# Logs
-########################################
 
 logs_stack() {
 
-cd "$STACK_DIR" || exit
-docker compose logs -f
+bash "$INSTALL_DIR/scripts/compose.sh" logs
 
 }
 
-########################################
-# Maintenance
-########################################
+backup_stack() {
+
+bash "$INSTALL_DIR/scripts/backup.sh"
+
+}
 
 maintenance_stack() {
-
-echo "Running maintenance..."
 
 docker image prune -f
 docker container prune -f
 
-cd "$INSTALL_DIR" || exit
-
-if [ -f scripts/grafana-dynamic.sh ]; then
-bash scripts/grafana-dynamic.sh
-fi
-
-echo "Maintenance complete."
-
 }
-
-########################################
-# Reset (Developer Use)
-########################################
 
 reset_stack() {
 
-echo ""
-echo "================================"
-echo "Media Stack Reset"
-echo "================================"
-echo ""
-echo "This will remove:"
-echo ""
-echo "containers"
-echo "docker network"
-echo "installer directories"
-echo "CLI command"
-echo ""
+echo "Resetting Media Stack..."
 
-read -p "Continue? (y/N): " CONFIRM
-
-if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
-echo "Cancelled."
-exit 0
-fi
-
-echo ""
-echo "Stopping containers..."
-
-docker ps -a --format "{{.Names}}" | grep -E \
-"plex|radarr|sonarr|prowlarr|bazarr|sabnzbd|unpackerr|watchtower|tailscale|homepage|prometheus|grafana|nodeexporter|tautulli|plex-exporter|webinstaller" \
-| xargs -r docker rm -f
-
-echo "Removing docker network..."
-
-docker network rm "$NETWORK" 2>/dev/null || true
-
-echo "Removing stack directories..."
-
-rm -rf "$STACK_DIR"
-rm -rf "$INSTALL_DIR"
-
-echo "Removing CLI command..."
-
-rm -f "$CLI"
-
-echo ""
-echo "Reset complete."
-echo ""
-echo "You can reinstall using:"
-echo ""
-echo "curl -fsSL https://raw.githubusercontent.com/FugginOld/media-server-installer/main/install.sh | bash"
-echo ""
+bash "$INSTALL_DIR/reset-stack.sh"
 
 }
-
-########################################
-# Command Router
-########################################
 
 case "$1" in
 
@@ -219,6 +119,10 @@ logs_stack
 
 maintenance)
 maintenance_stack
+;;
+
+backup)
+backup_stack
 ;;
 
 reset)

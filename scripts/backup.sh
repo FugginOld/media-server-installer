@@ -6,9 +6,13 @@ DATE=$(date +%Y%m%d-%H%M)
 
 mkdir -p "$BACKUP_DIR"
 
-echo "Creating backup..."
+echo ""
+echo "Creating Media Stack Backup"
+echo ""
 
 tar -czf "$BACKUP_DIR/media-stack-$DATE.tar.gz" "$STACK_DIR"
 
-echo "Backup created:"
+echo ""
+echo "Backup saved:"
 echo "$BACKUP_DIR/media-stack-$DATE.tar.gz"
+echo ""
