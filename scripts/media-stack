@@ -2,77 +2,231 @@
 
 STACK_DIR="/opt/media-stack"
 INSTALL_DIR="/opt/media-server-installer"
+CLI="/usr/local/bin/media-stack"
+NETWORK="media-network"
 
-case "$1" in
-
-install)
-
-cd $INSTALL_DIR
-bash installer.sh
-;;
-
-update)
-
-echo "Updating media stack..."
-
-cd $INSTALL_DIR
-git pull
-
-bash scripts/plugin-validator.sh
-
-cd $STACK_DIR
-docker compose pull
-docker compose up -d
-
-echo "Update complete"
-;;
-
-status)
-
-docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-;;
-
-services)
-
-cat $STACK_DIR/services.json | jq -r '.services[] | "\(.name) -> \(.url)"'
-;;
-
-restart)
-
-cd $STACK_DIR
-docker compose restart
-;;
-
-logs)
-
-cd $STACK_DIR
-docker compose logs -f
-;;
-
-maintenance)
-
-docker image prune -f
-docker container prune -f
-
-cd $INSTALL_DIR
-bash scripts/grafana-dynamic.sh
-;;
-
-*)
+show_help() {
 
 echo ""
 echo "Media Stack CLI"
 echo ""
-echo "Commands:"
+echo "Usage:"
 echo ""
-echo "media-stack install"
-echo "media-stack update"
-echo "media-stack status"
-echo "media-stack services"
-echo "media-stack restart"
-echo "media-stack logs"
-echo "media-stack maintenance"
+echo "media-stack install       Run installer"
+echo "media-stack update        Update stack and containers"
+echo "media-stack status        Show running containers"
+echo "media-stack services      Show service URLs"
+echo "media-stack restart       Restart stack containers"
+echo "media-stack logs          View container logs"
+echo "media-stack maintenance   Cleanup and maintenance"
+echo "media-stack reset         Remove entire stack (dev use)"
 echo ""
+}
+
+########################################
+# Install
+########################################
+
+install_stack() {
+
+cd "$INSTALL_DIR" || exit
+bash installer.sh
+
+}
+
+########################################
+# Update
+########################################
+
+update_stack() {
+
+echo "Updating installer..."
+
+cd "$INSTALL_DIR" || exit
+git pull
+
+echo "Validating plugins..."
+bash scripts/plugin-validator.sh
+
+echo "Updating containers..."
+
+cd "$STACK_DIR" || exit
+
+docker compose pull
+docker compose up -d
+
+echo "Update complete."
+
+}
+
+########################################
+# Status
+########################################
+
+status_stack() {
+
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+}
+
+########################################
+# Services
+########################################
+
+services_stack() {
+
+if [ -f "$STACK_DIR/services.json" ]; then
+
+cat "$STACK_DIR/services.json" \
+| jq -r '.services[] | "\(.name) -> \(.url)"'
+
+else
+
+echo "services.json not found."
+
+fi
+
+}
+
+########################################
+# Restart
+########################################
+
+restart_stack() {
+
+cd "$STACK_DIR" || exit
+docker compose restart
+
+}
+
+########################################
+# Logs
+########################################
+
+logs_stack() {
+
+cd "$STACK_DIR" || exit
+docker compose logs -f
+
+}
+
+########################################
+# Maintenance
+########################################
+
+maintenance_stack() {
+
+echo "Running maintenance..."
+
+docker image prune -f
+docker container prune -f
+
+cd "$INSTALL_DIR" || exit
+
+if [ -f scripts/grafana-dynamic.sh ]; then
+bash scripts/grafana-dynamic.sh
+fi
+
+echo "Maintenance complete."
+
+}
+
+########################################
+# Reset (Developer Use)
+########################################
+
+reset_stack() {
+
+echo ""
+echo "================================"
+echo "Media Stack Reset"
+echo "================================"
+echo ""
+echo "This will remove:"
+echo ""
+echo "containers"
+echo "docker network"
+echo "installer directories"
+echo "CLI command"
+echo ""
+
+read -p "Continue? (y/N): " CONFIRM
+
+if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
+echo "Cancelled."
+exit 0
+fi
+
+echo ""
+echo "Stopping containers..."
+
+docker ps -a --format "{{.Names}}" | grep -E \
+"plex|radarr|sonarr|prowlarr|bazarr|sabnzbd|unpackerr|watchtower|tailscale|homepage|prometheus|grafana|nodeexporter|tautulli|plex-exporter|webinstaller" \
+| xargs -r docker rm -f
+
+echo "Removing docker network..."
+
+docker network rm "$NETWORK" 2>/dev/null || true
+
+echo "Removing stack directories..."
+
+rm -rf "$STACK_DIR"
+rm -rf "$INSTALL_DIR"
+
+echo "Removing CLI command..."
+
+rm -f "$CLI"
+
+echo ""
+echo "Reset complete."
+echo ""
+echo "You can reinstall using:"
+echo ""
+echo "curl -fsSL https://raw.githubusercontent.com/FugginOld/media-server-installer/main/install.sh | bash"
+echo ""
+
+}
+
+########################################
+# Command Router
+########################################
+
+case "$1" in
+
+install)
+install_stack
+;;
+
+update)
+update_stack
+;;
+
+status)
+status_stack
+;;
+
+services)
+services_stack
+;;
+
+restart)
+restart_stack
+;;
+
+logs)
+logs_stack
+;;
+
+maintenance)
+maintenance_stack
+;;
+
+reset)
+reset_stack
+;;
+
+*)
+show_help
 ;;
 
 esac
