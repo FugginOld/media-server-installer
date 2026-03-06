@@ -1,30 +1,36 @@
 PLUGIN_NAME="prowlarr"
-PLUGIN_DESCRIPTION="Indexer automation"
+PLUGIN_DESCRIPTION="Indexer manager"
 PLUGIN_CATEGORY="Automation"
-PLUGIN_DEPENDS=()
+PLUGIN_DEPENDS=("radarr" "sonarr")
 
 install_service() {
+
+echo "Installing Prowlarr..."
 
 mkdir -p /opt/media-stack/config/prowlarr
 
 cat <<EOF >> /opt/media-stack/docker-compose.yml
 
- prowlarr:
-  image: lscr.io/linuxserver/prowlarr
-  container_name: prowlarr
-  ports:
-   - "9696:9696"
-  environment:
-   - PUID=1000
-   - PGID=1000
-  volumes:
-   - ./config/prowlarr:/config
-  restart: unless-stopped
-  healthcheck:
-  test: ["CMD", "curl", "-f", "http://localhost:9696"]
-  interval: 30s
-  timeout: 10s
-  retries: 5
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr
+    container_name: prowlarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+    volumes:
+      - ./config/prowlarr:/config
+    ports:
+      - "9696:9696"
+    restart: unless-stopped
+    networks:
+      - media-network
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9696/api/v1/system/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
 EOF
 
