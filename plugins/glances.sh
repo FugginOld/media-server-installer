@@ -18,6 +18,11 @@ cat <<EOF >> /opt/media-stack/docker-compose.yml
   volumes:
    - /var/run/docker.sock:/var/run/docker.sock
   restart: unless-stopped
+  healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:61208"]
+  interval: 30s
+  timeout: 10s
+  retries: 5
 
 EOF
 
