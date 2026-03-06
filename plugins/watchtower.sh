@@ -1,5 +1,5 @@
 PLUGIN_NAME="watchtower"
-PLUGIN_DESCRIPTION="Docker container updater"
+PLUGIN_DESCRIPTION="Automatic container updates"
 PLUGIN_CATEGORY="System"
 PLUGIN_DEPENDS=()
 
@@ -13,7 +13,14 @@ cat <<EOF >> /opt/media-stack/docker-compose.yml
   volumes:
    - /var/run/docker.sock:/var/run/docker.sock
   command: --cleanup --schedule "0 0 4 * * *"
+  networks:
+   - media-network
   restart: unless-stopped
+  healthcheck:
+   test: ["CMD","pgrep","watchtower"]
+   interval: 60s
+   timeout: 10s
+   retries: 3
 
 EOF
 
