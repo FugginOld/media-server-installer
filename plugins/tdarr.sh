@@ -26,6 +26,11 @@ cat <<EOF >> /opt/media-stack/docker-compose.yml
    - ./config/tdarr:/app/config
    - /mnt/media:/media
   restart: unless-stopped
+  healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:8265"]
+  interval: 30s
+  timeout: 10s
+  retries: 5
 
 EOF
 
