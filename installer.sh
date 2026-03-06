@@ -1,15 +1,48 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -e
+
+########################################
+# Variables
+########################################
 
 STACK_DIR="/opt/media-stack"
 PLUGIN_DIR="./plugins"
 TEMPLATE_FILE="./templates/docker-compose.base.yml"
 
+SELECTED_SERVICES=()
+INSTALLED_SERVICES=()
+
+########################################
+# Load core modules
+########################################
+
+source ./core/platform.sh
+source ./core/directories.sh
 source ./core/hardware.sh
+source ./core/docker.sh
+
+########################################
+# Detect system
+########################################
+
+echo "Detecting system configuration..."
+
+detect_platform
+configure_storage_paths
+
+select_directory_layout
+configure_media_directories
+create_media_folders
 
 detect_gpu
-get_gpu_devices
+configure_gpu_devices
+
+########################################
+# Prepare docker compose
+########################################
+
+echo "Preparing docker stack..."
 
 mkdir -p $STACK_DIR
 mkdir -p $STACK_DIR/config
@@ -20,9 +53,11 @@ cp $TEMPLATE_FILE $STACK_DIR/docker-compose.yml
 # Discover plugins
 ########################################
 
+echo "Discovering plugins..."
+
 MENU_OPTIONS=()
 
-for FILE in $PLUGIN_DIR/*.sh
+for FILE in $(find $PLUGIN_DIR -name "*.sh")
 do
 
 unset PLUGIN_NAME
@@ -37,21 +72,19 @@ MENU_OPTIONS+=("$PLUGIN_NAME" "$PLUGIN_CATEGORY - $PLUGIN_DESCRIPTION" OFF)
 done
 
 ########################################
-# Menu
+# Service selection menu
 ########################################
 
 SELECTED=$(whiptail \
 --title "Media Stack Installer" \
 --checklist "Select services to install:" \
-25 80 15 \
+25 80 18 \
 "${MENU_OPTIONS[@]}" \
 3>&1 1>&2 2>&3)
 
 ########################################
 # Convert selection
 ########################################
-
-SELECTED_SERVICES=()
 
 for SERVICE in $SELECTED
 do
@@ -75,10 +108,9 @@ CHANGED=false
 for SERVICE in "${SELECTED_SERVICES[@]}"
 do
 
-PLUGIN_FILE="$PLUGIN_DIR/$SERVICE.sh"
+PLUGIN_FILE=$(find $PLUGIN_DIR -name "$SERVICE.sh")
 
 unset PLUGIN_DEPENDS
-
 source "$PLUGIN_FILE"
 
 for DEP in "${PLUGIN_DEPENDS[@]}"
@@ -89,7 +121,6 @@ if [[ ! " ${SELECTED_SERVICES[@]} " =~ " ${DEP} " ]]; then
 echo "Adding dependency: $DEP"
 
 SELECTED_SERVICES+=("$DEP")
-
 CHANGED=true
 
 fi
@@ -108,8 +139,6 @@ resolve_dependencies
 # Install plugins
 ########################################
 
-INSTALLED_SERVICES=()
-
 install_plugin() {
 
 SERVICE=$1
@@ -118,7 +147,7 @@ if [[ " ${INSTALLED_SERVICES[@]} " =~ " ${SERVICE} " ]]; then
 return
 fi
 
-PLUGIN_FILE="$PLUGIN_DIR/$SERVICE.sh"
+PLUGIN_FILE=$(find $PLUGIN_DIR -name "$SERVICE.sh")
 
 source "$PLUGIN_FILE"
 
@@ -136,12 +165,48 @@ install_plugin "$SERVICE"
 done
 
 ########################################
-# Deploy stack
+# Deploy containers
 ########################################
+
+echo "Starting containers..."
 
 cd $STACK_DIR
 
 docker compose up -d
 
+########################################
+# Run post install automation
+########################################
+
+if [ -f "./scripts/post-install.sh" ]; then
+
+echo "Running post-install configuration..."
+
+bash ./scripts/post-install.sh
+
+fi
+
+########################################
+# Finish
+########################################
+
 echo ""
-echo "Media Stack Installation Complete"
+echo "-----------------------------------"
+echo " Media Stack Installation Complete "
+echo "-----------------------------------"
+
+echo ""
+
+echo "Installed services:"
+
+for SERVICE in "${INSTALLED_SERVICES[@]}"
+do
+echo " - $SERVICE"
+done
+
+echo ""
+
+echo "Docker stack location:"
+echo "$STACK_DIR"
+
+echo ""
