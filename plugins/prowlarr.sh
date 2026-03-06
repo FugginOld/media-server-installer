@@ -20,6 +20,11 @@ cat <<EOF >> /opt/media-stack/docker-compose.yml
   volumes:
    - ./config/prowlarr:/config
   restart: unless-stopped
+  healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:9696"]
+  interval: 30s
+  timeout: 10s
+  retries: 5
 
 EOF
 
