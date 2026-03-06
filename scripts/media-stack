@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+
+STACK_DIR="/opt/media-stack"
+INSTALL_DIR="/opt/media-server-installer"
+
+case "$1" in
+
+install)
+
+cd $INSTALL_DIR
+bash installer.sh
+;;
+
+update)
+
+echo "Updating media stack..."
+
+cd $INSTALL_DIR
+git pull
+
+bash scripts/plugin-validator.sh
+
+cd $STACK_DIR
+docker compose pull
+docker compose up -d
+
+echo "Update complete"
+;;
+
+status)
+
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+;;
+
+services)
+
+cat $STACK_DIR/services.json | jq -r '.services[] | "\(.name) -> \(.url)"'
+;;
+
+restart)
+
+cd $STACK_DIR
+docker compose restart
+;;
+
+logs)
+
+cd $STACK_DIR
+docker compose logs -f
+;;
+
+maintenance)
+
+docker image prune -f
+docker container prune -f
+
+cd $INSTALL_DIR
+bash scripts/grafana-dynamic.sh
+;;
+
+*)
+
+echo ""
+echo "Media Stack CLI"
+echo ""
+echo "Commands:"
+echo ""
+echo "media-stack install"
+echo "media-stack update"
+echo "media-stack status"
+echo "media-stack services"
+echo "media-stack restart"
+echo "media-stack logs"
+echo "media-stack maintenance"
+echo ""
+;;
+
+esac

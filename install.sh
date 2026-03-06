@@ -17,16 +17,14 @@ echo ""
 
 if [ "$EUID" -ne 0 ]; then
     echo "Please run as root."
-    echo "Example:"
-    echo "su -"
     exit 1
 fi
 
 ########################################
-# Install base dependencies
+# Install dependencies
 ########################################
 
-echo "Installing system dependencies..."
+echo "Installing dependencies..."
 
 apt update
 
@@ -42,7 +40,7 @@ gnupg \
 lsb-release
 
 ########################################
-# Install Docker (official repo)
+# Install Docker
 ########################################
 
 if ! command -v docker >/dev/null 2>&1; then
@@ -78,34 +76,34 @@ systemctl start docker
 fi
 
 ########################################
-# Clone or update repository
+# Clone installer
 ########################################
 
 if [ -d "$INSTALL_DIR/.git" ]; then
 
-echo "Updating existing installer..."
-
+echo "Updating installer..."
 cd $INSTALL_DIR
 git pull
 
 else
 
-echo "Downloading Media Stack Installer..."
-
+echo "Downloading installer..."
 git clone $REPO_URL $INSTALL_DIR
 
 fi
+
+########################################
+# Install CLI command
+########################################
+
+cp $INSTALL_DIR/scripts/media-stack /usr/local/bin/media-stack
+chmod +x /usr/local/bin/media-stack
 
 ########################################
 # Launch installer
 ########################################
 
 cd $INSTALL_DIR
-
 chmod +x installer.sh
-
-echo ""
-echo "Launching installer..."
-echo ""
 
 bash installer.sh
