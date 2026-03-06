@@ -1,0 +1,53 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Backup files
+*.tar
+*.tar.gz
+*.zip
+backup/
+backups/
+
+# Temporary files
+tmp/
+temp/
+
+# Docker runtime data
+docker-data/
+volumes/
+containers/
+
+# Media directories (local testing)
+mnt/
+media/
+downloads/
+
+# Environment files
+.env
+.env.*
+
+# Node/npm artifacts (if ever used)
+node_modules/
+
+# Python artifacts (if ever used)
+__pycache__/
+*.pyc
+
+# Build artifacts
+dist/
+build/
+
+# Installer test files
+test-install/
