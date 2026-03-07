@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+########################################
+# Port Registry
+#
+# Maintains a registry of ports used by
+# installed services to prevent conflicts.
+########################################
+
 STACK_DIR="/opt/media-stack"
 PORT_FILE="$STACK_DIR/ports.json"
 
@@ -24,19 +31,7 @@ fi
 }
 
 ########################################
-# Check if port is already used
-########################################
-
-port_in_use() {
-
-PORT=$1
-
-ss -tuln | grep -q ":$PORT "
-
-}
-
-########################################
-# Register port
+# Register a port
 ########################################
 
 register_port() {
@@ -46,62 +41,59 @@ PORT=$2
 
 init_port_registry
 
-########################################
-# Check registry
-########################################
-
-if jq -e ".ports.\"$SERVICE\"" "$PORT_FILE" >/dev/null; then
-
-echo "Port already reserved for $SERVICE"
-
-return
-
-fi
-
-########################################
-# Prevent conflicts
-########################################
-
-if jq -e ".ports[] | select(. == $PORT)" "$PORT_FILE" >/dev/null; then
-
-echo "Port conflict detected: $PORT"
-exit 1
-
-fi
-
-########################################
-# Prevent host conflicts
-########################################
-
-if port_in_use "$PORT"; then
-
-echo "Port already in use on host: $PORT"
-exit 1
-
-fi
-
 TMP_FILE=$(mktemp)
 
 jq ".ports.\"$SERVICE\" = $PORT" "$PORT_FILE" > "$TMP_FILE"
 
 mv "$TMP_FILE" "$PORT_FILE"
 
-echo "Reserved port $PORT for $SERVICE"
+echo "Registered port $PORT for $SERVICE"
 
 }
 
 ########################################
-# Get port mapping
+# Check if port is already used
 ########################################
 
-get_port_mapping() {
+is_port_in_use() {
+
+PORT=$1
+
+init_port_registry
+
+jq -e ".ports | to_entries[] | select(.value == $PORT)" \
+"$PORT_FILE" >/dev/null 2>&1
+
+}
+
+########################################
+# Get port assigned to service
+########################################
+
+get_service_port() {
 
 SERVICE=$1
-HOST_PORT=$2
-CONTAINER_PORT=$3
 
-register_port "$SERVICE" "$HOST_PORT"
+init_port_registry
 
-echo "$HOST_PORT:$CONTAINER_PORT"
+jq -r ".ports.\"$SERVICE\"" "$PORT_FILE"
+
+}
+
+########################################
+# Remove service port
+########################################
+
+remove_port() {
+
+SERVICE=$1
+
+init_port_registry
+
+TMP_FILE=$(mktemp)
+
+jq "del(.ports.\"$SERVICE\")" "$PORT_FILE" > "$TMP_FILE"
+
+mv "$TMP_FILE" "$PORT_FILE"
 
 }

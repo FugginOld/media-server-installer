@@ -1,58 +1,68 @@
 #!/usr/bin/env bash
 
+########################################
+# Media Stack Backup
+#
+# Creates a compressed backup of the
+# Media Stack configuration directory.
+########################################
+
 STACK_DIR="/opt/media-stack"
 BACKUP_DIR="/opt/media-stack-backups"
-
-DATE=$(date +%Y%m%d-%H%M%S)
-
-BACKUP_FILE="$BACKUP_DIR/media-stack-backup-$DATE.tar.gz"
-
-echo ""
-echo "================================"
-echo " Media Stack Backup"
-echo "================================"
-echo ""
+DATE=$(date +%Y%m%d-%H%M)
 
 ########################################
-# Ensure stack exists
+# Ensure stack directory exists
 ########################################
 
 if [ ! -d "$STACK_DIR" ]; then
-    echo "Stack directory not found."
-    exit 1
+echo "Media stack directory not found."
+exit 1
 fi
 
 ########################################
-# Create backup directory
+# Create backup directory if needed
 ########################################
 
 mkdir -p "$BACKUP_DIR"
 
 ########################################
-# Create archive
+# Backup filename
 ########################################
 
-echo "Creating backup..."
+BACKUP_FILE="$BACKUP_DIR/media-stack-$DATE.tar.gz"
 
-tar -czf "$BACKUP_FILE" \
-"$STACK_DIR/docker-compose.yml" \
-"$STACK_DIR/config" \
-"$STACK_DIR/services.json" \
-"$STACK_DIR/ports.json" \
-"$STACK_DIR/stack.env" 2>/dev/null
+echo ""
+echo "================================"
+echo " Creating Media Stack Backup"
+echo "================================"
+echo ""
+
+echo "Source: $STACK_DIR"
+echo "Destination: $BACKUP_FILE"
+echo ""
+
+########################################
+# Create compressed backup
+########################################
+
+tar -czf "$BACKUP_FILE" "$STACK_DIR"
 
 ########################################
 # Verify backup
 ########################################
 
 if [ -f "$BACKUP_FILE" ]; then
-    echo ""
-    echo "Backup successful."
-    echo "Backup file:"
-    echo "$BACKUP_FILE"
+
+echo "Backup created successfully."
+echo ""
+echo "Backup file:"
+echo "$BACKUP_FILE"
+
 else
-    echo "Backup failed."
-    exit 1
+
+echo "Backup failed."
+
 fi
 
 echo ""

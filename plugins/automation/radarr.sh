@@ -1,17 +1,31 @@
 #!/usr/bin/env bash
 
 ########################################
+# Radarr Plugin
+#
+# Manages movie downloads for the
+# Media Stack automation ecosystem.
+#
+# Integrates with:
+# - SABnzbd
+# - Prowlarr
+########################################
+
+########################################
 # Plugin Metadata
 ########################################
 
 PLUGIN_NAME="radarr"
-PLUGIN_DESCRIPTION="Movie automation manager"
+PLUGIN_DESCRIPTION="Movie Automation Manager"
 PLUGIN_CATEGORY="Automation"
-PLUGIN_DEPENDS=("sabnzbd")
+
+PLUGIN_DEPENDS=(sabnzbd)
+
+PLUGIN_PORTS=(7878)
+
+PLUGIN_HOST_NETWORK=false
 
 PLUGIN_DASHBOARD=true
-PLUGIN_PORTS=(7878)
-PLUGIN_HOST_NETWORK=false
 
 ########################################
 # Install Service
@@ -19,65 +33,51 @@ PLUGIN_HOST_NETWORK=false
 
 install_service() {
 
-echo "Installing Radarr..."
+########################################
+# Core paths
+########################################
 
-COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
+INSTALL_DIR="/opt/media-server-installer"
+STACK_DIR="/opt/media-stack"
 
 ########################################
 # Load helpers
 ########################################
 
-source "$INSTALL_DIR/scripts/service-registry.sh"
 source "$INSTALL_DIR/scripts/port-helper.sh"
+source "$INSTALL_DIR/scripts/service-registry.sh"
 
 ########################################
-# Create config directory
+# Request port mapping
 ########################################
 
-mkdir -p "$CONFIG_DIR/radarr"
+PORT=$(get_port_mapping "radarr" 7878 7878)
 
 ########################################
-# Reserve port
+# Create configuration directory
 ########################################
 
-PORT_MAPPING=$(get_port_mapping "radarr" 7878 7878)
+mkdir -p "$STACK_DIR/config/radarr"
 
 ########################################
 # Add container to docker-compose
 ########################################
 
-cat <<EOF >> "$COMPOSE_FILE"
+cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
   radarr:
     image: lscr.io/linuxserver/radarr
     container_name: radarr
-    networks:
-      - media-network
     ports:
-      - "$PORT_MAPPING"
+      - "$PORT"
     environment:
       - PUID=\${PUID}
       - PGID=\${PGID}
       - TZ=\${TIMEZONE}
     volumes:
-      - $CONFIG_DIR/radarr:/config
+      - ./config/radarr:/config
       - $MOVIES_PATH:/movies
       - $DOWNLOADS_PATH:/downloads
-EOF
-
-########################################
-# GPU Support
-########################################
-
-if [ "$GPU_TYPE" != "none" ]; then
-echo "$GPU_DEVICES" >> "$COMPOSE_FILE"
-fi
-
-########################################
-# Restart policy
-########################################
-
-cat <<EOF >> "$COMPOSE_FILE"
     restart: unless-stopped
 EOF
 
@@ -85,23 +85,26 @@ EOF
 # Health Check
 ########################################
 
-cat <<EOF >> "$COMPOSE_FILE"
+cat <<EOF >> "$STACK_DIR/docker-compose.yml"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7878"]
+      test: ["CMD-SHELL", "curl -f http://localhost:7878 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-
 EOF
 
 ########################################
-# Register dashboard
+# Register service
 ########################################
+
+if [ "$PLUGIN_DASHBOARD" = true ]; then
 
 register_service \
 "Radarr" \
 "http://localhost:7878" \
 "Automation" \
 "radarr.png"
+
+fi
 
 }

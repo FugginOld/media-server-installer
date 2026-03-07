@@ -1,17 +1,31 @@
 #!/usr/bin/env bash
 
 ########################################
+# Sonarr Plugin
+#
+# Manages TV series downloads for the
+# Media Stack automation ecosystem.
+#
+# Integrates with:
+# - SABnzbd
+# - Prowlarr
+########################################
+
+########################################
 # Plugin Metadata
 ########################################
 
 PLUGIN_NAME="sonarr"
-PLUGIN_DESCRIPTION="TV series automation manager"
+PLUGIN_DESCRIPTION="TV Automation Manager"
 PLUGIN_CATEGORY="Automation"
-PLUGIN_DEPENDS=("sabnzbd")
+
+PLUGIN_DEPENDS=(sabnzbd)
+
+PLUGIN_PORTS=(8989)
+
+PLUGIN_HOST_NETWORK=false
 
 PLUGIN_DASHBOARD=true
-PLUGIN_PORTS=(8989)
-PLUGIN_HOST_NETWORK=false
 
 ########################################
 # Install Service
@@ -19,65 +33,51 @@ PLUGIN_HOST_NETWORK=false
 
 install_service() {
 
-echo "Installing Sonarr..."
+########################################
+# Core paths
+########################################
 
-COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
+INSTALL_DIR="/opt/media-server-installer"
+STACK_DIR="/opt/media-stack"
 
 ########################################
 # Load helpers
 ########################################
 
-source "$INSTALL_DIR/scripts/service-registry.sh"
 source "$INSTALL_DIR/scripts/port-helper.sh"
+source "$INSTALL_DIR/scripts/service-registry.sh"
 
 ########################################
-# Create config directory
+# Request port mapping
 ########################################
 
-mkdir -p "$CONFIG_DIR/sonarr"
+PORT=$(get_port_mapping "sonarr" 8989 8989)
 
 ########################################
-# Reserve port
+# Create configuration directory
 ########################################
 
-PORT_MAPPING=$(get_port_mapping "sonarr" 8989 8989)
+mkdir -p "$STACK_DIR/config/sonarr"
 
 ########################################
 # Add container to docker-compose
 ########################################
 
-cat <<EOF >> "$COMPOSE_FILE"
+cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
   sonarr:
     image: lscr.io/linuxserver/sonarr
     container_name: sonarr
-    networks:
-      - media-network
     ports:
-      - "$PORT_MAPPING"
+      - "$PORT"
     environment:
       - PUID=\${PUID}
       - PGID=\${PGID}
       - TZ=\${TIMEZONE}
     volumes:
-      - $CONFIG_DIR/sonarr:/config
+      - ./config/sonarr:/config
       - $TV_PATH:/tv
       - $DOWNLOADS_PATH:/downloads
-EOF
-
-########################################
-# GPU Support
-########################################
-
-if [ "$GPU_TYPE" != "none" ]; then
-echo "$GPU_DEVICES" >> "$COMPOSE_FILE"
-fi
-
-########################################
-# Restart policy
-########################################
-
-cat <<EOF >> "$COMPOSE_FILE"
     restart: unless-stopped
 EOF
 
@@ -85,23 +85,26 @@ EOF
 # Health Check
 ########################################
 
-cat <<EOF >> "$COMPOSE_FILE"
+cat <<EOF >> "$STACK_DIR/docker-compose.yml"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8989"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8989 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-
 EOF
 
 ########################################
-# Register dashboard
+# Register service
 ########################################
+
+if [ "$PLUGIN_DASHBOARD" = true ]; then
 
 register_service \
 "Sonarr" \
 "http://localhost:8989" \
 "Automation" \
 "sonarr.png"
+
+fi
 
 }

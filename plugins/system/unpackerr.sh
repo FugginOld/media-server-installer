@@ -1,17 +1,28 @@
 #!/usr/bin/env bash
 
 ########################################
+# Unpackerr Plugin
+#
+# Automatically extracts downloads from
+# SABnzbd so Radarr and Sonarr can import
+# completed media files immediately.
+########################################
+
+########################################
 # Plugin Metadata
 ########################################
 
 PLUGIN_NAME="unpackerr"
-PLUGIN_DESCRIPTION="Automatic extraction for downloads used by Radarr and Sonarr"
+PLUGIN_DESCRIPTION="Download Extraction Automation"
 PLUGIN_CATEGORY="System"
-PLUGIN_DEPENDS=("radarr" "sonarr" "sabnzbd")
+
+PLUGIN_DEPENDS=(sabnzbd)
+
+PLUGIN_PORTS=()
+
+PLUGIN_HOST_NETWORK=false
 
 PLUGIN_DASHBOARD=false
-PLUGIN_PORTS=()
-PLUGIN_HOST_NETWORK=false
 
 ########################################
 # Install Service
@@ -19,41 +30,45 @@ PLUGIN_HOST_NETWORK=false
 
 install_service() {
 
-echo "Installing Unpackerr..."
-
-COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
-
 ########################################
-# Create config directory
+# Core paths
 ########################################
 
-mkdir -p "$CONFIG_DIR/unpackerr"
+STACK_DIR="/opt/media-stack"
+
+########################################
+# Create configuration directory
+########################################
+
+mkdir -p "$STACK_DIR/config/unpackerr"
 
 ########################################
 # Add container to docker-compose
 ########################################
 
-cat <<EOF >> "$COMPOSE_FILE"
+cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
   unpackerr:
     image: golift/unpackerr
     container_name: unpackerr
-    networks:
-      - media-network
     environment:
       - TZ=\${TIMEZONE}
     volumes:
-      - $CONFIG_DIR/unpackerr:/config
+      - ./config/unpackerr:/config
       - $DOWNLOADS_PATH:/downloads
+    restart: unless-stopped
 EOF
 
 ########################################
-# Restart policy
+# Health Check
 ########################################
 
-cat <<EOF >> "$COMPOSE_FILE"
-    restart: unless-stopped
-
+cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep unpackerr || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
 EOF
 
 }

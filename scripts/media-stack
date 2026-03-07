@@ -1,20 +1,14 @@
 #!/usr/bin/env bash
 
+########################################
+# Media Stack CLI
+#
+# Command line interface for managing
+# the Media Stack installation.
+########################################
+
 STACK_DIR="/opt/media-stack"
 INSTALL_DIR="/opt/media-server-installer"
-
-########################################
-# Ensure installer exists
-########################################
-
-check_installer() {
-
-if [ ! -d "$INSTALL_DIR" ]; then
-    echo "Media Stack installer not found."
-    exit 1
-fi
-
-}
 
 ########################################
 # Help menu
@@ -34,12 +28,12 @@ echo ""
 echo "media-stack install      Install stack"
 echo "media-stack update       Update containers"
 echo "media-stack status       Show container status"
-echo "media-stack services     List services"
-echo "media-stack restart      Restart stack"
-echo "media-stack logs         View logs"
-echo "media-stack backup       Backup configuration"
+echo "media-stack services     List registered services"
+echo "media-stack restart      Restart containers"
+echo "media-stack logs         View container logs"
+echo "media-stack backup       Backup stack"
 echo "media-stack doctor       Diagnose stack"
-echo "media-stack maintenance  Clean Docker"
+echo "media-stack maintenance  Clean docker resources"
 echo "media-stack reset        Remove stack"
 
 echo ""
@@ -52,36 +46,33 @@ echo ""
 
 install_stack() {
 
-check_installer
 cd "$INSTALL_DIR" || exit
 bash installer.sh
 
 }
 
 ########################################
-# Update stack
+# Update containers
 ########################################
 
 update_stack() {
 
-check_installer
 bash "$INSTALL_DIR/scripts/updates.sh"
 
 }
 
 ########################################
-# Status
+# Show container status
 ########################################
 
 status_stack() {
 
-check_installer
 bash "$INSTALL_DIR/scripts/compose.sh" status
 
 }
 
 ########################################
-# Services
+# List registered services
 ########################################
 
 services_stack() {
@@ -100,51 +91,47 @@ fi
 }
 
 ########################################
-# Restart stack
+# Restart containers
 ########################################
 
 restart_stack() {
 
-check_installer
 bash "$INSTALL_DIR/scripts/compose.sh" restart
 
 }
 
 ########################################
-# Logs
+# Show container logs
 ########################################
 
 logs_stack() {
 
-check_installer
 bash "$INSTALL_DIR/scripts/compose.sh" logs
 
 }
 
 ########################################
-# Backup
+# Backup stack
 ########################################
 
 backup_stack() {
 
-check_installer
 bash "$INSTALL_DIR/scripts/backup.sh"
 
 }
 
 ########################################
-# Diagnostics
+# Run diagnostics
 ########################################
 
 doctor_stack() {
 
-check_installer
 bash "$INSTALL_DIR/scripts/doctor.sh"
 
 }
 
 ########################################
-# Maintenance
+# Clean docker resources
 ########################################
 
 maintenance_stack() {
@@ -161,8 +148,6 @@ docker container prune -f
 ########################################
 
 reset_stack() {
-
-check_installer
 
 echo "Resetting Media Stack..."
 

@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+########################################
+# Service Registry
+#
+# Tracks installed services so they can
+# be displayed in dashboards and CLI.
+########################################
+
 STACK_DIR="/opt/media-stack"
 REGISTRY_FILE="$STACK_DIR/services.json"
 
@@ -36,15 +43,6 @@ ICON=$4
 
 init_registry
 
-########################################
-# Prevent duplicate entries
-########################################
-
-if jq -e ".services[] | select(.name == \"$NAME\")" "$REGISTRY_FILE" >/dev/null; then
-    echo "Service already registered: $NAME"
-    return
-fi
-
 TMP_FILE=$(mktemp)
 
 jq ".services += [{
@@ -76,6 +74,8 @@ jq "del(.services[] | select(.name == \"$NAME\"))" \
 "$REGISTRY_FILE" > "$TMP_FILE"
 
 mv "$TMP_FILE" "$REGISTRY_FILE"
+
+echo "Removed service: $NAME"
 
 }
 

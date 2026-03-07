@@ -1,17 +1,27 @@
 #!/usr/bin/env bash
 
 ########################################
+# Watchtower Plugin
+#
+# Automatically updates Docker containers
+# in the Media Stack.
+########################################
+
+########################################
 # Plugin Metadata
 ########################################
 
 PLUGIN_NAME="watchtower"
-PLUGIN_DESCRIPTION="Automatic Docker container updates"
+PLUGIN_DESCRIPTION="Automatic Container Updates"
 PLUGIN_CATEGORY="System"
+
 PLUGIN_DEPENDS=()
 
-PLUGIN_DASHBOARD=false
 PLUGIN_PORTS=()
+
 PLUGIN_HOST_NETWORK=false
+
+PLUGIN_DASHBOARD=false
 
 ########################################
 # Install Service
@@ -19,35 +29,38 @@ PLUGIN_HOST_NETWORK=false
 
 install_service() {
 
-echo "Installing Watchtower..."
+########################################
+# Core paths
+########################################
 
-COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
+INSTALL_DIR="/opt/media-server-installer"
+STACK_DIR="/opt/media-stack"
 
 ########################################
 # Add container to docker-compose
 ########################################
 
-cat <<EOF >> "$COMPOSE_FILE"
+cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
   watchtower:
     image: containrrr/watchtower
     container_name: watchtower
-    networks:
-      - media-network
-    environment:
-      - TZ=\${TIMEZONE}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: --cleanup --interval 86400
+    command: --cleanup --schedule "0 0 4 * * *"
+    restart: unless-stopped
 EOF
 
 ########################################
-# Restart policy
+# Health Check
 ########################################
 
-cat <<EOF >> "$COMPOSE_FILE"
-    restart: unless-stopped
-
+cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep watchtower || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
 EOF
 
 }

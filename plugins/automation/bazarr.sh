@@ -1,17 +1,29 @@
 #!/usr/bin/env bash
 
 ########################################
+# Bazarr Plugin
+#
+# Provides automatic subtitle downloads
+# for movies and TV series managed by
+# Radarr and Sonarr.
+########################################
+
+########################################
 # Plugin Metadata
 ########################################
 
 PLUGIN_NAME="bazarr"
-PLUGIN_DESCRIPTION="Subtitle management for Radarr and Sonarr"
+PLUGIN_DESCRIPTION="Subtitle Manager"
 PLUGIN_CATEGORY="Automation"
-PLUGIN_DEPENDS=("radarr" "sonarr")
+
+# Bazarr works with Radarr and Sonarr
+PLUGIN_DEPENDS=(radarr sonarr)
+
+PLUGIN_PORTS=(6767)
+
+PLUGIN_HOST_NETWORK=false
 
 PLUGIN_DASHBOARD=true
-PLUGIN_PORTS=(6767)
-PLUGIN_HOST_NETWORK=false
 
 ########################################
 # Install Service
@@ -19,65 +31,51 @@ PLUGIN_HOST_NETWORK=false
 
 install_service() {
 
-echo "Installing Bazarr..."
+########################################
+# Core paths
+########################################
 
-COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
+INSTALL_DIR="/opt/media-server-installer"
+STACK_DIR="/opt/media-stack"
 
 ########################################
 # Load helpers
 ########################################
 
-source "$INSTALL_DIR/scripts/service-registry.sh"
 source "$INSTALL_DIR/scripts/port-helper.sh"
+source "$INSTALL_DIR/scripts/service-registry.sh"
 
 ########################################
-# Create config directory
+# Request port mapping
 ########################################
 
-mkdir -p "$CONFIG_DIR/bazarr"
+PORT=$(get_port_mapping "bazarr" 6767 6767)
 
 ########################################
-# Reserve port
+# Create configuration directory
 ########################################
 
-PORT_MAPPING=$(get_port_mapping "bazarr" 6767 6767)
+mkdir -p "$STACK_DIR/config/bazarr"
 
 ########################################
 # Add container to docker-compose
 ########################################
 
-cat <<EOF >> "$COMPOSE_FILE"
+cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
   bazarr:
     image: lscr.io/linuxserver/bazarr
     container_name: bazarr
-    networks:
-      - media-network
     ports:
-      - "$PORT_MAPPING"
+      - "$PORT"
     environment:
       - PUID=\${PUID}
       - PGID=\${PGID}
       - TZ=\${TIMEZONE}
     volumes:
-      - $CONFIG_DIR/bazarr:/config
+      - ./config/bazarr:/config
       - $MOVIES_PATH:/movies
       - $TV_PATH:/tv
-EOF
-
-########################################
-# GPU Support
-########################################
-
-if [ "$GPU_TYPE" != "none" ]; then
-echo "$GPU_DEVICES" >> "$COMPOSE_FILE"
-fi
-
-########################################
-# Restart policy
-########################################
-
-cat <<EOF >> "$COMPOSE_FILE"
     restart: unless-stopped
 EOF
 
@@ -85,23 +83,26 @@ EOF
 # Health Check
 ########################################
 
-cat <<EOF >> "$COMPOSE_FILE"
+cat <<EOF >> "$STACK_DIR/docker-compose.yml"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6767"]
+      test: ["CMD-SHELL", "curl -f http://localhost:6767 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-
 EOF
 
 ########################################
-# Register dashboard
+# Register service
 ########################################
+
+if [ "$PLUGIN_DASHBOARD" = true ]; then
 
 register_service \
 "Bazarr" \
 "http://localhost:6767" \
 "Automation" \
 "bazarr.png"
+
+fi
 
 }

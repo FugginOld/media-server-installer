@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 
 ########################################
-# Directory Variables
+# Directory Management
+#
+# Handles filesystem layout for media,
+# downloads, and configuration.
+#
+# Supports:
+#  - Default layout
+#  - TRaSH Guides layout
 ########################################
 
 STACK_DIR="/opt/media-stack"
@@ -10,29 +17,42 @@ MEDIA_PATH=""
 MOVIES_PATH=""
 TV_PATH=""
 DOWNLOADS_PATH=""
-CONFIG_DIR=""
+CONFIG_PATH="$STACK_DIR/config"
 
 ########################################
-# Setup directories
+# Setup directory structure
 ########################################
 
 setup_directories() {
 
 echo ""
-echo "Media Stack Directory Setup"
+echo "================================"
+echo " Media Stack Directory Setup"
+echo "================================"
 echo ""
-
-echo "Select directory layout:"
-echo "1) Default"
-echo "2) TRaSH Guides"
-
-read -rp "Selection: " LAYOUT
-
-echo ""
-read -rp "Enter base storage path (example: /data): " BASE_PATH
 
 ########################################
-# Default Layout
+# Choose layout
+########################################
+
+echo "Choose directory layout:"
+echo ""
+echo "1) Default layout"
+echo "2) TRaSH Guides layout"
+echo ""
+
+read -rp "Selection [1]: " LAYOUT
+LAYOUT=${LAYOUT:-1}
+
+########################################
+# Ask for base storage path
+########################################
+
+read -rp "Enter base storage path [/data]: " BASE_PATH
+BASE_PATH=${BASE_PATH:-/data}
+
+########################################
+# Default layout
 ########################################
 
 if [ "$LAYOUT" = "1" ]; then
@@ -42,10 +62,9 @@ MOVIES_PATH="$MEDIA_PATH/movies"
 TV_PATH="$MEDIA_PATH/tv"
 
 DOWNLOADS_PATH="$BASE_PATH/downloads"
-CONFIG_DIR="$BASE_PATH/config"
 
 ########################################
-# TRaSH Layout
+# TRaSH layout
 ########################################
 
 else
@@ -55,7 +74,7 @@ MOVIES_PATH="$MEDIA_PATH/movies"
 TV_PATH="$MEDIA_PATH/tv"
 
 DOWNLOADS_PATH="$BASE_PATH/downloads"
-CONFIG_DIR="$BASE_PATH/config"
+INCOMPLETE_PATH="$DOWNLOADS_PATH/incomplete"
 
 fi
 
@@ -63,17 +82,34 @@ fi
 # Create directories
 ########################################
 
+mkdir -p "$MEDIA_PATH"
 mkdir -p "$MOVIES_PATH"
 mkdir -p "$TV_PATH"
 mkdir -p "$DOWNLOADS_PATH"
-mkdir -p "$DOWNLOADS_PATH/incomplete"
-mkdir -p "$CONFIG_DIR"
+mkdir -p "$CONFIG_PATH"
+
+########################################
+# Create incomplete directory if needed
+########################################
+
+if [ "$LAYOUT" = "2" ]; then
+mkdir -p "$INCOMPLETE_PATH"
+fi
+
+########################################
+# Display results
+########################################
 
 echo ""
 echo "Directory structure created:"
-echo "$MEDIA_PATH"
-echo "$DOWNLOADS_PATH"
-echo "$CONFIG_DIR"
+echo ""
+
+echo "Media: $MEDIA_PATH"
+echo "Movies: $MOVIES_PATH"
+echo "TV: $TV_PATH"
+echo "Downloads: $DOWNLOADS_PATH"
+echo "Config: $CONFIG_PATH"
+
 echo ""
 
 }

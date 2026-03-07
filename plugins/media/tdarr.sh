@@ -1,17 +1,30 @@
 #!/usr/bin/env bash
 
 ########################################
+# Tdarr Plugin
+#
+# Provides automated transcoding and
+# media optimization for the Media Stack.
+#
+# Integrates with Plex media libraries
+# and supports GPU acceleration.
+########################################
+
+########################################
 # Plugin Metadata
 ########################################
 
 PLUGIN_NAME="tdarr"
-PLUGIN_DESCRIPTION="Distributed media transcoding system"
+PLUGIN_DESCRIPTION="Distributed Transcoding System"
 PLUGIN_CATEGORY="Media"
-PLUGIN_DEPENDS=()
+
+PLUGIN_DEPENDS=(plex)
+
+PLUGIN_PORTS=(8265)
+
+PLUGIN_HOST_NETWORK=false
 
 PLUGIN_DASHBOARD=true
-PLUGIN_PORTS=(8265)
-PLUGIN_HOST_NETWORK=false
 
 ########################################
 # Install Service
@@ -19,55 +32,51 @@ PLUGIN_HOST_NETWORK=false
 
 install_service() {
 
-echo "Installing Tdarr..."
+########################################
+# Core paths
+########################################
 
-COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
+INSTALL_DIR="/opt/media-server-installer"
+STACK_DIR="/opt/media-stack"
 
 ########################################
 # Load helpers
 ########################################
 
-source "$INSTALL_DIR/scripts/service-registry.sh"
 source "$INSTALL_DIR/scripts/port-helper.sh"
+source "$INSTALL_DIR/scripts/service-registry.sh"
 
 ########################################
-# Create directories
+# Request port mapping
 ########################################
 
-mkdir -p "$CONFIG_DIR/tdarr/server"
-mkdir -p "$CONFIG_DIR/tdarr/configs"
-mkdir -p "$CONFIG_DIR/tdarr/logs"
+PORT=$(get_port_mapping "tdarr" 8265 8265)
 
 ########################################
-# Reserve dashboard port
+# Create configuration directory
 ########################################
 
-PORT_MAPPING=$(get_port_mapping "tdarr" 8265 8265)
+mkdir -p "$STACK_DIR/config/tdarr"
 
 ########################################
-# Compose container
+# Add container to docker-compose
 ########################################
 
-cat <<EOF >> "$COMPOSE_FILE"
+cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
   tdarr:
-    image: ghcr.io/haveagitgat/tdarr:latest
+    image: ghcr.io/haveagitgat/tdarr
     container_name: tdarr
-    networks:
-      - media-network
     ports:
-      - "$PORT_MAPPING"
-      - "8266:8266"
+      - "$PORT"
     environment:
       - TZ=\${TIMEZONE}
-      - serverIP=0.0.0.0
-      - serverPort=8266
-      - webUIPort=8265
     volumes:
-      - $CONFIG_DIR/tdarr/server:/app/server
-      - $CONFIG_DIR/tdarr/configs:/app/configs
-      - $CONFIG_DIR/tdarr/logs:/app/logs
+      - ./config/tdarr:/app/config
       - $MEDIA_PATH:/media
+      - $MOVIES_PATH:/movies
+      - $TV_PATH:/tv
+    restart: unless-stopped
 EOF
 
 ########################################
@@ -75,38 +84,33 @@ EOF
 ########################################
 
 if [ "$GPU_TYPE" != "none" ]; then
-echo "$GPU_DEVICES" >> "$COMPOSE_FILE"
+echo "$GPU_DEVICES" >> "$STACK_DIR/docker-compose.yml"
 fi
-
-########################################
-# Restart policy
-########################################
-
-cat <<EOF >> "$COMPOSE_FILE"
-    restart: unless-stopped
-EOF
 
 ########################################
 # Health Check
 ########################################
 
-cat <<EOF >> "$COMPOSE_FILE"
+cat <<EOF >> "$STACK_DIR/docker-compose.yml"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8265"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8265 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-
 EOF
 
 ########################################
-# Register Dashboard
+# Register service
 ########################################
+
+if [ "$PLUGIN_DASHBOARD" = true ]; then
 
 register_service \
 "Tdarr" \
 "http://localhost:8265" \
 "Media" \
 "tdarr.png"
+
+fi
 
 }

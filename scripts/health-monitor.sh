@@ -1,47 +1,66 @@
 #!/usr/bin/env bash
 
+########################################
+# Media Stack Health Monitor
+#
+# Continuously checks registered
+# services to ensure they are reachable.
+########################################
+
 STACK_DIR="/opt/media-stack"
-COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
-LOG_FILE="$STACK_DIR/health-monitor.log"
+REGISTRY_FILE="$STACK_DIR/services.json"
 
-INTERVAL=300
+CHECK_INTERVAL=60
 
-echo "Health monitor started." >> "$LOG_FILE"
+########################################
+# Verify registry exists
+########################################
+
+if [ ! -f "$REGISTRY_FILE" ]; then
+echo "Service registry not found."
+exit 1
+fi
+
+echo ""
+echo "Media Stack Health Monitor started."
+echo "Checking services every $CHECK_INTERVAL seconds."
+echo ""
+
+########################################
+# Monitoring loop
+########################################
 
 while true
 do
 
-########################################
-# Ensure compose file exists
-########################################
+SERVICES=$(jq -c '.services[]' "$REGISTRY_FILE")
 
-if [ ! -f "$COMPOSE_FILE" ]; then
-    echo "$(date) Compose file missing." >> "$LOG_FILE"
-    sleep "$INTERVAL"
-    continue
-fi
-
-########################################
-# Get unhealthy containers
-########################################
-
-UNHEALTHY=$(docker ps --filter "health=unhealthy" --format "{{.Names}}")
-
-if [ -n "$UNHEALTHY" ]; then
-
-echo "$(date) Unhealthy containers detected:" >> "$LOG_FILE"
-
-for CONTAINER in $UNHEALTHY
+for SERVICE in $SERVICES
 do
 
-echo "$(date) Restarting $CONTAINER" >> "$LOG_FILE"
+NAME=$(echo "$SERVICE" | jq -r '.name')
+URL=$(echo "$SERVICE" | jq -r '.url')
 
-docker restart "$CONTAINER"
+########################################
+# Check service availability
+########################################
+
+if curl -fs "$URL" >/dev/null 2>&1; then
+
+echo "$(date '+%H:%M:%S') OK: $NAME"
+
+else
+
+echo "$(date '+%H:%M:%S') WARNING: $NAME not responding"
+
+fi
 
 done
 
-fi
+########################################
+# Wait before next check
+########################################
 
-sleep "$INTERVAL"
+sleep "$CHECK_INTERVAL"
 
 done

@@ -1,17 +1,28 @@
 #!/usr/bin/env bash
 
 ########################################
+# Web Installer Plugin
+#
+# Provides a simple web landing page
+# for accessing Media Stack services
+# and documentation.
+########################################
+
+########################################
 # Plugin Metadata
 ########################################
 
 PLUGIN_NAME="webinstaller"
-PLUGIN_DESCRIPTION="Web-based installer interface"
+PLUGIN_DESCRIPTION="Web Landing Page"
 PLUGIN_CATEGORY="System"
+
 PLUGIN_DEPENDS=()
 
-PLUGIN_DASHBOARD=true
-PLUGIN_PORTS=(8081)
+PLUGIN_PORTS=(8088)
+
 PLUGIN_HOST_NETWORK=false
+
+PLUGIN_DASHBOARD=true
 
 ########################################
 # Install Service
@@ -19,53 +30,45 @@ PLUGIN_HOST_NETWORK=false
 
 install_service() {
 
-echo "Installing Web Installer..."
+########################################
+# Core paths
+########################################
 
-COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
+INSTALL_DIR="/opt/media-server-installer"
+STACK_DIR="/opt/media-stack"
 
 ########################################
 # Load helpers
 ########################################
 
-source "$INSTALL_DIR/scripts/service-registry.sh"
 source "$INSTALL_DIR/scripts/port-helper.sh"
+source "$INSTALL_DIR/scripts/service-registry.sh"
 
 ########################################
-# Create config directory
+# Request port mapping
 ########################################
 
-mkdir -p "$CONFIG_DIR/webinstaller"
+PORT=$(get_port_mapping "webinstaller" 8088 80)
 
 ########################################
-# Reserve port
+# Create configuration directory
 ########################################
 
-PORT_MAPPING=$(get_port_mapping "webinstaller" 8081 8081)
+mkdir -p "$STACK_DIR/config/webinstaller"
 
 ########################################
 # Add container to docker-compose
 ########################################
 
-cat <<EOF >> "$COMPOSE_FILE"
+cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
   webinstaller:
     image: nginx:alpine
     container_name: webinstaller
-    networks:
-      - media-network
     ports:
-      - "$PORT_MAPPING"
-    environment:
-      - TZ=\${TIMEZONE}
+      - "$PORT"
     volumes:
-      - $CONFIG_DIR/webinstaller:/usr/share/nginx/html
-EOF
-
-########################################
-# Restart policy
-########################################
-
-cat <<EOF >> "$COMPOSE_FILE"
+      - ./config/webinstaller:/usr/share/nginx/html
     restart: unless-stopped
 EOF
 
@@ -73,23 +76,26 @@ EOF
 # Health Check
 ########################################
 
-cat <<EOF >> "$COMPOSE_FILE"
+cat <<EOF >> "$STACK_DIR/docker-compose.yml"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8081"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8088 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-
 EOF
 
 ########################################
-# Register dashboard
+# Register service
 ########################################
+
+if [ "$PLUGIN_DASHBOARD" = true ]; then
 
 register_service \
 "Web Installer" \
-"http://localhost:8081" \
+"http://localhost:8088" \
 "System" \
 "webinstaller.png"
+
+fi
 
 }

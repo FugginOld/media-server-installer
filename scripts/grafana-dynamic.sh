@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+########################################
+# Grafana Dynamic Configuration
+#
+# Automatically configures Grafana
+# after installation.
+########################################
+
 STACK_DIR="/opt/media-stack"
 CONFIG_DIR="$STACK_DIR/config/grafana"
 
@@ -9,26 +16,28 @@ GRAFANA_PASS="admin"
 
 echo ""
 echo "================================"
-echo " Grafana Auto Configuration"
+echo " Configuring Grafana"
 echo "================================"
 echo ""
 
 ########################################
-# Wait for Grafana startup
+# Wait for Grafana to start
 ########################################
 
-echo "Waiting for Grafana..."
+echo "Waiting for Grafana service..."
 
-until curl -s "$GRAFANA_URL/api/health" >/dev/null; do
+until curl -s "$GRAFANA_URL/api/health" >/dev/null 2>&1
+do
 sleep 5
 done
 
-echo "Grafana detected."
+echo "Grafana is online."
 
 ########################################
 # Create Prometheus datasource
 ########################################
 
+echo ""
 echo "Creating Prometheus datasource..."
 
 curl -s -X POST "$GRAFANA_URL/api/datasources" \
@@ -42,14 +51,17 @@ curl -s -X POST "$GRAFANA_URL/api/datasources" \
 "isDefault":true
 }' >/dev/null
 
+echo "Datasource created."
+
 ########################################
-# Import dashboards
+# Import dashboards if available
 ########################################
 
 DASHBOARD_DIR="$CONFIG_DIR/dashboards"
 
 if [ -d "$DASHBOARD_DIR" ]; then
 
+echo ""
 echo "Importing dashboards..."
 
 for DASHBOARD in "$DASHBOARD_DIR"/*.json

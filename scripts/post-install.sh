@@ -1,75 +1,73 @@
 #!/usr/bin/env bash
 
-STACK_DIR="/opt/media-stack"
+########################################
+# Post Install Automation
+#
+# Runs after containers are started to
+# configure dashboards and monitoring.
+########################################
+
 INSTALL_DIR="/opt/media-server-installer"
+STACK_DIR="/opt/media-stack"
 
 echo ""
 echo "================================"
-echo " Running Post Install Setup"
+echo " Running Post-Install Tasks"
 echo "================================"
 echo ""
 
 ########################################
-# Verify stack directory
+# Wait for containers to start
 ########################################
 
-if [ ! -d "$STACK_DIR" ]; then
-    echo "Stack directory missing."
-    exit 0
-fi
+echo "Waiting for containers to initialize..."
+sleep 10
 
 ########################################
-# Ensure service registry exists
-########################################
-
-if [ ! -f "$STACK_DIR/services.json" ]; then
-
-cat <<EOF > "$STACK_DIR/services.json"
-{
-  "services": []
-}
-EOF
-
-echo "Initialized services registry."
-
-fi
-
-########################################
-# Generate Homepage configuration
-########################################
-
-if [ -f "$INSTALL_DIR/plugins/system/homepage.sh" ]; then
-    echo "Homepage plugin detected."
-    echo "Homepage will auto-discover services."
-fi
-
-########################################
-# Initialize health monitor
-########################################
-
-if [ -f "$INSTALL_DIR/scripts/health-monitor.sh" ]; then
-    echo "Starting health monitor..."
-    bash "$INSTALL_DIR/scripts/health-monitor.sh" &
-fi
-
-########################################
-# Grafana integration
+# Configure Grafana dashboards
 ########################################
 
 if [ -f "$INSTALL_DIR/scripts/grafana-dynamic.sh" ]; then
-    echo "Generating Grafana dashboards..."
-    bash "$INSTALL_DIR/scripts/grafana-dynamic.sh"
+
+echo ""
+echo "Configuring Grafana dashboards..."
+
+bash "$INSTALL_DIR/scripts/grafana-dynamic.sh"
+
 fi
 
 ########################################
-# Verify containers
+# Generate Homepage service list
+########################################
+
+if [ -f "$STACK_DIR/services.json" ]; then
+
+echo ""
+echo "Services registered:"
+echo ""
+
+cat "$STACK_DIR/services.json" \
+| jq -r '.services[] | "\(.name) -> \(.url)"'
+
+fi
+
+########################################
+# Start health monitoring if available
+########################################
+
+if [ -f "$INSTALL_DIR/scripts/health-monitor.sh" ]; then
+
+echo ""
+echo "Starting service health monitor..."
+
+bash "$INSTALL_DIR/scripts/health-monitor.sh" &
+
+fi
+
+########################################
+# Final status
 ########################################
 
 echo ""
-echo "Verifying running containers..."
-
-docker compose -f "$STACK_DIR/docker-compose.yml" ps
-
-echo ""
-echo "Post-install setup complete."
+echo "Post-install configuration complete."
 echo ""

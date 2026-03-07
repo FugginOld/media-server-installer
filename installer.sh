@@ -3,62 +3,113 @@
 set -e
 
 ########################################
-# Directories
+# Media Stack Installer
 ########################################
 
-INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STACK_DIR="/opt/media-stack"
+INSTALL_DIR="/opt/media-server-installer"
+PLUGIN_DIR="./plugins"
+
+SELECTED_SERVICES=()
 
 ########################################
-# Preflight
+# Run preflight checks
 ########################################
 
-bash "$INSTALL_DIR/scripts/preflight.sh"
+bash ./scripts/preflight.sh
 
 ########################################
 # Load core modules
 ########################################
 
-source "$INSTALL_DIR/core/platform.sh"
-source "$INSTALL_DIR/core/docker.sh"
-source "$INSTALL_DIR/core/hardware.sh"
-source "$INSTALL_DIR/core/directories.sh"
-source "$INSTALL_DIR/core/config-wizard.sh"
+source ./core/platform.sh
+source ./core/directories.sh
+source ./core/hardware.sh
+source ./core/docker.sh
+source ./core/config-wizard.sh
 
 ########################################
-# Detect platform
+# Create stack directory
 ########################################
 
-detect_platform
+mkdir -p "$STACK_DIR"
 
 ########################################
-# Ensure Docker
+# Select installer interface
 ########################################
 
-ensure_docker
+INTERFACE=$(whiptail \
+--title "Media Stack Installer" \
+--menu "Select installation interface" \
+15 60 2 \
+cli "CLI Installer" \
+web "Web Installer" \
+3>&1 1>&2 2>&3)
 
 ########################################
-# Hardware detection
+# WEB INSTALLER MODE
 ########################################
 
-detect_gpu
-configure_gpu_devices
-install_nvidia_runtime
+if [ "$INTERFACE" = "web" ]; then
+
+echo ""
+echo "Launching Web Installer..."
+echo ""
+
+mkdir -p "$STACK_DIR/config/webinstaller"
+
+cat <<EOF > "$STACK_DIR/docker-compose.yml"
+version: "3.9"
+
+services:
+
+  webinstaller:
+    image: nginx:alpine
+    container_name: webinstaller
+    ports:
+      - "8088:80"
+    volumes:
+      - ./config/webinstaller:/usr/share/nginx/html
+    restart: unless-stopped
+EOF
+
+cd "$STACK_DIR"
+
+docker compose up -d
+
+IP=$(hostname -I | awk '{print $1}')
+
+echo ""
+echo "================================"
+echo " Media Stack Web Installer"
+echo "================================"
+echo ""
+
+echo "Open your browser:"
+echo ""
+echo "http://$IP:8088"
+echo ""
+
+exit 0
+
+fi
 
 ########################################
-# Directory setup
+# CLI INSTALLER MODE
 ########################################
 
-setup_directories
+echo ""
+echo "Starting CLI installer..."
+echo ""
 
 ########################################
-# Configuration wizard
+# Run configuration wizard
 ########################################
 
 run_configuration_wizard
 
 ########################################
-# Load configuration
+# Load saved configuration
 ########################################
 
 if [ -f "$STACK_DIR/stack.env" ]; then
@@ -66,23 +117,116 @@ source "$STACK_DIR/stack.env"
 fi
 
 ########################################
-# Validate plugins
+# Detect system platform
 ########################################
 
-bash "$INSTALL_DIR/scripts/plugin-validator.sh"
+detect_platform
+
+########################################
+# Detect GPU hardware
+########################################
+
+detect_gpu
+configure_gpu_devices
 
 ########################################
 # Initialize registries
 ########################################
 
-source "$INSTALL_DIR/scripts/service-registry.sh"
-source "$INSTALL_DIR/scripts/port-registry.sh"
-
+source ./scripts/service-registry.sh
 init_registry
+
+source ./scripts/port-registry.sh
 init_port_registry
 
 ########################################
-# Install mode
+# Validate plugins
+########################################
+
+bash ./scripts/plugin-validator.sh
+
+########################################
+# Discover plugins automatically
+########################################
+
+discover_plugins() {
+
+AVAILABLE_PLUGINS=()
+
+for file in $(find "$PLUGIN_DIR" -name "*.sh")
+do
+
+plugin=$(basename "$file" .sh)
+
+AVAILABLE_PLUGINS+=("$plugin")
+
+done
+
+}
+
+########################################
+# Service selection menu
+########################################
+
+select_services() {
+
+OPTIONS=()
+
+for plugin in "${AVAILABLE_PLUGINS[@]}"
+do
+
+OPTIONS+=("$plugin" "")
+
+done
+
+CHOICES=$(whiptail \
+--title "Media Stack Services" \
+--checklist "Select services to install" \
+20 70 15 \
+"${OPTIONS[@]}" \
+3>&1 1>&2 2>&3)
+
+for service in $CHOICES
+do
+
+SELECTED_SERVICES+=("${service//\"/}")
+
+done
+
+}
+
+########################################
+# Dependency resolver
+########################################
+
+resolve_dependencies() {
+
+for SERVICE in "${SELECTED_SERVICES[@]}"
+do
+
+PLUGIN_FILE=$(find "$PLUGIN_DIR" -name "$SERVICE.sh")
+
+source "$PLUGIN_FILE"
+
+for dep in "${PLUGIN_DEPENDS[@]}"
+do
+
+if [[ ! " ${SELECTED_SERVICES[@]} " =~ " ${dep} " ]]; then
+
+echo "Adding dependency: $dep"
+
+SELECTED_SERVICES+=("$dep")
+
+fi
+
+done
+
+done
+
+}
+
+########################################
+# Installation mode
 ########################################
 
 MODE=$(whiptail \
@@ -94,7 +238,7 @@ custom "Choose services manually" \
 3>&1 1>&2 2>&3)
 
 ########################################
-# Quick install services
+# Quick install preset
 ########################################
 
 if [ "$MODE" = "quick" ]; then
@@ -105,6 +249,7 @@ radarr
 sonarr
 prowlarr
 bazarr
+overseerr
 sabnzbd
 unpackerr
 homepage
@@ -115,6 +260,7 @@ nodeexporter
 grafana
 tautulli
 plex-exporter
+glances
 )
 
 else
@@ -131,7 +277,7 @@ fi
 resolve_dependencies
 
 ########################################
-# Initialize compose file
+# Generate docker compose file
 ########################################
 
 COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
@@ -147,7 +293,7 @@ services:
 EOF
 
 ########################################
-# Install plugins
+# Install selected plugins
 ########################################
 
 echo ""
@@ -156,32 +302,33 @@ echo ""
 
 for SERVICE in "${SELECTED_SERVICES[@]}"
 do
+
 echo "Installing $SERVICE"
-install_plugin "$SERVICE"
+
+PLUGIN_FILE=$(find "$PLUGIN_DIR" -name "$SERVICE.sh")
+
+source "$PLUGIN_FILE"
+
+install_service
+
 done
 
 ########################################
 # Start containers
 ########################################
 
-bash "$INSTALL_DIR/scripts/compose.sh" up
+bash ./scripts/compose.sh up
 
 ########################################
-# Post install
+# Run post install automation
 ########################################
 
-if [ -f "$INSTALL_DIR/scripts/post-install.sh" ]; then
-bash "$INSTALL_DIR/scripts/post-install.sh"
+if [ -f ./scripts/post-install.sh ]; then
+bash ./scripts/post-install.sh
 fi
 
 ########################################
-# Install CLI
-########################################
-
-install -m 755 "$INSTALL_DIR/scripts/media-stack" /usr/local/bin/media-stack
-
-########################################
-# Show dashboard
+# Display completion message
 ########################################
 
 IP=$(hostname -I | awk '{print $1}')
@@ -190,9 +337,17 @@ echo ""
 echo "================================"
 echo " Installation Complete"
 echo "================================"
+echo ""
 
 echo "Homepage Dashboard:"
 echo "http://$IP:3001"
+echo ""
 
 echo "Grafana Monitoring:"
 echo "http://$IP:3000"
+echo ""
+
+echo "Run CLI with:"
+echo ""
+echo "media-stack"
+echo ""

@@ -1,109 +1,29 @@
 #!/usr/bin/env bash
 
-set -e
-
-REPO_URL="https://github.com/FugginOld/media-server-installer.git"
 INSTALL_DIR="/opt/media-server-installer"
 
-echo ""
-echo "================================="
-echo " Media Stack Bootstrap Installer"
-echo "================================="
-echo ""
+echo "Downloading Media Stack Installer..."
 
-########################################
-# Root check
-########################################
+if [ -d "$INSTALL_DIR" ]; then
 
-if [ "$EUID" -ne 0 ]; then
-    echo "Please run as root."
-    exit 1
-fi
-
-########################################
-# Install dependencies
-########################################
-
-echo "Installing dependencies..."
-
-apt update
-
-apt install -y \
-curl \
-git \
-wget \
-jq \
-whiptail \
-pciutils \
-ca-certificates \
-gnupg \
-lsb-release
-
-########################################
-# Install Docker
-########################################
-
-if ! command -v docker >/dev/null 2>&1; then
-
-echo "Installing Docker..."
-
-install -m 0755 -d /etc/apt/keyrings
-
-curl -fsSL https://download.docker.com/linux/debian/gpg \
-| gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-
-chmod a+r /etc/apt/keyrings/docker.gpg
-
-echo \
-"deb [arch=$(dpkg --print-architecture) \
-signed-by=/etc/apt/keyrings/docker.gpg] \
-https://download.docker.com/linux/debian \
-$(lsb_release -cs) stable" \
-| tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-apt update
-
-apt install -y \
-docker-ce \
-docker-ce-cli \
-containerd.io \
-docker-buildx-plugin \
-docker-compose-plugin
-
-systemctl enable docker
-systemctl start docker
-
-fi
-
-########################################
-# Clone installer
-########################################
-
-if [ -d "$INSTALL_DIR/.git" ]; then
-
+echo "Existing installation detected."
 echo "Updating installer..."
-cd $INSTALL_DIR
+
+cd "$INSTALL_DIR"
 git pull
 
 else
 
-echo "Downloading installer..."
-git clone $REPO_URL $INSTALL_DIR
+git clone https://github.com/FugginOld/media-server-installer "$INSTALL_DIR"
 
 fi
 
-########################################
-# Install CLI command
-########################################
+cd "$INSTALL_DIR"
 
-cp $INSTALL_DIR/scripts/media-stack /usr/local/bin/media-stack
-chmod +x /usr/local/bin/media-stack
-
-########################################
-# Launch installer
-########################################
-
-cd $INSTALL_DIR
 chmod +x installer.sh
+
+echo ""
+echo "Launching installer..."
+echo ""
 
 bash installer.sh

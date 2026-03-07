@@ -1,17 +1,32 @@
 #!/usr/bin/env bash
 
 ########################################
+# SABnzbd Plugin
+#
+# Provides Usenet downloading for the
+# Media Stack automation ecosystem.
+#
+# Used by:
+# - Radarr
+# - Sonarr
+# - Bazarr
+########################################
+
+########################################
 # Plugin Metadata
 ########################################
 
 PLUGIN_NAME="sabnzbd"
-PLUGIN_DESCRIPTION="Usenet downloader"
+PLUGIN_DESCRIPTION="Usenet Downloader"
 PLUGIN_CATEGORY="Download"
+
 PLUGIN_DEPENDS=()
 
-PLUGIN_DASHBOARD=true
 PLUGIN_PORTS=(8080)
+
 PLUGIN_HOST_NETWORK=false
+
+PLUGIN_DASHBOARD=true
 
 ########################################
 # Install Service
@@ -19,65 +34,50 @@ PLUGIN_HOST_NETWORK=false
 
 install_service() {
 
-echo "Installing SABnzbd..."
+########################################
+# Core paths
+########################################
 
-COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
+INSTALL_DIR="/opt/media-server-installer"
+STACK_DIR="/opt/media-stack"
 
 ########################################
 # Load helpers
 ########################################
 
-source "$INSTALL_DIR/scripts/service-registry.sh"
 source "$INSTALL_DIR/scripts/port-helper.sh"
+source "$INSTALL_DIR/scripts/service-registry.sh"
 
 ########################################
-# Create config directory
+# Request port mapping
 ########################################
 
-mkdir -p "$CONFIG_DIR/sabnzbd"
+PORT=$(get_port_mapping "sabnzbd" 8080 8080)
 
 ########################################
-# Reserve port
+# Create configuration directory
 ########################################
 
-PORT_MAPPING=$(get_port_mapping "sabnzbd" 8080 8080)
+mkdir -p "$STACK_DIR/config/sabnzbd"
 
 ########################################
 # Add container to docker-compose
 ########################################
 
-cat <<EOF >> "$COMPOSE_FILE"
+cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
   sabnzbd:
     image: lscr.io/linuxserver/sabnzbd
     container_name: sabnzbd
-    networks:
-      - media-network
     ports:
-      - "$PORT_MAPPING"
+      - "$PORT"
     environment:
       - PUID=\${PUID}
       - PGID=\${PGID}
       - TZ=\${TIMEZONE}
     volumes:
-      - $CONFIG_DIR/sabnzbd:/config
+      - ./config/sabnzbd:/config
       - $DOWNLOADS_PATH:/downloads
-      - $DOWNLOADS_PATH/incomplete:/incomplete
-EOF
-
-########################################
-# GPU Support
-########################################
-
-if [ "$GPU_TYPE" != "none" ]; then
-echo "$GPU_DEVICES" >> "$COMPOSE_FILE"
-fi
-
-########################################
-# Restart policy
-########################################
-
-cat <<EOF >> "$COMPOSE_FILE"
     restart: unless-stopped
 EOF
 
@@ -85,23 +85,26 @@ EOF
 # Health Check
 ########################################
 
-cat <<EOF >> "$COMPOSE_FILE"
+cat <<EOF >> "$STACK_DIR/docker-compose.yml"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-
 EOF
 
 ########################################
-# Register dashboard
+# Register service
 ########################################
+
+if [ "$PLUGIN_DASHBOARD" = true ]; then
 
 register_service \
 "SABnzbd" \
 "http://localhost:8080" \
 "Download" \
 "sabnzbd.png"
+
+fi
 
 }

@@ -1,17 +1,27 @@
 #!/usr/bin/env bash
 
 ########################################
+# Glances Plugin
+#
+# Provides real-time system monitoring
+# and exports metrics for Prometheus.
+########################################
+
+########################################
 # Plugin Metadata
 ########################################
 
 PLUGIN_NAME="glances"
-PLUGIN_DESCRIPTION="Real-time system monitoring dashboard"
+PLUGIN_DESCRIPTION="Real-time System Monitoring"
 PLUGIN_CATEGORY="Monitoring"
-PLUGIN_DEPENDS=()
+
+PLUGIN_DEPENDS=(prometheus)
+
+PLUGIN_PORTS=(61208)
+
+PLUGIN_HOST_NETWORK=false
 
 PLUGIN_DASHBOARD=true
-PLUGIN_PORTS=(61208)
-PLUGIN_HOST_NETWORK=false
 
 ########################################
 # Install Service
@@ -19,48 +29,42 @@ PLUGIN_HOST_NETWORK=false
 
 install_service() {
 
-echo "Installing Glances..."
+########################################
+# Core paths
+########################################
 
-COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
+INSTALL_DIR="/opt/media-server-installer"
+STACK_DIR="/opt/media-stack"
 
 ########################################
 # Load helpers
 ########################################
 
-source "$INSTALL_DIR/scripts/service-registry.sh"
 source "$INSTALL_DIR/scripts/port-helper.sh"
+source "$INSTALL_DIR/scripts/service-registry.sh"
 
 ########################################
-# Reserve port
+# Request port mapping
 ########################################
 
-PORT_MAPPING=$(get_port_mapping "glances" 61208 61208)
+PORT=$(get_port_mapping "glances" 61208 61208)
 
 ########################################
 # Add container to docker-compose
 ########################################
 
-cat <<EOF >> "$COMPOSE_FILE"
+cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
   glances:
-    image: nicolargo/glances:latest-full
+    image: nicolargo/glances
     container_name: glances
-    networks:
-      - media-network
     ports:
-      - "$PORT_MAPPING"
+      - "$PORT"
     environment:
-      - TZ=\${TIMEZONE}
       - GLANCES_OPT=-w
+    pid: host
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-EOF
-
-########################################
-# Restart policy
-########################################
-
-cat <<EOF >> "$COMPOSE_FILE"
+      - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
 EOF
 
@@ -68,23 +72,26 @@ EOF
 # Health Check
 ########################################
 
-cat <<EOF >> "$COMPOSE_FILE"
+cat <<EOF >> "$STACK_DIR/docker-compose.yml"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:61208"]
+      test: ["CMD-SHELL", "curl -f http://localhost:61208 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-
 EOF
 
 ########################################
-# Register dashboard
+# Register service
 ########################################
+
+if [ "$PLUGIN_DASHBOARD" = true ]; then
 
 register_service \
 "Glances" \
 "http://localhost:61208" \
 "Monitoring" \
 "glances.png"
+
+fi
 
 }

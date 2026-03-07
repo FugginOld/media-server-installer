@@ -1,132 +1,117 @@
 #!/usr/bin/env bash
 
+########################################
+# Docker Compose Controller
+#
+# Handles lifecycle management of the
+# Media Stack containers.
+########################################
+
 STACK_DIR="/opt/media-stack"
-COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
+
+########################################
+# Verify stack directory exists
+########################################
+
+if [ ! -d "$STACK_DIR" ]; then
+echo "Media stack directory not found."
+exit 1
+fi
 
 ########################################
 # Ensure compose file exists
 ########################################
 
-check_compose() {
+COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
 
 if [ ! -f "$COMPOSE_FILE" ]; then
-    echo "docker-compose.yml not found."
-    exit 1
+echo "docker-compose.yml missing."
+exit 1
 fi
 
-cd "$STACK_DIR" || exit
-
-}
-
 ########################################
-# Start stack
-########################################
-
-start_stack() {
-
-check_compose
-
-echo "Starting media stack..."
-
-docker compose up -d
-
-}
-
-########################################
-# Stop stack
-########################################
-
-stop_stack() {
-
-check_compose
-
-echo "Stopping media stack..."
-
-docker compose down
-
-}
-
-########################################
-# Restart stack
-########################################
-
-restart_stack() {
-
-check_compose
-
-echo "Restarting media stack..."
-
-docker compose restart
-
-}
-
-########################################
-# Update containers
-########################################
-
-pull_images() {
-
-check_compose
-
-echo "Updating container images..."
-
-docker compose pull
-
-}
-
-########################################
-# View logs
-########################################
-
-view_logs() {
-
-check_compose
-
-docker compose logs -f
-
-}
-
-########################################
-# Show status
-########################################
-
-show_status() {
-
-check_compose
-
-docker compose ps
-
-}
-
-########################################
-# Command routing
+# Command handler
 ########################################
 
 case "$1" in
 
+########################################
+# Start containers
+########################################
+
 up)
-start_stack
+
+echo "Starting Media Stack..."
+
+cd "$STACK_DIR"
+docker compose up -d
+
 ;;
+
+########################################
+# Stop containers
+########################################
 
 down)
-stop_stack
+
+echo "Stopping Media Stack..."
+
+cd "$STACK_DIR"
+docker compose down
+
 ;;
+
+########################################
+# Restart containers
+########################################
 
 restart)
-restart_stack
+
+echo "Restarting Media Stack..."
+
+cd "$STACK_DIR"
+docker compose restart
+
 ;;
+
+########################################
+# Pull container updates
+########################################
 
 pull)
-pull_images
+
+echo "Pulling container updates..."
+
+cd "$STACK_DIR"
+docker compose pull
+
 ;;
+
+########################################
+# Show container logs
+########################################
 
 logs)
-view_logs
+
+cd "$STACK_DIR"
+docker compose logs -f
+
 ;;
 
+########################################
+# Show container status
+########################################
+
 status)
-show_status
+
+cd "$STACK_DIR"
+docker compose ps
+
 ;;
+
+########################################
+# Invalid usage
+########################################
 
 *)
 

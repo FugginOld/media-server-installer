@@ -1,17 +1,30 @@
 #!/usr/bin/env bash
 
 ########################################
+# Homepage Dashboard Plugin
+#
+# Provides a unified dashboard for all
+# services in the Media Stack.
+#
+# Displays services registered in the
+# service registry.
+########################################
+
+########################################
 # Plugin Metadata
 ########################################
 
 PLUGIN_NAME="homepage"
-PLUGIN_DESCRIPTION="Self-hosted services dashboard"
+PLUGIN_DESCRIPTION="Service Dashboard"
 PLUGIN_CATEGORY="System"
+
 PLUGIN_DEPENDS=()
 
-PLUGIN_DASHBOARD=true
 PLUGIN_PORTS=(3001)
+
 PLUGIN_HOST_NETWORK=false
+
+PLUGIN_DASHBOARD=true
 
 ########################################
 # Install Service
@@ -19,55 +32,48 @@ PLUGIN_HOST_NETWORK=false
 
 install_service() {
 
-echo "Installing Homepage dashboard..."
+########################################
+# Core paths
+########################################
 
-COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
+INSTALL_DIR="/opt/media-server-installer"
+STACK_DIR="/opt/media-stack"
 
 ########################################
 # Load helpers
 ########################################
 
-source "$INSTALL_DIR/scripts/service-registry.sh"
 source "$INSTALL_DIR/scripts/port-helper.sh"
+source "$INSTALL_DIR/scripts/service-registry.sh"
 
 ########################################
-# Create config directory
+# Request port mapping
 ########################################
 
-mkdir -p "$CONFIG_DIR/homepage"
+PORT=$(get_port_mapping "homepage" 3001 3000)
 
 ########################################
-# Reserve port
+# Create configuration directory
 ########################################
 
-PORT_MAPPING=$(get_port_mapping "homepage" 3001 3000)
+mkdir -p "$STACK_DIR/config/homepage"
 
 ########################################
 # Add container to docker-compose
 ########################################
 
-cat <<EOF >> "$COMPOSE_FILE"
+cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
   homepage:
-    image: ghcr.io/gethomepage/homepage:latest
+    image: ghcr.io/gethomepage/homepage
     container_name: homepage
-    networks:
-      - media-network
     ports:
-      - "$PORT_MAPPING"
+      - "$PORT"
     environment:
       - TZ=\${TIMEZONE}
     volumes:
-      - $CONFIG_DIR/homepage:/app/config
+      - ./config/homepage:/app/config
       - $STACK_DIR/services.json:/app/config/services.json
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-EOF
-
-########################################
-# Restart policy
-########################################
-
-cat <<EOF >> "$COMPOSE_FILE"
     restart: unless-stopped
 EOF
 
@@ -75,23 +81,26 @@ EOF
 # Health Check
 ########################################
 
-cat <<EOF >> "$COMPOSE_FILE"
+cat <<EOF >> "$STACK_DIR/docker-compose.yml"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      test: ["CMD-SHELL", "curl -f http://localhost:3001 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-
 EOF
 
 ########################################
-# Register dashboard
+# Register dashboard service
 ########################################
+
+if [ "$PLUGIN_DASHBOARD" = true ]; then
 
 register_service \
 "Homepage" \
 "http://localhost:3001" \
 "System" \
 "homepage.png"
+
+fi
 
 }
