@@ -2,13 +2,27 @@
 
 PLUGIN_DIR="./plugins"
 
+########################################
+# NEW: Verify plugin directory exists
+########################################
+
+if [ ! -d "$PLUGIN_DIR" ]; then
+echo "Plugin directory not found:"
+echo "$PLUGIN_DIR"
+exit 1
+fi
+
 echo ""
 echo "Plugin Validation"
 echo ""
 
 FAIL=0
 
-for FILE in $(find $PLUGIN_DIR -name "*.sh")
+########################################
+# NEW: Use safe file iteration
+########################################
+
+while IFS= read -r FILE
 do
 
 echo "Checking $FILE"
@@ -20,14 +34,25 @@ echo "Syntax error"
 FAIL=1
 fi
 
-grep -q "PLUGIN_NAME" "$FILE" || echo "Missing PLUGIN_NAME"
-grep -q "install_service()" "$FILE" || echo "Missing install_service"
-grep -q "register_service" "$FILE" || echo "Missing registry call"
+########################################
+# Existing validation checks
+########################################
+
+grep -q "PLUGIN_NAME" "$FILE" || { echo "Missing PLUGIN_NAME"; FAIL=1; }
+grep -q "install_service()" "$FILE" || { echo "Missing install_service"; FAIL=1; }
+grep -q "register_service" "$FILE" || { echo "Missing registry call"; FAIL=1; }
 
 echo ""
 
-done
+done < <(find "$PLUGIN_DIR" -name "*.sh")
+
+########################################
+# NEW: Final validation result
+########################################
 
 if [ $FAIL -eq 1 ]; then
+echo "Plugin validation failed."
 exit 1
+else
+echo "All plugins passed validation."
 fi

@@ -2,14 +2,16 @@
 
 set -e
 
-########################################
-# Variables
-########################################
-
 STACK_DIR="/opt/media-stack"
 PLUGIN_DIR="./plugins"
 
 SELECTED_SERVICES=()
+
+########################################
+# Run preflight checks
+########################################
+
+bash ./scripts/preflight.sh
 
 ########################################
 # Load core modules
@@ -21,52 +23,48 @@ source ./core/hardware.sh
 source ./core/docker.sh
 source ./core/config-wizard.sh
 
-########################################
-# Ensure stack directory exists
-########################################
-
 mkdir -p "$STACK_DIR"
 
 ########################################
-# Run configuration wizard
+# NEW: Ensure helper scripts are executable
+########################################
+
+chmod +x ./scripts/compose.sh 2>/dev/null || true
+chmod +x ./scripts/updates.sh 2>/dev/null || true
+chmod +x ./scripts/backup.sh 2>/dev/null || true
+chmod +x ./scripts/health-monitor.sh 2>/dev/null || true
+
+########################################
+# Configuration wizard
 ########################################
 
 run_configuration_wizard
-
-########################################
-# Load saved configuration
-########################################
 
 if [ -f "$STACK_DIR/stack.env" ]; then
 source "$STACK_DIR/stack.env"
 fi
 
 ########################################
-# Detect platform
+# Platform & hardware detection
 ########################################
 
 detect_platform
-
-########################################
-# Detect hardware
-########################################
-
 detect_hardware
 
 ########################################
-# Choose installation mode
+# Installation mode
 ########################################
 
 MODE=$(whiptail \
 --title "Media Stack Installer" \
 --menu "Select installation mode" \
 15 60 2 \
-quick "Recommended full media stack" \
-custom "Select services manually" \
+quick "Recommended stack" \
+custom "Choose services manually" \
 3>&1 1>&2 2>&3)
 
 ########################################
-# Quick install list
+# Quick install services
 ########################################
 
 if [ "$MODE" = "quick" ]; then
@@ -91,16 +89,7 @@ plex-exporter
 
 else
 
-########################################
-# Discover plugins
-########################################
-
 discover_plugins
-
-########################################
-# Prompt user selection
-########################################
-
 select_services
 
 fi
@@ -112,7 +101,7 @@ fi
 resolve_dependencies
 
 ########################################
-# Initialize docker compose file
+# Initialize compose file
 ########################################
 
 COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
@@ -137,31 +126,18 @@ echo ""
 
 for SERVICE in "${SELECTED_SERVICES[@]}"
 do
-
 echo "Installing $SERVICE"
-
 install_plugin "$SERVICE"
-
 done
 
 ########################################
-# Ensure compose helper executable
+# Start containers
 ########################################
-
-chmod +x ./scripts/compose.sh
-
-########################################
-# Start stack using compose helper
-########################################
-
-echo ""
-echo "Starting containers..."
-echo ""
 
 bash ./scripts/compose.sh up
 
 ########################################
-# Post-install automation
+# Post install automation
 ########################################
 
 if [ -f ./scripts/post-install.sh ]; then
@@ -169,38 +145,35 @@ bash ./scripts/post-install.sh
 fi
 
 ########################################
-# Display dashboard information
+# NEW: Install container health monitor
 ########################################
 
-SERVER_IP=$(hostname -I | awk '{print $1}')
+if [ -f ./scripts/health-monitor.sh ]; then
 
-echo ""
-echo "========================================"
-echo " Installation Complete"
-echo "========================================"
-echo ""
+CRON_JOB="*/5 * * * * /opt/media-server-installer/scripts/health-monitor.sh"
 
-echo "Dashboard:"
-echo "http://$SERVER_IP:3000"
-echo ""
+(crontab -l 2>/dev/null | grep -v health-monitor.sh; echo "$CRON_JOB") | crontab -
 
-echo "Service list:"
-echo ""
-
-if [ -f "$STACK_DIR/services.json" ]; then
-
-cat "$STACK_DIR/services.json" \
-| jq -r '.services[] | "\(.name) -> \(.url)"'
+echo "Health monitor installed (runs every 5 minutes)."
 
 fi
 
+########################################
+# Show dashboard
+########################################
+
+IP=$(hostname -I | awk '{print $1}')
+
 echo ""
-echo "Manage your stack using:"
-echo ""
-echo "media-stack status"
-echo "media-stack services"
-echo "media-stack update"
+echo "================================"
+echo " Installation Complete"
+echo "================================"
 echo ""
 
-echo "Enjoy your media stack!"
+echo "Dashboard:"
+echo "http://$IP:3000"
+echo ""
+
+echo "Run:"
+echo "media-stack services"
 echo ""

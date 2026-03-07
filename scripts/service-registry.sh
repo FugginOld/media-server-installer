@@ -4,6 +4,15 @@ STACK_DIR="/opt/media-stack"
 REGISTRY_FILE="$STACK_DIR/services.json"
 
 ########################################
+# NEW: Verify jq dependency
+########################################
+
+if ! command -v jq >/dev/null 2>&1; then
+echo "jq is required for service registry."
+exit 1
+fi
+
+########################################
 # Initialize registry
 ########################################
 
@@ -34,7 +43,27 @@ URL=$2
 CATEGORY=$3
 ICON=$4
 
+########################################
+# NEW: Basic parameter validation
+########################################
+
+if [ -z "$NAME" ] || [ -z "$URL" ]; then
+echo "register_service requires NAME and URL"
+return
+fi
+
 init_registry
+
+########################################
+# NEW: Prevent duplicate service entries
+########################################
+
+EXISTS=$(jq -r ".services[] | select(.name==\"$NAME\") | .name" "$REGISTRY_FILE")
+
+if [ "$EXISTS" = "$NAME" ]; then
+echo "Service already registered: $NAME"
+return
+fi
 
 TMP_FILE=$(mktemp)
 
@@ -58,6 +87,12 @@ echo "Registered service: $NAME"
 remove_service() {
 
 NAME=$1
+
+########################################
+# NEW: Ensure registry exists
+########################################
+
+init_registry
 
 TMP_FILE=$(mktemp)
 
