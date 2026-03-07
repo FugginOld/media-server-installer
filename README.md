@@ -1,40 +1,75 @@
 # Media Stack Installer
 
-![License](https://img.shields.io/github/license/FugginOld/media-server-installer)
-![Stars](https://img.shields.io/github/stars/FugginOld/media-server-installer)
-![Issues](https://img.shields.io/github/issues/FugginOld/media-server-installer)
-![Docker](https://img.shields.io/badge/docker-required-blue)
-![Platform](https://img.shields.io/badge/platform-linux-green)
+Media Stack Installer is a modular Docker-based platform that deploys a complete automated media server ecosystem using a plugin-based architecture.
 
-Media Stack Installer is a modular Docker-based platform that deploys a complete automated media ecosystem with a single installer.
+The project installs and configures media services, automation tools, monitoring systems, and infrastructure components with a single installer.
 
-The project provides a fully automated media server including streaming, downloads, monitoring, and infrastructure services using a plugin-based architecture.
-
-The stack is designed to be:
-
-• Modular  
-• Plugin-driven  
-• Automatically discoverable  
-• Easy to extend  
-• Compatible with most Linux environments  
-
-The installer supports both **CLI installation** and **Web installation**.
+The platform supports both CLI and Web installation methods.
 
 ---
 
-# Features
+# Key Features
 
-• One-command media server deployment  
 • Plugin-based architecture  
 • Automatic plugin discovery  
-• Dependency-aware installation  
-• Automatic port conflict prevention  
-• Service registry for dashboards  
+• Dependency-aware plugin installation  
+• Automatic Docker installation  
+• Cross-platform Linux compatibility  
+• NAS platform detection  
+• Container permission management  
 • Hardware acceleration detection  
-• Integrated monitoring stack  
+• Monitoring stack with Prometheus and Grafana  
 • Secure remote access with Tailscale  
-• Automatic container updates  
+• Automatic container updates with Watchtower  
 • CLI management tools  
+
+---
+
+# Supported Linux Platforms
+
+The installer supports most major Linux distributions.
+
+## Debian-based
+
+• Debian  
+• Ubuntu  
+• Devuan  
+• Linux Mint  
+• Pop!_OS  
+
+## RedHat-based
+
+• Fedora  
+• Rocky Linux  
+• AlmaLinux  
+• RHEL  
+
+## Arch-based
+
+• Arch Linux  
+• Manjaro  
+
+## SUSE
+
+• openSUSE  
+• SUSE Linux Enterprise  
+
+## Lightweight Systems
+
+• Alpine Linux  
+
+---
+
+# Supported NAS Platforms
+
+The installer automatically detects NAS operating systems and applies container permission fixes when needed.
+
+Supported NAS environments:
+
+• Unraid  
+• TrueNAS SCALE  
+• OpenMediaVault  
+• CasaOS  
 
 ---
 
@@ -42,8 +77,8 @@ The installer supports both **CLI installation** and **Web installation**.
 
 ## Media
 
-| Service | Description |
-|-------|-------------|
+| Service | Purpose |
+|-------|-------|
 | Plex | Media streaming server |
 | Tdarr | Automated media transcoding |
 
@@ -51,10 +86,10 @@ The installer supports both **CLI installation** and **Web installation**.
 
 ## Automation
 
-| Service | Description |
-|-------|-------------|
-| Radarr | Movie management |
-| Sonarr | TV show management |
+| Service | Purpose |
+|-------|-------|
+| Radarr | Movie automation |
+| Sonarr | TV automation |
 | Prowlarr | Indexer manager |
 | Bazarr | Subtitle automation |
 | Overseerr | Media request system |
@@ -63,62 +98,101 @@ The installer supports both **CLI installation** and **Web installation**.
 
 ## Download
 
-| Service | Description |
-|-------|-------------|
+| Service | Purpose |
+|-------|-------|
 | SABnzbd | Usenet downloader |
 
 ---
 
 ## Monitoring
 
-| Service | Description |
-|-------|-------------|
+| Service | Purpose |
+|-------|-------|
 | Prometheus | Metrics collection |
 | Grafana | Monitoring dashboards |
 | Node Exporter | System metrics |
 | Plex Exporter | Plex metrics |
 | Tautulli | Plex analytics |
-| Glances | Live system monitoring |
+| Glances | Real-time system monitoring |
 
 ---
 
-## System Services
+## Infrastructure
 
-| Service | Description |
-|-------|-------------|
+| Service | Purpose |
+|-------|-------|
 | Homepage | Service dashboard |
 | Watchtower | Automatic container updates |
 | Tailscale | Secure remote access |
-| Unpackerr | Archive extraction automation |
-| Web Installer | Browser-based installer |
+| Unpackerr | Archive extraction |
+| Web Installer | Browser installer |
 
 ---
 
-# Architecture
+# Installation
 
-The Media Stack uses a **plugin-based architecture**.
+## Quick Install
 
-```
-installer.sh
-     │
-     ▼
-plugin discovery
-     │
-     ▼
-dependency resolution
-     │
-     ▼
-compose generation
-     │
-     ▼
-docker deployment
+Run the installer directly from GitHub:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/FugginOld/media-server-installer/main/install.sh | bash
 ```
 
-Plugins dynamically generate the Docker Compose configuration.
+The installer will prompt for:
+
+```
+CLI Installer
+Web Installer
+```
 
 ---
 
-## Media Automation Pipeline
+# CLI Installer
+
+The CLI installer guides users through:
+
+• directory configuration  
+• timezone configuration  
+• plugin selection  
+• installation mode  
+
+Installation modes:
+
+```
+Quick Install
+Custom Install
+```
+
+---
+
+# Web Installer
+
+The Web Installer launches a containerized installer interface.
+
+Default URL:
+
+```
+http://SERVER-IP:8088
+```
+
+---
+
+# Monitoring Architecture
+
+```
+nodeexporter
+plex-exporter
+glances
+      ↓
+   Prometheus
+      ↓
+    Grafana
+```
+
+---
+
+# Media Automation Pipeline
 
 ```
 Overseerr
@@ -138,97 +212,11 @@ Plex
 
 ---
 
-## Monitoring Stack
-
-```
-nodeexporter
-plex-exporter
-glances
-      ↓
-   Prometheus
-      ↓
-    Grafana
-```
-
----
-
-# Installation
-
-## Quick Install
-
-Run the installer directly from GitHub:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/FugginOld/media-server-installer/main/install.sh | bash
-```
-
-The installer will ask which interface you want:
-
-```
-CLI Installer
-Web Installer
-```
-
----
-
-# CLI Installation
-
-The CLI installer walks through:
-
-• directory configuration  
-• timezone setup  
-• plugin selection  
-• installation mode  
-
-Installation modes:
-
-```
-Quick Install
-Custom Install
-```
-
-Quick install deploys the recommended media stack.
-
----
-
-# Web Installer
-
-The Web Installer launches a lightweight container that provides a browser interface for installation.
-
-Default URL:
-
-```
-http://SERVER-IP:8088
-```
-
----
-
-# Default Service Ports
-
-| Service | Port |
-|------|------|
-| Plex | 32400 |
-| Radarr | 7878 |
-| Sonarr | 8989 |
-| Prowlarr | 9696 |
-| Bazarr | 6767 |
-| Overseerr | 5055 |
-| SABnzbd | 8080 |
-| Homepage | 3001 |
-| Grafana | 3000 |
-| Prometheus | 9090 |
-| Tautulli | 8181 |
-| Glances | 61208 |
-
-Ports are automatically managed using the Media Stack port registry to prevent conflicts.
-
----
-
 # CLI Management
 
 After installation the `media-stack` command becomes available.
 
-Examples:
+Example commands:
 
 ```
 media-stack install
@@ -267,7 +255,7 @@ media-server-installer
 
 # Plugin System
 
-Each plugin defines the following metadata:
+Plugins define the following metadata:
 
 ```
 PLUGIN_NAME
@@ -279,38 +267,19 @@ PLUGIN_HOST_NETWORK
 PLUGIN_DASHBOARD
 ```
 
-Plugins must implement:
+Plugins implement the required function:
 
 ```
 install_service()
 ```
 
-Plugins dynamically append their service configuration to the Docker Compose stack.
-
-New services can be added simply by placing a plugin file inside the `plugins/` directory.
-
----
-
-# Monitoring
-
-The Media Stack includes a full monitoring platform.
-
-Metrics include:
-
-• CPU usage  
-• memory usage  
-• disk usage  
-• network traffic  
-• Plex streaming activity  
-• container health  
-
-All metrics are visualized through Grafana dashboards.
+Plugins dynamically append service definitions to the Docker Compose configuration.
 
 ---
 
 # Hardware Acceleration
 
-The installer automatically detects available GPU hardware.
+The installer automatically detects GPU hardware.
 
 Supported acceleration:
 
@@ -318,29 +287,13 @@ Supported acceleration:
 • AMD VAAPI  
 • NVIDIA NVENC  
 
-Services such as Plex and Tdarr automatically enable hardware acceleration when supported hardware is detected.
-
----
-
-# Compatibility
-
-The Media Stack has been tested on:
-
-• Debian  
-• Ubuntu  
-• Devuan  
-• Proxmox  
-• Generic Linux hosts  
-
-Any Linux system capable of running Docker should work.
+Services such as Plex and Tdarr enable GPU acceleration automatically when supported hardware is detected.
 
 ---
 
 # Contributing
 
 Contributions are welcome.
-
-To add new services, create a plugin that follows the Media Stack plugin contract.
 
 Before submitting changes run:
 
@@ -352,6 +305,4 @@ bash scripts/plugin-validator.sh
 
 # License
 
-This project is licensed under the MIT License.
-
-See the LICENSE file for details.
+MIT License

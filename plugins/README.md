@@ -2,41 +2,35 @@
 
 The `plugins/` directory contains all installable services used by the Media Stack.
 
-Each plugin represents a self-contained service that can be installed into the stack.
+Each plugin represents a self-contained service that can be installed into the stack.  
 Plugins dynamically generate Docker Compose services and register themselves with the Media Stack registries.
 
-This architecture allows the stack to be **modular, extensible, and automatically discoverable**.
+This architecture allows the stack to be modular, extensible, and automatically discoverable.
 
-Plugins are discovered automatically during installation by:
-
-```
-installer.sh
-```
-
-The installer scans the `plugins/` directory and loads available services.
+Plugins are detected automatically during installation by the installer.
 
 ---
 
-# Plugin Categories
+# Plugin Directory Structure
 
-Plugins are organized into subdirectories based on their purpose.
+Plugins are organized by category.
 
 ```
 plugins/
-├── media/
-├── automation/
-├── download/
-├── monitoring/
-└── system/
+├── media
+├── automation
+├── download
+├── monitoring
+└── system
 ```
 
-Each category contains services related to that function.
+Each folder groups services with similar roles.
 
 ---
 
 # Plugin Contract
 
-Every plugin must follow the Media Stack **plugin contract**.
+Every plugin must follow the Media Stack plugin contract.
 
 Required metadata fields:
 
@@ -50,7 +44,7 @@ PLUGIN_HOST_NETWORK
 PLUGIN_DASHBOARD
 ```
 
-Example:
+Example plugin metadata:
 
 ```
 PLUGIN_NAME="radarr"
@@ -66,13 +60,13 @@ PLUGIN_DASHBOARD=true
 
 # Required Function
 
-Every plugin must implement:
+Every plugin must implement the function:
 
 ```
 install_service()
 ```
 
-This function generates the Docker Compose configuration required to run the service.
+This function is responsible for adding the container configuration to the Docker Compose stack.
 
 Example:
 
@@ -95,34 +89,36 @@ EOF
 
 # Port Management
 
-Plugins must request ports using the port helper:
+Plugins must not hardcode ports directly.
+
+Ports are requested using the port helper:
 
 ```
 scripts/port-helper.sh
 ```
 
-Example:
+Example usage:
 
 ```
 PORT=$(get_port_mapping "radarr" 7878 7878)
 ```
 
-This prevents port conflicts between services.
+The port registry ensures that multiple plugins do not attempt to use the same port.
+
+Port registry file:
+
+```
+/opt/media-stack/ports.json
+```
 
 ---
 
-# Service Registry
+# Service Registration
 
-Plugins that expose a web interface should register themselves using:
+Plugins that expose web interfaces should register themselves using:
 
 ```
 register_service
-```
-
-This adds the service to the registry:
-
-```
-/opt/media-stack/services.json
 ```
 
 Example:
@@ -135,14 +131,47 @@ register_service \
 "radarr.png"
 ```
 
-Registered services appear automatically in:
+Registered services are stored in:
 
-* Homepage dashboard
-* CLI service listings
+```
+/opt/media-stack/services.json
+```
+
+The service registry powers:
+
+- the Homepage dashboard
+- the CLI `media-stack services` command
+- monitoring integrations
 
 ---
 
-# GPU Support
+# Dependency Management
+
+Plugins can declare dependencies using:
+
+```
+PLUGIN_DEPENDS
+```
+
+Example:
+
+```
+PLUGIN_DEPENDS=(radarr sonarr)
+```
+
+If a user installs a plugin that requires dependencies, the installer automatically installs the required services.
+
+Example dependency chain:
+
+```
+Overseerr
+  ├─ Radarr
+  └─ Sonarr
+```
+
+---
+
+# GPU Hardware Support
 
 Plugins that support hardware acceleration can use GPU configuration exported by:
 
@@ -150,7 +179,13 @@ Plugins that support hardware acceleration can use GPU configuration exported by
 core/hardware.sh
 ```
 
-Example usage:
+Supported GPU types:
+
+- Intel QuickSync
+- AMD VAAPI
+- NVIDIA NVENC
+
+Example usage inside a plugin:
 
 ```
 if [ "$GPU_TYPE" != "none" ]; then
@@ -158,34 +193,77 @@ echo "$GPU_DEVICES" >> "$STACK_DIR/docker-compose.yml"
 fi
 ```
 
-This enables hardware transcoding for services like:
+This allows services such as Plex and Tdarr to enable hardware transcoding automatically.
 
-* Plex
-* Tdarr
+---
+
+# Cross Platform Compatibility
+
+Plugins are designed to run on multiple Linux distributions.
+
+The installer supports:
+
+Debian-based systems
+- Debian
+- Ubuntu
+- Devuan
+- Linux Mint
+
+RedHat-based systems
+- Fedora
+- Rocky Linux
+- AlmaLinux
+
+Arch-based systems
+- Arch Linux
+- Manjaro
+
+SUSE systems
+- openSUSE
+
+Lightweight systems
+- Alpine Linux
+
+The platform abstraction layer ensures plugins work consistently across these environments.
+
+---
+
+# NAS Platform Compatibility
+
+The installer automatically detects NAS environments and applies container permission fixes.
+
+Supported NAS platforms include:
+
+- Unraid
+- TrueNAS SCALE
+- OpenMediaVault
+- CasaOS
+
+This ensures that containers can access shared storage correctly.
 
 ---
 
 # Plugin Discovery
 
-Plugins are automatically discovered by the installer.
+Plugins are automatically discovered during installation.
 
-Discovery works by scanning for `.sh` files:
+The installer scans the plugins directory for `.sh` files:
 
 ```
 plugins/**/*.sh
 ```
 
-This allows new services to be added simply by placing a plugin file in the directory.
+Any valid plugin placed in this directory will automatically appear in the installer menu.
 
-No changes to the installer are required.
+No modifications to the installer are required.
 
 ---
 
-# Adding New Plugins
+# Creating New Plugins
 
 To add a new service:
 
-1. Create a new plugin file inside the appropriate category.
+1. Create a plugin script inside the appropriate category directory.
 
 Example:
 
@@ -193,31 +271,19 @@ Example:
 plugins/media/jellyfin.sh
 ```
 
-2. Implement the plugin metadata and install function.
+2. Implement the required metadata fields.
 
-3. Run the plugin validator:
+3. Implement the `install_service()` function.
+
+4. Validate the plugin:
 
 ```
 bash scripts/plugin-validator.sh
 ```
 
-4. Commit the plugin to the repository.
+5. Commit the plugin to the repository.
 
 The installer will automatically detect it.
-
----
-
-# Plugin Validation
-
-All plugins are validated before installation using:
-
-```
-scripts/plugin-validator.sh
-```
-
-This ensures plugins contain the required metadata and functions.
-
-If a plugin fails validation, installation will stop.
 
 ---
 
@@ -225,4 +291,6 @@ If a plugin fails validation, installation will stop.
 
 The Media Stack plugin system allows the platform to remain modular and extensible.
 
-New services can be added without modifying the installer, making the stack easy to maintain and expand.
+Plugins can be added, removed, or modified without changing the installer.
+
+This design allows the Media Stack to grow over time while keeping the core installer simple and maintainable.

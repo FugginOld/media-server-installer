@@ -1,15 +1,14 @@
 # Media Stack Core Modules
 
 The `core/` directory contains the foundational modules used by the Media Stack installer.
-These scripts handle platform detection, hardware detection, directory configuration, Docker installation, and the interactive configuration wizard.
 
-These modules are loaded by:
+These scripts provide system detection, configuration, environment preparation, and infrastructure setup required before plugins are installed.
 
-```
+All modules in this directory are loaded by:
+
 installer.sh
-```
 
-They provide the core environment required for plugin installation.
+These scripts ensure the system environment is prepared correctly regardless of Linux distribution or NAS platform.
 
 ---
 
@@ -17,109 +16,165 @@ They provide the core environment required for plugin installation.
 
 ## platform.sh
 
-Detects the operating system and environment where the Media Stack is being installed.
+Detects the operating system and determines the appropriate platform configuration.
 
-Examples of detected environments include:
+This module identifies:
 
-* Debian
-* Ubuntu
-* Devuan
-* Proxmox
-* Generic Linux
+• Linux distribution  
+• Platform family  
+• Package manager  
+• NAS platforms  
 
-This information allows the installer to adjust commands and package installation methods if needed.
+Supported Linux families:
+
+Debian-based
+- Debian
+- Ubuntu
+- Devuan
+- Linux Mint
+- Pop!_OS
+
+RedHat-based
+- Fedora
+- Rocky Linux
+- AlmaLinux
+- RHEL
+
+Arch-based
+- Arch Linux
+- Manjaro
+
+SUSE
+- openSUSE
+- SLES
+
+Lightweight systems
+- Alpine Linux
+
+The module also provides package manager abstraction functions:
+
+pkg_update  
+pkg_install  
+
+These allow other scripts to install packages without needing distribution-specific commands.
+
+---
+
+## NAS Platform Detection
+
+The installer automatically detects common NAS environments and adjusts behavior accordingly.
+
+Supported NAS systems:
+
+• Unraid  
+• TrueNAS SCALE  
+• OpenMediaVault  
+• CasaOS  
+
+When a NAS environment is detected, the installer applies appropriate permission adjustments to ensure containers can access storage volumes correctly.
 
 ---
 
 ## directories.sh
 
-Defines the directory structure used by the Media Stack.
+Defines the directory layout used by the Media Stack.
 
-The installer can configure directories using either:
+The installer allows users to select between:
 
-**Default layout**
+Default layout
+or
+TRaSH Guides directory structure
 
-```
-/data/media
-/data/media/movies
-/data/media/tv
-/data/downloads
-```
+Typical directories include:
 
-or the **TRaSH Guides layout**.
+/media  
+/movies  
+/tv  
+/downloads  
 
-The script exports variables used by plugins:
+These paths are exported as environment variables used by plugins.
 
-```
-MEDIA_PATH
-MOVIES_PATH
-TV_PATH
-DOWNLOADS_PATH
-```
+Example variables:
 
-These variables ensure all containers share consistent storage paths.
+MEDIA_PATH  
+MOVIES_PATH  
+TV_PATH  
+DOWNLOADS_PATH  
+
+These variables ensure containers share consistent storage locations.
 
 ---
 
 ## hardware.sh
 
-Detects available GPU hardware and configures Docker container support for hardware acceleration.
+Detects hardware acceleration capabilities.
 
 Supported GPU types:
 
-* Intel iGPU
-* AMD GPU
-* NVIDIA GPU
+• Intel iGPU (QuickSync)  
+• AMD GPU (VAAPI)  
+• NVIDIA GPU (NVENC)
 
-If a compatible GPU is detected, the script exports Docker configuration blocks used by plugins to enable hardware transcoding.
-
-Used primarily by:
-
-```
-plex
-tdarr
-```
+If supported hardware is detected, GPU configuration variables are exported so plugins such as Plex and Tdarr can enable hardware acceleration automatically.
 
 ---
 
 ## docker.sh
 
-Ensures Docker and Docker Compose are installed and available.
+Ensures Docker and Docker Compose are installed and operational.
+
+This module:
+
+• installs Docker when missing  
+• starts the Docker daemon  
+• enables Docker at system boot  
+• installs the Docker Compose plugin  
+• adds the current user to the docker group  
+
+Docker installation supports multiple Linux distributions through the platform abstraction layer.
+
+---
+
+## permissions.sh
+
+Handles container permissions and storage access.
+
+This module ensures that media directories are accessible by Docker containers.
 
 Responsibilities include:
 
-* verifying Docker installation
-* installing Docker if missing
-* starting the Docker daemon
-* enabling Docker to start on system boot
+• detecting PUID and PGID  
+• applying ownership to media directories  
+• setting directory permissions  
+• applying NAS-specific permission adjustments  
 
-This script guarantees that the system is ready to run containers before the installer proceeds.
+These fixes prevent common problems such as containers being unable to read or write media files.
 
 ---
 
 ## config-wizard.sh
 
-Provides the interactive configuration wizard used during CLI installation.
+Provides the interactive CLI configuration wizard.
 
-The wizard gathers system configuration such as:
+The wizard collects configuration values such as:
 
-* timezone
-* user IDs (PUID/PGID)
-* directory structure
-* media storage locations
+• timezone  
+• directory structure  
+• media locations  
+• container user IDs  
 
-The results are saved to:
+Configuration values are stored in:
 
-```
 /opt/media-stack/stack.env
-```
 
-This file is then loaded by all plugins during installation.
+This file is loaded during installation and used by plugins.
 
 ---
 
 # Summary
 
-The `core/` directory provides the infrastructure that powers the Media Stack installer.
+The `core/` modules provide the infrastructure layer for the Media Stack installer.
 
-These scripts are responsible for preparing the system so that plugins can be installed reliably and consistently across different Linux environments.
+These scripts handle platform detection, Docker installation, hardware support, storage configuration, and environment preparation.
+
+By abstracting these responsibilities into reusable modules, the installer can support many different Linux distributions and NAS environments while keeping plugin installation simple and consistent.

@@ -4,25 +4,20 @@ The `scripts/` directory contains the operational tools used by the Media Stack 
 
 These scripts provide management functionality such as:
 
-* Docker container lifecycle management
-* service and port registries
-* plugin validation
-* backups and updates
-* monitoring automation
-* system diagnostics
-* CLI management commands
+- Docker container lifecycle management
+- service registry management
+- port conflict prevention
+- plugin validation
+- backups and updates
+- monitoring automation
+- system diagnostics
+- CLI management tools
 
-Many of these scripts are called automatically by:
+Some scripts run automatically during installation, while others are used after installation through the Media Stack CLI.
 
-```
-installer.sh
-```
+Most scripts interact with configuration stored in:
 
-while others are used through the Media Stack CLI tool:
-
-```
-media-stack
-```
+/opt/media-stack
 
 ---
 
@@ -30,118 +25,115 @@ media-stack
 
 ## compose.sh
 
-Controls the Docker Compose stack lifecycle.
-
-This script is used by the CLI and installer to start, stop, and manage containers.
+Controls the Docker Compose lifecycle for the Media Stack.
 
 Supported commands:
 
-```
-compose.sh up
-compose.sh down
-compose.sh restart
-compose.sh pull
-compose.sh logs
-compose.sh status
-```
+compose.sh up  
+compose.sh down  
+compose.sh restart  
+compose.sh pull  
+compose.sh logs  
+compose.sh status  
 
 Example:
 
-```
 bash scripts/compose.sh up
-```
+
+or via the CLI:
+
+media-stack restart
 
 ---
 
 ## service-registry.sh
 
-Maintains the **service registry** used by dashboards and CLI tools.
+Maintains the Media Stack service registry.
 
-The registry file is stored at:
+Registry location:
 
-```
 /opt/media-stack/services.json
-```
 
-Plugins register themselves during installation using:
+Plugins register themselves using the function:
 
-```
 register_service
-```
 
-The registry allows:
+The registry stores:
 
-* Homepage dashboard auto-discovery
-* CLI service listing
-* monitoring integrations
+- service name
+- service URL
+- service category
+- service icon
+
+This registry powers:
+
+- the Homepage dashboard
+- the `media-stack services` command
+- monitoring integrations
 
 ---
 
 ## port-registry.sh
 
-Maintains a record of ports assigned to services.
+Tracks ports assigned to Media Stack services.
 
 Registry location:
 
-```
 /opt/media-stack/ports.json
-```
 
-This prevents two plugins from using the same port.
+This system prevents two containers from using the same port.
 
-Example registry:
+Example registry entry:
 
-```
 {
-  "ports": {
-    "plex": 32400,
-    "radarr": 7878
-  }
+  "plex": 32400,
+  "radarr": 7878
 }
-```
+
+Ports are requested dynamically by plugins.
 
 ---
 
 ## port-helper.sh
 
-Provides helper functions used by plugins to safely request ports.
+Provides helper functions for plugins to safely allocate ports.
 
-Plugins should **never hardcode port mappings directly**.
+Plugins request ports using:
 
-Example usage inside plugins:
-
-```
 PORT=$(get_port_mapping "radarr" 7878 7878)
-```
 
-This registers the port and returns a valid Docker mapping.
+This function:
+
+- checks the port registry
+- assigns ports if available
+- prevents collisions
+
+Plugins should never hardcode ports directly.
 
 ---
 
 ## plugin-validator.sh
 
-Validates plugins before installation.
+Validates plugin scripts before installation.
 
 Checks include:
 
-* syntax validation
-* required metadata fields
-* required install function
+- shell syntax validation
+- required metadata fields
+- install function presence
 
 Required plugin fields:
 
-```
-PLUGIN_NAME
-PLUGIN_DESCRIPTION
-PLUGIN_CATEGORY
-PLUGIN_DEPENDS
-PLUGIN_PORTS
-PLUGIN_HOST_NETWORK
-PLUGIN_DASHBOARD
+PLUGIN_NAME  
+PLUGIN_DESCRIPTION  
+PLUGIN_CATEGORY  
+PLUGIN_DEPENDS  
+PLUGIN_PORTS  
+PLUGIN_HOST_NETWORK  
+PLUGIN_DASHBOARD  
 install_service()
-```
 
-Running this script ensures plugins follow the Media Stack plugin contract.
+Running this script ensures plugin compatibility with the Media Stack installer.
 
 ---
 
@@ -151,71 +143,63 @@ The Media Stack command line interface.
 
 Installed globally as:
 
-```
 /usr/local/bin/media-stack
-```
 
 Available commands:
 
-```
-media-stack install
-media-stack update
-media-stack status
-media-stack restart
-media-stack logs
-media-stack services
-media-stack backup
-media-stack doctor
-media-stack maintenance
-media-stack reset
-```
+media-stack install  
+media-stack update  
+media-stack status  
+media-stack restart  
+media-stack logs  
+media-stack services  
+media-stack backup  
+media-stack doctor  
+media-stack maintenance  
+media-stack reset  
 
-This command is the primary way to manage the stack after installation.
+This CLI provides the primary interface for managing the stack after installation.
 
 ---
 
 ## doctor.sh
 
-Performs diagnostic checks on the Media Stack installation.
+Performs diagnostic checks on the Media Stack environment.
 
 Checks include:
 
-* installer directory
-* stack directory
-* Docker installation
-* Docker daemon status
-* container status
-* compose configuration
+- installer directory
+- stack directory
+- Docker installation
+- Docker daemon status
+- compose configuration
 
-Example:
+Example usage:
 
-```
 media-stack doctor
-```
+
+This helps troubleshoot installation or container issues.
 
 ---
 
 ## backup.sh
 
-Creates compressed backups of the Media Stack configuration.
+Creates backups of Media Stack configuration.
 
 Backup location:
 
-```
-/opt/media-stack-backups/
-```
+/opt/media-stack-backups
 
-Backup includes:
+Backup contents include:
 
-* docker-compose.yml
-* configuration directories
-* registry files
+- docker-compose.yml
+- service registry
+- port registry
+- container configuration directories
 
-Example:
+Example usage:
 
-```
 media-stack backup
-```
 
 ---
 
@@ -230,58 +214,56 @@ Steps performed:
 3. Pull updated container images
 4. Restart containers
 
-Example:
+Example usage:
 
-```
 media-stack update
-```
 
 ---
 
 ## post-install.sh
 
-Runs automated tasks after installation.
+Runs automation tasks after installation completes.
 
 Examples include:
 
-* initializing dashboards
-* displaying registered services
-* launching monitoring automation
+- initializing dashboards
+- verifying services
+- preparing monitoring configuration
 
-This script runs automatically when installation completes.
+This script runs automatically at the end of installation.
 
 ---
 
 ## health-monitor.sh
 
-Runs a background health monitoring loop.
+Monitors the health of running services.
 
-The script periodically checks all registered services using the service registry:
+This script periodically checks services registered in:
 
-```
 /opt/media-stack/services.json
-```
 
-If a service stops responding, a warning is logged.
+If a service fails to respond, a warning is logged.
 
 ---
 
 ## grafana-dynamic.sh
 
-Automatically configures Grafana after installation.
+Automates Grafana configuration.
 
-Tasks performed:
+Responsibilities:
 
-* waits for Grafana to start
-* creates Prometheus datasource
-* imports dashboards if available
+- wait for Grafana container startup
+- create Prometheus datasource
+- configure dashboards
 
-This eliminates the need for manual Grafana configuration.
+This removes the need for manual Grafana setup.
 
 ---
 
 # Summary
 
-The `scripts/` directory contains the operational control layer of the Media Stack.
+The `scripts/` directory provides the operational automation layer for the Media Stack.
 
-These scripts provide the automation and management tools that allow the stack to function as a modular plugin-based platform.
+These scripts manage container orchestration, service discovery, monitoring setup, updates, backups, and diagnostics.
+
+Together they allow the Media Stack to function as a fully automated and maintainable platform.

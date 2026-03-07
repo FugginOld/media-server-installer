@@ -2,15 +2,15 @@
 
 The `plugins/system/` directory contains infrastructure services that support the Media Stack platform.
 
-These services provide features such as:
+These plugins provide core platform capabilities such as:
 
 - service dashboards
-- automatic container updates
+- container update automation
 - secure remote access
 - download processing
-- web-based installation tools
+- web-based installer interface
 
-These plugins are not directly responsible for serving or downloading media, but they provide critical platform functionality.
+System plugins improve the usability, reliability, and accessibility of the Media Stack but are not directly responsible for media streaming or downloading.
 
 ---
 
@@ -18,19 +18,19 @@ These plugins are not directly responsible for serving or downloading media, but
 
 ## Homepage
 
-Homepage provides a centralized dashboard for accessing all Media Stack services.
+Homepage provides a centralized dashboard for accessing Media Stack services.
 
-Homepage automatically displays services that register themselves in the Media Stack service registry.
+Homepage automatically displays services registered in the Media Stack service registry.
 
 Registry location:
 
 /opt/media-stack/services.json
 
-Features:
+Features include:
 
-- service links
-- grouped dashboards
-- container health visibility
+- categorized service links
+- service icons
+- quick access to all installed applications
 - customizable widgets
 
 Default interface:
@@ -41,21 +41,19 @@ http://SERVER-IP:3001
 
 ## Watchtower
 
-Watchtower automatically updates Docker containers.
+Watchtower automatically updates Docker containers when new images become available.
 
-It periodically checks for updated container images and performs upgrades safely.
+Responsibilities:
 
-Features:
+- check for container updates
+- download updated images
+- restart containers safely
 
-- automatic container updates
-- scheduled updates
-- old image cleanup
+This keeps the Media Stack up to date without requiring manual container updates.
 
-Typical schedule:
+Typical update cycle:
 
-Daily automatic container update checks.
-
-This prevents the need to manually run updates for containers.
+Daily update checks.
 
 ---
 
@@ -63,21 +61,20 @@ This prevents the need to manually run updates for containers.
 
 Tailscale provides secure remote access to the Media Stack.
 
-It creates a private VPN network between your devices using WireGuard.
+Tailscale creates a private network between devices using WireGuard-based VPN technology.
 
 Features:
 
 - secure remote access
 - encrypted networking
-- no router port forwarding required
+- no port forwarding required
+- private IP access
 
-After authentication, services become accessible via the Tailscale network.
-
-Example:
+Example access through Tailscale network:
 
 http://100.x.x.x:32400
 
-This allows remote access to Plex and other services without exposing them publicly.
+This allows users to securely access Plex and other services from outside their home network.
 
 ---
 
@@ -85,9 +82,9 @@ This allows remote access to Plex and other services without exposing them publi
 
 Unpackerr automatically extracts downloaded releases.
 
-Some Usenet downloads contain compressed archives that must be unpacked before Radarr or Sonarr can import them.
+Some Usenet downloads contain compressed archives that must be extracted before Radarr or Sonarr can import them.
 
-Unpackerr monitors the download directory and extracts files automatically.
+Unpackerr monitors download directories and extracts files automatically.
 
 Integrations:
 
@@ -95,30 +92,77 @@ Integrations:
 - Radarr
 - Sonarr
 
-This ensures downloads are processed immediately after completion.
+Workflow:
+
+download complete  
+→ archive extracted  
+→ Radarr/Sonarr import media  
+
+This eliminates manual extraction steps.
 
 ---
 
 ## Web Installer
 
-The Web Installer plugin provides a browser-based entry point for installing or managing the Media Stack.
+The Web Installer plugin provides a browser-based installation interface.
 
-This allows users to launch the installer from a web interface instead of the command line.
+This allows users to launch the Media Stack installer through a web browser instead of the CLI.
 
 Default interface:
 
 http://SERVER-IP:8088
 
-The Web Installer can be used for:
+The web installer provides:
 
-- launching installation workflows
-- providing documentation links
-- redirecting users to dashboards
+- guided installation
+- documentation access
+- simplified onboarding for new users
+
+---
+
+# Infrastructure Responsibilities
+
+System plugins handle key infrastructure responsibilities including:
+
+Dashboard Management
+
+- Homepage service dashboard
+
+Container Lifecycle Management
+
+- Watchtower automatic updates
+
+Remote Connectivity
+
+- Tailscale secure networking
+
+Download Processing
+
+- Unpackerr archive extraction
+
+Installer Access
+
+- Web Installer interface
+
+---
+
+# NAS Compatibility
+
+System plugins are compatible with NAS platforms supported by the Media Stack installer.
+
+Supported NAS environments:
+
+- Unraid
+- TrueNAS SCALE
+- OpenMediaVault
+- CasaOS
+
+The installer automatically applies permission fixes to ensure containers can access shared storage directories correctly.
 
 ---
 
 # Summary
 
-System plugins provide infrastructure and management functionality for the Media Stack.
+The `system/` plugins provide infrastructure services that make the Media Stack easier to manage, access, and maintain.
 
-These services improve usability, automation, and remote accessibility for the platform.
+These services enhance usability by providing dashboards, remote connectivity, automated updates, and simplified installation tools.
