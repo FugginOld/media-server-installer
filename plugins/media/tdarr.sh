@@ -5,10 +5,13 @@
 ########################################
 
 PLUGIN_NAME="tdarr"
-PLUGIN_DESCRIPTION="Distributed transcoding and media processing"
-PLUGIN_CATEGORY="media"
+PLUGIN_DESCRIPTION="Distributed media transcoding system"
+PLUGIN_CATEGORY="Media"
 PLUGIN_DEPENDS=()
+
 PLUGIN_DASHBOARD=true
+PLUGIN_PORTS=(8265)
+PLUGIN_HOST_NETWORK=false
 
 ########################################
 # Install Service
@@ -16,21 +19,33 @@ PLUGIN_DASHBOARD=true
 
 install_service() {
 
-STACK_DIR="/opt/media-stack"
-COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
-
 echo "Installing Tdarr..."
 
-########################################
-# Ensure config directories exist
-########################################
-
-mkdir -p "$STACK_DIR/config/tdarr/server"
-mkdir -p "$STACK_DIR/config/tdarr/configs"
-mkdir -p "$STACK_DIR/config/tdarr/logs"
+COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
 
 ########################################
-# Add container to compose
+# Load helpers
+########################################
+
+source "$INSTALL_DIR/scripts/service-registry.sh"
+source "$INSTALL_DIR/scripts/port-helper.sh"
+
+########################################
+# Create directories
+########################################
+
+mkdir -p "$CONFIG_DIR/tdarr/server"
+mkdir -p "$CONFIG_DIR/tdarr/configs"
+mkdir -p "$CONFIG_DIR/tdarr/logs"
+
+########################################
+# Reserve dashboard port
+########################################
+
+PORT_MAPPING=$(get_port_mapping "tdarr" 8265 8265)
+
+########################################
+# Compose container
 ########################################
 
 cat <<EOF >> "$COMPOSE_FILE"
@@ -38,24 +53,44 @@ cat <<EOF >> "$COMPOSE_FILE"
   tdarr:
     image: ghcr.io/haveagitgat/tdarr:latest
     container_name: tdarr
+    networks:
+      - media-network
+    ports:
+      - "$PORT_MAPPING"
+      - "8266:8266"
     environment:
-      - PUID=\${PUID}
-      - PGID=\${PGID}
       - TZ=\${TIMEZONE}
       - serverIP=0.0.0.0
       - serverPort=8266
       - webUIPort=8265
     volumes:
-      - $STACK_DIR/config/tdarr/server:/app/server
-      - $STACK_DIR/config/tdarr/configs:/app/configs
-      - $STACK_DIR/config/tdarr/logs:/app/logs
-      - \${MEDIA_PATH}:/media
-    ports:
-      - "8265:8265"
-      - "8266:8266"
+      - $CONFIG_DIR/tdarr/server:/app/server
+      - $CONFIG_DIR/tdarr/configs:/app/configs
+      - $CONFIG_DIR/tdarr/logs:/app/logs
+      - $MEDIA_PATH:/media
+EOF
+
+########################################
+# GPU Support
+########################################
+
+if [ "$GPU_TYPE" != "none" ]; then
+echo "$GPU_DEVICES" >> "$COMPOSE_FILE"
+fi
+
+########################################
+# Restart policy
+########################################
+
+cat <<EOF >> "$COMPOSE_FILE"
     restart: unless-stopped
-    networks:
-      - media-network
+EOF
+
+########################################
+# Health Check
+########################################
+
+cat <<EOF >> "$COMPOSE_FILE"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8265"]
       interval: 30s
@@ -65,10 +100,8 @@ cat <<EOF >> "$COMPOSE_FILE"
 EOF
 
 ########################################
-# Register service in dashboard
+# Register Dashboard
 ########################################
-
-source "$INSTALL_DIR/scripts/service-registry.sh"
 
 register_service \
 "Tdarr" \

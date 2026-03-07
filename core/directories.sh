@@ -1,88 +1,79 @@
 #!/usr/bin/env bash
 
 ########################################
-# Directory layout selection
+# Directory Variables
 ########################################
 
-DIR_LAYOUT="default"
+STACK_DIR="/opt/media-stack"
 
-select_directory_layout() {
-
-DIR_LAYOUT=$(whiptail \
---title "Directory Structure" \
---menu "Select media directory layout" \
-15 70 2 \
-"default" "Simple layout (movies / tv / downloads)" \
-"trash" "TRaSH Guides layout" \
-3>&1 1>&2 2>&3)
-
-echo "Selected layout: $DIR_LAYOUT"
-
-}
+MEDIA_PATH=""
+MOVIES_PATH=""
+TV_PATH=""
+DOWNLOADS_PATH=""
+CONFIG_DIR=""
 
 ########################################
-# Configure directory variables
+# Setup directories
 ########################################
 
-configure_media_directories() {
+setup_directories() {
 
-case "$DIR_LAYOUT" in
+echo ""
+echo "Media Stack Directory Setup"
+echo ""
 
-default)
+echo "Select directory layout:"
+echo "1) Default"
+echo "2) TRaSH Guides"
 
+read -rp "Selection: " LAYOUT
+
+echo ""
+read -rp "Enter base storage path (example: /data): " BASE_PATH
+
+########################################
+# Default Layout
+########################################
+
+if [ "$LAYOUT" = "1" ]; then
+
+MEDIA_PATH="$BASE_PATH/media"
 MOVIES_PATH="$MEDIA_PATH/movies"
 TV_PATH="$MEDIA_PATH/tv"
-DOWNLOADS_PATH="$DOWNLOAD_PATH"
 
-;;
+DOWNLOADS_PATH="$BASE_PATH/downloads"
+CONFIG_DIR="$BASE_PATH/config"
 
-trash)
+########################################
+# TRaSH Layout
+########################################
 
-DATA_ROOT="$MEDIA_PATH/data"
+else
 
-MEDIA_ROOT="$DATA_ROOT/media"
-USENET_ROOT="$DATA_ROOT/usenet"
-
-MOVIES_PATH="$MEDIA_ROOT/movies"
-TV_PATH="$MEDIA_ROOT/tv"
-
-DOWNLOADS_PATH="$USENET_ROOT/complete"
-INCOMPLETE_PATH="$USENET_ROOT/incomplete"
-
-;;
-
-*)
-
+MEDIA_PATH="$BASE_PATH/media"
 MOVIES_PATH="$MEDIA_PATH/movies"
 TV_PATH="$MEDIA_PATH/tv"
-DOWNLOADS_PATH="$DOWNLOAD_PATH"
 
-;;
+DOWNLOADS_PATH="$BASE_PATH/downloads"
+CONFIG_DIR="$BASE_PATH/config"
 
-esac
-
-echo "Movies path: $MOVIES_PATH"
-echo "TV path: $TV_PATH"
-echo "Downloads path: $DOWNLOADS_PATH"
-
-}
+fi
 
 ########################################
-# Create directory structure
+# Create directories
 ########################################
-
-create_media_folders() {
-
-echo "Creating media directories..."
 
 mkdir -p "$MOVIES_PATH"
 mkdir -p "$TV_PATH"
 mkdir -p "$DOWNLOADS_PATH"
+mkdir -p "$DOWNLOADS_PATH/incomplete"
+mkdir -p "$CONFIG_DIR"
 
-if [ "$DIR_LAYOUT" = "trash" ]; then
-
-mkdir -p "$INCOMPLETE_PATH"
-
-fi
+echo ""
+echo "Directory structure created:"
+echo "$MEDIA_PATH"
+echo "$DOWNLOADS_PATH"
+echo "$CONFIG_DIR"
+echo ""
 
 }

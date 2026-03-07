@@ -2,37 +2,54 @@
 
 set -e
 
+########################################
+# Directories
+########################################
+
+INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STACK_DIR="/opt/media-stack"
-PLUGIN_DIR="./plugins"
-
-SELECTED_SERVICES=()
 
 ########################################
-# Run preflight checks
+# Preflight
 ########################################
 
-bash ./scripts/preflight.sh
+bash "$INSTALL_DIR/scripts/preflight.sh"
 
 ########################################
 # Load core modules
 ########################################
 
-source ./core/platform.sh
-source ./core/directories.sh
-source ./core/hardware.sh
-source ./core/docker.sh
-source ./core/config-wizard.sh
-
-mkdir -p "$STACK_DIR"
+source "$INSTALL_DIR/core/platform.sh"
+source "$INSTALL_DIR/core/docker.sh"
+source "$INSTALL_DIR/core/hardware.sh"
+source "$INSTALL_DIR/core/directories.sh"
+source "$INSTALL_DIR/core/config-wizard.sh"
 
 ########################################
-# NEW: Ensure helper scripts are executable
+# Detect platform
 ########################################
 
-chmod +x ./scripts/compose.sh 2>/dev/null || true
-chmod +x ./scripts/updates.sh 2>/dev/null || true
-chmod +x ./scripts/backup.sh 2>/dev/null || true
-chmod +x ./scripts/health-monitor.sh 2>/dev/null || true
+detect_platform
+
+########################################
+# Ensure Docker
+########################################
+
+ensure_docker
+
+########################################
+# Hardware detection
+########################################
+
+detect_gpu
+configure_gpu_devices
+install_nvidia_runtime
+
+########################################
+# Directory setup
+########################################
+
+setup_directories
 
 ########################################
 # Configuration wizard
@@ -40,19 +57,32 @@ chmod +x ./scripts/health-monitor.sh 2>/dev/null || true
 
 run_configuration_wizard
 
+########################################
+# Load configuration
+########################################
+
 if [ -f "$STACK_DIR/stack.env" ]; then
 source "$STACK_DIR/stack.env"
 fi
 
 ########################################
-# Platform & hardware detection
+# Validate plugins
 ########################################
 
-detect_platform
-detect_hardware
+bash "$INSTALL_DIR/scripts/plugin-validator.sh"
 
 ########################################
-# Installation mode
+# Initialize registries
+########################################
+
+source "$INSTALL_DIR/scripts/service-registry.sh"
+source "$INSTALL_DIR/scripts/port-registry.sh"
+
+init_registry
+init_port_registry
+
+########################################
+# Install mode
 ########################################
 
 MODE=$(whiptail \
@@ -134,29 +164,21 @@ done
 # Start containers
 ########################################
 
-bash ./scripts/compose.sh up
+bash "$INSTALL_DIR/scripts/compose.sh" up
 
 ########################################
-# Post install automation
+# Post install
 ########################################
 
-if [ -f ./scripts/post-install.sh ]; then
-bash ./scripts/post-install.sh
+if [ -f "$INSTALL_DIR/scripts/post-install.sh" ]; then
+bash "$INSTALL_DIR/scripts/post-install.sh"
 fi
 
 ########################################
-# NEW: Install container health monitor
+# Install CLI
 ########################################
 
-if [ -f ./scripts/health-monitor.sh ]; then
-
-CRON_JOB="*/5 * * * * /opt/media-server-installer/scripts/health-monitor.sh"
-
-(crontab -l 2>/dev/null | grep -v health-monitor.sh; echo "$CRON_JOB") | crontab -
-
-echo "Health monitor installed (runs every 5 minutes)."
-
-fi
+install -m 755 "$INSTALL_DIR/scripts/media-stack" /usr/local/bin/media-stack
 
 ########################################
 # Show dashboard
@@ -168,12 +190,9 @@ echo ""
 echo "================================"
 echo " Installation Complete"
 echo "================================"
-echo ""
 
-echo "Dashboard:"
+echo "Homepage Dashboard:"
+echo "http://$IP:3001"
+
+echo "Grafana Monitoring:"
 echo "http://$IP:3000"
-echo ""
-
-echo "Run:"
-echo "media-stack services"
-echo ""

@@ -1,22 +1,53 @@
+#!/usr/bin/env bash
+
+########################################
+# Plugin Metadata
+########################################
+
 PLUGIN_NAME="nodeexporter"
-PLUGIN_DESCRIPTION="System metrics exporter"
+PLUGIN_DESCRIPTION="Prometheus host metrics exporter"
 PLUGIN_CATEGORY="Monitoring"
-PLUGIN_DEPENDS=()
+PLUGIN_DEPENDS=("prometheus")
+
 PLUGIN_DASHBOARD=false
+PLUGIN_PORTS=(9100)
+PLUGIN_HOST_NETWORK=false
+
+########################################
+# Install Service
+########################################
 
 install_service() {
 
 echo "Installing Node Exporter..."
 
+COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
+
+########################################
+# Load helpers
+########################################
+
+source "$INSTALL_DIR/scripts/port-helper.sh"
+
+########################################
+# Reserve port
+########################################
+
+PORT_MAPPING=$(get_port_mapping "nodeexporter" 9100 9100)
+
 ########################################
 # Add container to docker-compose
 ########################################
 
-cat <<EOF >> /opt/media-stack/docker-compose.yml
+cat <<EOF >> "$COMPOSE_FILE"
 
   nodeexporter:
     image: prom/node-exporter
     container_name: nodeexporter
+    networks:
+      - media-network
+    ports:
+      - "$PORT_MAPPING"
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -25,30 +56,27 @@ cat <<EOF >> /opt/media-stack/docker-compose.yml
       - '--path.procfs=/host/proc'
       - '--path.sysfs=/host/sys'
       - '--path.rootfs=/rootfs'
-    ports:
-      - "9100:9100"
-    restart: unless-stopped
-    networks:
-      - media-network
-
-    healthcheck:
-      test: ["CMD","wget","--spider","http://localhost:9100/metrics"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
 EOF
 
 ########################################
-# Register service
+# Restart policy
 ########################################
 
-#source ./scripts/service-registry.sh
+cat <<EOF >> "$COMPOSE_FILE"
+    restart: unless-stopped
+EOF
 
-#register_service \
-#"NodeExporter" \
-#"http://localhost:9100/metrics" \
-#"Monitoring" \
-#"nodeexporter.png"
+########################################
+# Health Check
+########################################
+
+cat <<EOF >> "$COMPOSE_FILE"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9100/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+EOF
 
 }

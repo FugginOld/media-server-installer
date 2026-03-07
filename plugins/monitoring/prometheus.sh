@@ -1,74 +1,90 @@
+#!/usr/bin/env bash
+
+########################################
+# Plugin Metadata
+########################################
+
 PLUGIN_NAME="prometheus"
-PLUGIN_DESCRIPTION="Metrics monitoring system"
+PLUGIN_DESCRIPTION="Metrics collection system"
 PLUGIN_CATEGORY="Monitoring"
-PLUGIN_DEPENDS=("nodeexporter")
+PLUGIN_DEPENDS=()
+
 PLUGIN_DASHBOARD=false
+PLUGIN_PORTS=(9090)
+PLUGIN_HOST_NETWORK=false
+
+########################################
+# Install Service
+########################################
 
 install_service() {
 
 echo "Installing Prometheus..."
 
+COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
+
+########################################
+# Load helpers
+########################################
+
+source "$INSTALL_DIR/scripts/port-helper.sh"
+
 ########################################
 # Create config directory
 ########################################
 
-mkdir -p /opt/media-stack/config/prometheus
+mkdir -p "$CONFIG_DIR/prometheus"
 
 ########################################
-# Generate Prometheus config
+# Reserve port
 ########################################
 
-cat <<EOF > /opt/media-stack/config/prometheus/prometheus.yml
-global:
-  scrape_interval: 15s
-
-scrape_configs:
-
-  - job_name: 'node'
-    static_configs:
-      - targets: ['nodeexporter:9100']
-
-  - job_name: 'plex'
-    static_configs:
-      - targets: ['plex-exporter:9594']
-
-EOF
+PORT_MAPPING=$(get_port_mapping "prometheus" 9090 9090)
 
 ########################################
-# Add container
+# Add container to docker-compose
 ########################################
 
-cat <<EOF >> /opt/media-stack/docker-compose.yml
+cat <<EOF >> "$COMPOSE_FILE"
 
   prometheus:
     image: prom/prometheus
     container_name: prometheus
-    volumes:
-      - ./config/prometheus:/etc/prometheus
-    ports:
-      - "9090:9090"
-    restart: unless-stopped
     networks:
       - media-network
-
-    healthcheck:
-      test: ["CMD","wget","--spider","http://localhost:9090"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
+    ports:
+      - "$PORT_MAPPING"
+    volumes:
+      - $CONFIG_DIR/prometheus:/etc/prometheus
 EOF
 
 ########################################
-# Register service
+# GPU Support
 ########################################
 
-#source ./scripts/service-registry.sh
+if [ "$GPU_TYPE" != "none" ]; then
+echo "$GPU_DEVICES" >> "$COMPOSE_FILE"
+fi
 
-#register_service \
-#"Prometheus" \
-#"http://localhost:9090" \
-#"Monitoring" \
-#"prometheus.png"
+########################################
+# Restart policy
+########################################
+
+cat <<EOF >> "$COMPOSE_FILE"
+    restart: unless-stopped
+EOF
+
+########################################
+# Health Check
+########################################
+
+cat <<EOF >> "$COMPOSE_FILE"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+EOF
 
 }

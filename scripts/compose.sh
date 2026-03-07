@@ -1,58 +1,139 @@
 #!/usr/bin/env bash
 
 STACK_DIR="/opt/media-stack"
+COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
 
 ########################################
-# NEW: Verify stack directory exists
+# Ensure compose file exists
 ########################################
 
-if [ ! -d "$STACK_DIR" ]; then
-echo "Media stack directory not found:"
-echo "$STACK_DIR"
-echo ""
-echo "The stack may not be installed yet."
-exit 1
+check_compose() {
+
+if [ ! -f "$COMPOSE_FILE" ]; then
+    echo "docker-compose.yml not found."
+    exit 1
 fi
+
+cd "$STACK_DIR" || exit
+
+}
+
+########################################
+# Start stack
+########################################
+
+start_stack() {
+
+check_compose
+
+echo "Starting media stack..."
+
+docker compose up -d
+
+}
+
+########################################
+# Stop stack
+########################################
+
+stop_stack() {
+
+check_compose
+
+echo "Stopping media stack..."
+
+docker compose down
+
+}
+
+########################################
+# Restart stack
+########################################
+
+restart_stack() {
+
+check_compose
+
+echo "Restarting media stack..."
+
+docker compose restart
+
+}
+
+########################################
+# Update containers
+########################################
+
+pull_images() {
+
+check_compose
+
+echo "Updating container images..."
+
+docker compose pull
+
+}
+
+########################################
+# View logs
+########################################
+
+view_logs() {
+
+check_compose
+
+docker compose logs -f
+
+}
+
+########################################
+# Show status
+########################################
+
+show_status() {
+
+check_compose
+
+docker compose ps
+
+}
+
+########################################
+# Command routing
+########################################
 
 case "$1" in
 
 up)
-cd "$STACK_DIR"
-docker compose up -d
+start_stack
 ;;
 
 down)
-cd "$STACK_DIR"
-docker compose down
+stop_stack
 ;;
 
 restart)
-cd "$STACK_DIR"
-docker compose restart
+restart_stack
 ;;
 
 pull)
-cd "$STACK_DIR"
-docker compose pull
+pull_images
 ;;
 
 logs)
-cd "$STACK_DIR"
-docker compose logs -f
+view_logs
 ;;
 
-########################################
-# NEW: Show container status
-########################################
-
 status)
-cd "$STACK_DIR"
-docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+show_status
 ;;
 
 *)
 
+echo ""
 echo "Usage: compose.sh [up|down|restart|pull|logs|status]"
+echo ""
+
 ;;
 
 esac

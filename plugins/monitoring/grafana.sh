@@ -1,70 +1,102 @@
+#!/usr/bin/env bash
+
+########################################
+# Plugin Metadata
+########################################
+
 PLUGIN_NAME="grafana"
-PLUGIN_DESCRIPTION="Metrics dashboard"
+PLUGIN_DESCRIPTION="Metrics dashboard and visualization"
 PLUGIN_CATEGORY="Monitoring"
 PLUGIN_DEPENDS=("prometheus")
+
 PLUGIN_DASHBOARD=true
+PLUGIN_PORTS=(3000)
+PLUGIN_HOST_NETWORK=false
+
+########################################
+# Install Service
+########################################
 
 install_service() {
 
 echo "Installing Grafana..."
 
-########################################
-# Create config directories
-########################################
-
-mkdir -p /opt/media-stack/config/grafana
-mkdir -p /opt/media-stack/config/grafana/provisioning/datasources
-mkdir -p /opt/media-stack/config/grafana/dashboards
+COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
 
 ########################################
-# Configure Prometheus datasource
+# Load helpers
 ########################################
 
-cat <<EOF > /opt/media-stack/config/grafana/provisioning/datasources/prometheus.yml
-apiVersion: 1
-
-datasources:
-  - name: Prometheus
-    type: prometheus
-    access: proxy
-    url: http://prometheus:9090
-    isDefault: true
-EOF
+source "$INSTALL_DIR/scripts/service-registry.sh"
+source "$INSTALL_DIR/scripts/port-helper.sh"
 
 ########################################
-# Add container
+# Create config directory
 ########################################
 
-cat <<EOF >> /opt/media-stack/docker-compose.yml
+mkdir -p "$CONFIG_DIR/grafana"
+
+########################################
+# Reserve port
+########################################
+
+PORT_MAPPING=$(get_port_mapping "grafana" 3000 3000)
+
+########################################
+# Add container to docker-compose
+########################################
+
+cat <<EOF >> "$COMPOSE_FILE"
 
   grafana:
     image: grafana/grafana
     container_name: grafana
-    ports:
-      - "3001:3000"
-    volumes:
-      - ./config/grafana:/var/lib/grafana
-    restart: unless-stopped
     networks:
       - media-network
+    ports:
+      - "$PORT_MAPPING"
+    environment:
+      - TZ=\${TIMEZONE}
+    volumes:
+      - $CONFIG_DIR/grafana:/var/lib/grafana
+EOF
 
+########################################
+# GPU Support
+########################################
+
+if [ "$GPU_TYPE" != "none" ]; then
+echo "$GPU_DEVICES" >> "$COMPOSE_FILE"
+fi
+
+########################################
+# Restart policy
+########################################
+
+cat <<EOF >> "$COMPOSE_FILE"
+    restart: unless-stopped
+EOF
+
+########################################
+# Health Check
+########################################
+
+cat <<EOF >> "$COMPOSE_FILE"
     healthcheck:
-      test: ["CMD","wget","--spider","http://localhost:3000"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
       interval: 30s
       timeout: 10s
-      retries: 5
+      retries: 3
 
 EOF
 
 ########################################
-# Register service
+# Register dashboard
 ########################################
-
-source ./scripts/service-registry.sh
 
 register_service \
 "Grafana" \
-"http://localhost:3001" \
+"http://localhost:3000" \
 "Monitoring" \
 "grafana.png"
 

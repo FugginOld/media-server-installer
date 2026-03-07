@@ -1,80 +1,74 @@
 #!/usr/bin/env bash
 
-CONFIG_FILE="/opt/media-stack/stack.env"
+########################################
+# Config File
+########################################
 
-TIMEZONE="UTC"
-PUID="1000"
-PGID="1000"
-PLEX_CLAIM=""
-SAB_API_KEY=""
+STACK_DIR="/opt/media-stack"
+CONFIG_FILE="$STACK_DIR/stack.env"
 
-configure_timezone() {
-
-TIMEZONE=$(whiptail \
---title "Timezone" \
---inputbox "Enter timezone (example America/New_York)" \
-10 60 "$TIMEZONE" \
-3>&1 1>&2 2>&3)
-
-}
-
-configure_user_ids() {
-
-PUID=$(whiptail \
---title "User ID" \
---inputbox "Enter PUID" \
-10 60 "$PUID" \
-3>&1 1>&2 2>&3)
-
-PGID=$(whiptail \
---title "Group ID" \
---inputbox "Enter PGID" \
-10 60 "$PGID" \
-3>&1 1>&2 2>&3)
-
-}
-
-configure_plex() {
-
-PLEX_CLAIM=$(whiptail \
---title "Plex Claim Token" \
---inputbox "Enter Plex claim token (optional)" \
-10 60 "" \
-3>&1 1>&2 2>&3)
-
-}
-
-configure_sab() {
-
-SAB_API_KEY=$(whiptail \
---title "SABnzbd API Key" \
---inputbox "Enter SAB API key (optional)" \
-10 60 "" \
-3>&1 1>&2 2>&3)
-
-}
-
-save_config() {
-
-mkdir -p /opt/media-stack
-
-cat <<EOF > $CONFIG_FILE
-TIMEZONE=$TIMEZONE
-PUID=$PUID
-PGID=$PGID
-PLEX_CLAIM=$PLEX_CLAIM
-SAB_API_KEY=$SAB_API_KEY
-EOF
-
-}
+########################################
+# Run Wizard
+########################################
 
 run_configuration_wizard() {
 
-configure_timezone
-configure_user_ids
-configure_plex
-configure_sab
+echo ""
+echo "Media Stack Configuration"
+echo ""
 
-save_config
+mkdir -p "$STACK_DIR"
+
+########################################
+# Timezone
+########################################
+
+DEFAULT_TZ=$(timedatectl show --property=Timezone --value 2>/dev/null || echo "UTC")
+
+read -rp "Timezone [$DEFAULT_TZ]: " TIMEZONE
+TIMEZONE=${TIMEZONE:-$DEFAULT_TZ}
+
+########################################
+# User ID
+########################################
+
+DEFAULT_UID=$(id -u)
+
+read -rp "PUID [$DEFAULT_UID]: " PUID
+PUID=${PUID:-$DEFAULT_UID}
+
+########################################
+# Group ID
+########################################
+
+DEFAULT_GID=$(id -g)
+
+read -rp "PGID [$DEFAULT_GID]: " PGID
+PGID=${PGID:-$DEFAULT_GID}
+
+########################################
+# Docker Network
+########################################
+
+DEFAULT_NET="media-network"
+
+read -rp "Docker network [$DEFAULT_NET]: " DOCKER_NETWORK
+DOCKER_NETWORK=${DOCKER_NETWORK:-$DEFAULT_NET}
+
+########################################
+# Save Configuration
+########################################
+
+cat <<EOF > "$CONFIG_FILE"
+TIMEZONE=$TIMEZONE
+PUID=$PUID
+PGID=$PGID
+DOCKER_NETWORK=$DOCKER_NETWORK
+EOF
+
+echo ""
+echo "Configuration saved:"
+echo "$CONFIG_FILE"
+echo ""
 
 }

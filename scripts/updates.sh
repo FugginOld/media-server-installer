@@ -1,55 +1,80 @@
 #!/usr/bin/env bash
 
 INSTALL_DIR="/opt/media-server-installer"
+STACK_DIR="/opt/media-stack"
+
+echo ""
+echo "================================"
+echo " Updating Media Stack"
+echo "================================"
+echo ""
 
 ########################################
-# NEW: Verify installer directory exists
+# Ensure installer directory
 ########################################
 
 if [ ! -d "$INSTALL_DIR" ]; then
-echo "Media Stack installer directory not found:"
-echo "$INSTALL_DIR"
-echo ""
-echo "The stack may not be installed yet."
-exit 1
+    echo "Installer directory not found."
+    exit 1
 fi
-
-echo ""
-echo "Updating Media Stack"
-echo ""
 
 cd "$INSTALL_DIR" || exit
 
 ########################################
-# NEW: Verify git is available
+# Update installer
 ########################################
-
-if ! command -v git >/dev/null 2>&1; then
-echo "Git not found. Cannot update installer."
-exit 1
-fi
 
 echo "Pulling latest installer..."
+
 git pull
 
-echo "Validating plugins..."
-bash scripts/plugin-validator.sh
-
-########################################
-# NEW: Verify compose helper exists
-########################################
-
-if [ ! -f scripts/compose.sh ]; then
-echo "compose.sh helper not found."
-echo "Update aborted."
-exit 1
+if [ $? -ne 0 ]; then
+    echo "Git update failed."
+    exit 1
 fi
 
-echo "Updating containers..."
+########################################
+# Validate plugins
+########################################
+
+echo ""
+echo "Validating plugins..."
+
+bash scripts/plugin-validator.sh
+
+if [ $? -ne 0 ]; then
+    echo "Plugin validation failed."
+    exit 1
+fi
+
+########################################
+# Update containers
+########################################
+
+echo ""
+echo "Pulling container updates..."
+
 bash scripts/compose.sh pull
 
+########################################
+# Restart stack
+########################################
+
+echo ""
 echo "Restarting containers..."
-bash scripts/compose.sh up
+
+bash scripts/compose.sh restart
+
+########################################
+# Show status
+########################################
+
+echo ""
+echo "Current container status:"
+echo ""
+
+bash scripts/compose.sh status
 
 echo ""
 echo "Update complete."
+echo ""

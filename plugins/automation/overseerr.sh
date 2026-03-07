@@ -5,10 +5,13 @@
 ########################################
 
 PLUGIN_NAME="overseerr"
-PLUGIN_DESCRIPTION="Request management for Plex"
-PLUGIN_CATEGORY="automation"
+PLUGIN_DESCRIPTION="Media request management for Plex"
+PLUGIN_CATEGORY="Automation"
 PLUGIN_DEPENDS=("plex")
+
 PLUGIN_DASHBOARD=true
+PLUGIN_PORTS=(5055)
+PLUGIN_HOST_NETWORK=false
 
 ########################################
 # Install Service
@@ -16,37 +19,71 @@ PLUGIN_DASHBOARD=true
 
 install_service() {
 
-STACK_DIR="/opt/media-stack"
-COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
-
 echo "Installing Overseerr..."
 
-########################################
-# Ensure config directory exists
-########################################
-
-mkdir -p "$STACK_DIR/config/overseerr"
+COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
 
 ########################################
-# Add container to compose
+# Load helpers
+########################################
+
+source "$INSTALL_DIR/scripts/service-registry.sh"
+source "$INSTALL_DIR/scripts/port-helper.sh"
+
+########################################
+# Create config directory
+########################################
+
+mkdir -p "$CONFIG_DIR/overseerr"
+
+########################################
+# Reserve port
+########################################
+
+PORT_MAPPING=$(get_port_mapping "overseerr" 5055 5055)
+
+########################################
+# Add container to docker-compose
 ########################################
 
 cat <<EOF >> "$COMPOSE_FILE"
 
   overseerr:
-    image: lscr.io/linuxserver/overseerr:latest
+    image: lscr.io/linuxserver/overseerr
     container_name: overseerr
+    networks:
+      - media-network
+    ports:
+      - "$PORT_MAPPING"
     environment:
       - PUID=\${PUID}
       - PGID=\${PGID}
       - TZ=\${TIMEZONE}
     volumes:
-      - $STACK_DIR/config/overseerr:/config
-    ports:
-      - "5055:5055"
+      - $CONFIG_DIR/overseerr:/config
+EOF
+
+########################################
+# GPU Support
+########################################
+
+if [ "$GPU_TYPE" != "none" ]; then
+echo "$GPU_DEVICES" >> "$COMPOSE_FILE"
+fi
+
+########################################
+# Restart policy
+########################################
+
+cat <<EOF >> "$COMPOSE_FILE"
     restart: unless-stopped
-    networks:
-      - media-network
+EOF
+
+########################################
+# Health Check
+########################################
+
+cat <<EOF >> "$COMPOSE_FILE"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5055"]
       interval: 30s
@@ -56,10 +93,8 @@ cat <<EOF >> "$COMPOSE_FILE"
 EOF
 
 ########################################
-# Register service in dashboard
+# Register dashboard
 ########################################
-
-source "$INSTALL_DIR/scripts/service-registry.sh"
 
 register_service \
 "Overseerr" \

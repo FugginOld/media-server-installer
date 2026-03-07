@@ -2,59 +2,90 @@
 
 echo ""
 echo "================================"
-echo " Running Preflight Checks"
+echo " Media Stack Preflight Checks"
 echo "================================"
 echo ""
 
 ########################################
-# OS Check
+# Root check
 ########################################
 
-if ! grep -Ei "debian|ubuntu|devuan" /etc/os-release > /dev/null; then
-echo "Unsupported OS detected."
-echo "Supported systems:"
-echo "Debian / Ubuntu / Devuan"
-exit 1
+if [ "$EUID" -ne 0 ]; then
+    echo "Installer must be run as root."
+    exit 1
 fi
 
-echo "OS check passed."
+echo "Running as root: OK"
 
 ########################################
-# Internet Check
+# OS check
 ########################################
 
-if ! ping -c1 github.com >/dev/null 2>&1; then
-echo "Internet connectivity failed."
-echo "Please verify network connection."
-exit 1
-fi
-
-echo "Internet connectivity OK."
-
-########################################
-# Disk Space Check
-########################################
-
-FREE=$(df / | awk 'NR==2 {print $4}')
-
-if [ "$FREE" -lt 2000000 ]; then
-echo "Less than 2GB free disk space."
-echo "Installation aborted."
-exit 1
-fi
-
-echo "Disk space OK."
-
-########################################
-# Docker Check
-########################################
-
-if ! command -v docker >/dev/null 2>&1; then
-echo "Docker not detected."
-echo "Docker will be installed by the bootstrap installer."
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
 else
-echo "Docker detected."
+    echo "Cannot detect operating system."
+    exit 1
 fi
+
+case "$ID" in
+debian|devuan|ubuntu)
+    echo "Supported OS detected: $ID"
+    ;;
+*)
+    echo "Unsupported OS: $ID"
+    exit 1
+    ;;
+esac
+
+########################################
+# Internet connectivity
+########################################
+
+echo "Checking internet connectivity..."
+
+if ping -c 1 github.com >/dev/null 2>&1; then
+    echo "Internet connectivity: OK"
+else
+    echo "No internet connection detected."
+    exit 1
+fi
+
+########################################
+# Required tools
+########################################
+
+REQUIRED_CMDS=(curl git jq)
+
+for CMD in "${REQUIRED_CMDS[@]}"
+do
+    if command -v "$CMD" >/dev/null 2>&1; then
+        echo "$CMD installed"
+    else
+        echo "$CMD missing — installing..."
+
+        if command -v apt >/dev/null 2>&1; then
+            apt update
+            apt install -y "$CMD"
+        else
+            echo "Cannot install $CMD automatically."
+            exit 1
+        fi
+    fi
+done
+
+########################################
+# Disk space check
+########################################
+
+FREE_SPACE=$(df / | awk 'NR==2 {print $4}')
+
+if [ "$FREE_SPACE" -lt 1048576 ]; then
+    echo "Less than 1GB free disk space."
+    exit 1
+fi
+
+echo "Disk space check: OK"
 
 echo ""
 echo "Preflight checks passed."

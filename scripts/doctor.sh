@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
-STACK_DIR="/opt/media-stack"
 INSTALL_DIR="/opt/media-server-installer"
+STACK_DIR="/opt/media-stack"
+COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
 
 echo ""
 echo "================================"
@@ -10,97 +11,91 @@ echo "================================"
 echo ""
 
 ########################################
-# Check installer directory
+# Installer directory
 ########################################
 
-if [ ! -d "$INSTALL_DIR" ]; then
-echo "Installer directory missing:"
-echo "$INSTALL_DIR"
-exit 1
-fi
-
-echo "Installer directory OK."
-
-########################################
-# Check stack directory
-########################################
-
-if [ ! -d "$STACK_DIR" ]; then
-echo "Stack directory missing:"
-echo "$STACK_DIR"
-exit 1
-fi
-
-echo "Stack directory OK."
-
-########################################
-# Check Docker
-########################################
-
-if ! command -v docker >/dev/null 2>&1; then
-echo "Docker not installed."
-exit 1
-fi
-
-echo "Docker installed."
-
-########################################
-# Check Docker daemon
-########################################
-
-if ! docker info >/dev/null 2>&1; then
-echo "Docker daemon not running."
-exit 1
-fi
-
-echo "Docker daemon running."
-
-########################################
-# Check docker compose file
-########################################
-
-if [ ! -f "$STACK_DIR/docker-compose.yml" ]; then
-echo "docker-compose.yml missing."
-exit 1
-fi
-
-echo "docker-compose.yml found."
-
-########################################
-# Check containers
-########################################
-
-echo ""
-echo "Container status:"
-echo ""
-
-docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-
-########################################
-# Check service registry
-########################################
-
-REGISTRY="$STACK_DIR/services.json"
-
-if [ -f "$REGISTRY" ]; then
-echo ""
-echo "Registered services:"
-echo ""
-jq -r '.services[] | "\(.name) -> \(.url)"' "$REGISTRY"
+if [ -d "$INSTALL_DIR" ]; then
+    echo "Installer directory OK."
 else
-echo "Service registry not found."
+    echo "Installer directory missing."
 fi
 
 ########################################
-# Check plugin integrity
+# Stack directory
 ########################################
 
-echo ""
-echo "Validating plugins..."
-echo ""
+if [ -d "$STACK_DIR" ]; then
+    echo "Stack directory OK."
+else
+    echo "Stack directory missing."
+fi
 
-bash "$INSTALL_DIR/scripts/plugin-validator.sh"
+########################################
+# Docker check
+########################################
+
+if command -v docker >/dev/null 2>&1; then
+    echo "Docker installed."
+else
+    echo "Docker not installed."
+fi
+
+########################################
+# Docker daemon
+########################################
+
+if docker info >/dev/null 2>&1; then
+    echo "Docker daemon running."
+else
+    echo "Docker daemon not running."
+fi
+
+########################################
+# Compose file
+########################################
+
+if [ -f "$COMPOSE_FILE" ]; then
+    echo "docker-compose.yml found."
+else
+    echo "docker-compose.yml missing."
+fi
+
+########################################
+# Containers running
+########################################
+
+if docker compose -f "$COMPOSE_FILE" ps >/dev/null 2>&1; then
+
+RUNNING=$(docker compose -f "$COMPOSE_FILE" ps -q | wc -l)
+
+echo "Containers detected: $RUNNING"
+
+else
+
+echo "Cannot read container status."
+
+fi
+
+########################################
+# Service registry
+########################################
+
+if [ -f "$STACK_DIR/services.json" ]; then
+    echo "Service registry OK."
+else
+    echo "services.json missing."
+fi
+
+########################################
+# Port registry
+########################################
+
+if [ -f "$STACK_DIR/ports.json" ]; then
+    echo "Port registry OK."
+else
+    echo "ports.json missing."
+fi
 
 echo ""
-echo "Diagnostics complete."
+echo "Doctor check complete."
 echo ""

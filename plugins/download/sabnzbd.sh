@@ -1,73 +1,102 @@
+#!/usr/bin/env bash
+
+########################################
+# Plugin Metadata
+########################################
+
 PLUGIN_NAME="sabnzbd"
 PLUGIN_DESCRIPTION="Usenet downloader"
 PLUGIN_CATEGORY="Download"
 PLUGIN_DEPENDS=()
+
 PLUGIN_DASHBOARD=true
+PLUGIN_PORTS=(8080)
+PLUGIN_HOST_NETWORK=false
+
+########################################
+# Install Service
+########################################
 
 install_service() {
 
 echo "Installing SABnzbd..."
 
+COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
+
+########################################
+# Load helpers
+########################################
+
+source "$INSTALL_DIR/scripts/service-registry.sh"
+source "$INSTALL_DIR/scripts/port-helper.sh"
+
 ########################################
 # Create config directory
 ########################################
 
-mkdir -p /opt/media-stack/config/sabnzbd
+mkdir -p "$CONFIG_DIR/sabnzbd"
+
+########################################
+# Reserve port
+########################################
+
+PORT_MAPPING=$(get_port_mapping "sabnzbd" 8080 8080)
 
 ########################################
 # Add container to docker-compose
 ########################################
 
-cat <<EOF >> /opt/media-stack/docker-compose.yml
+cat <<EOF >> "$COMPOSE_FILE"
 
   sabnzbd:
     image: lscr.io/linuxserver/sabnzbd
     container_name: sabnzbd
+    networks:
+      - media-network
+    ports:
+      - "$PORT_MAPPING"
     environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=UTC
+      - PUID=\${PUID}
+      - PGID=\${PGID}
+      - TZ=\${TIMEZONE}
     volumes:
-      - ./config/sabnzbd:/config
+      - $CONFIG_DIR/sabnzbd:/config
       - $DOWNLOADS_PATH:/downloads
+      - $DOWNLOADS_PATH/incomplete:/incomplete
 EOF
 
 ########################################
-# TRaSH layout support
+# GPU Support
 ########################################
 
-if [ "$DIR_LAYOUT" = "trash" ]; then
-
-cat <<EOF >> /opt/media-stack/docker-compose.yml
-      - $INCOMPLETE_PATH:/incomplete
-EOF
-
+if [ "$GPU_TYPE" != "none" ]; then
+echo "$GPU_DEVICES" >> "$COMPOSE_FILE"
 fi
 
 ########################################
-# Continue container config
+# Restart policy
 ########################################
 
-cat <<EOF >> /opt/media-stack/docker-compose.yml
-    ports:
-      - "8080:8080"
+cat <<EOF >> "$COMPOSE_FILE"
     restart: unless-stopped
-    networks:
-      - media-network
+EOF
 
+########################################
+# Health Check
+########################################
+
+cat <<EOF >> "$COMPOSE_FILE"
     healthcheck:
-      test: ["CMD","curl","-f","http://localhost:8080"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
       interval: 30s
       timeout: 10s
-      retries: 5
+      retries: 3
 
 EOF
 
 ########################################
-# Register service
+# Register dashboard
 ########################################
-
-source ./scripts/service-registry.sh
 
 register_service \
 "SABnzbd" \

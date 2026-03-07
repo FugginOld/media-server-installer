@@ -5,10 +5,13 @@
 ########################################
 
 PLUGIN_NAME="glances"
-PLUGIN_DESCRIPTION="System monitoring dashboard"
-PLUGIN_CATEGORY="monitoring"
+PLUGIN_DESCRIPTION="Real-time system monitoring dashboard"
+PLUGIN_CATEGORY="Monitoring"
 PLUGIN_DEPENDS=()
+
 PLUGIN_DASHBOARD=true
+PLUGIN_PORTS=(61208)
+PLUGIN_HOST_NETWORK=false
 
 ########################################
 # Install Service
@@ -16,19 +19,25 @@ PLUGIN_DASHBOARD=true
 
 install_service() {
 
-STACK_DIR="/opt/media-stack"
-COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
-
 echo "Installing Glances..."
 
-########################################
-# Ensure config directory exists
-########################################
-
-mkdir -p "$STACK_DIR/config/glances"
+COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
 
 ########################################
-# Add container to compose
+# Load helpers
+########################################
+
+source "$INSTALL_DIR/scripts/service-registry.sh"
+source "$INSTALL_DIR/scripts/port-helper.sh"
+
+########################################
+# Reserve port
+########################################
+
+PORT_MAPPING=$(get_port_mapping "glances" 61208 61208)
+
+########################################
+# Add container to docker-compose
 ########################################
 
 cat <<EOF >> "$COMPOSE_FILE"
@@ -36,19 +45,32 @@ cat <<EOF >> "$COMPOSE_FILE"
   glances:
     image: nicolargo/glances:latest-full
     container_name: glances
+    networks:
+      - media-network
+    ports:
+      - "$PORT_MAPPING"
     environment:
       - TZ=\${TIMEZONE}
       - GLANCES_OPT=-w
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - $STACK_DIR/config/glances:/config
-    ports:
-      - "61208:61208"
+EOF
+
+########################################
+# Restart policy
+########################################
+
+cat <<EOF >> "$COMPOSE_FILE"
     restart: unless-stopped
-    networks:
-      - media-network
+EOF
+
+########################################
+# Health Check
+########################################
+
+cat <<EOF >> "$COMPOSE_FILE"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:61208"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:61208"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -56,10 +78,8 @@ cat <<EOF >> "$COMPOSE_FILE"
 EOF
 
 ########################################
-# Register service in dashboard
+# Register dashboard
 ########################################
-
-source "$INSTALL_DIR/scripts/service-registry.sh"
 
 register_service \
 "Glances" \

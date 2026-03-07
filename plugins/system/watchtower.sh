@@ -1,47 +1,53 @@
+#!/usr/bin/env bash
+
+########################################
+# Plugin Metadata
+########################################
+
 PLUGIN_NAME="watchtower"
-PLUGIN_DESCRIPTION="Automatic container updates"
+PLUGIN_DESCRIPTION="Automatic Docker container updates"
 PLUGIN_CATEGORY="System"
 PLUGIN_DEPENDS=()
+
 PLUGIN_DASHBOARD=false
+PLUGIN_PORTS=()
+PLUGIN_HOST_NETWORK=false
+
+########################################
+# Install Service
+########################################
 
 install_service() {
 
 echo "Installing Watchtower..."
 
+COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
+
 ########################################
 # Add container to docker-compose
 ########################################
 
-cat <<EOF >> /opt/media-stack/docker-compose.yml
+cat <<EOF >> "$COMPOSE_FILE"
 
   watchtower:
     image: containrrr/watchtower
     container_name: watchtower
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    command: --cleanup --schedule "0 0 4 * * *"
-    restart: unless-stopped
     networks:
       - media-network
-
-    healthcheck:
-      test: ["CMD","pgrep","watchtower"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-
+    environment:
+      - TZ=\${TIMEZONE}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --cleanup --interval 86400
 EOF
 
 ########################################
-# Register service
+# Restart policy
 ########################################
 
-#source ./scripts/service-registry.sh
+cat <<EOF >> "$COMPOSE_FILE"
+    restart: unless-stopped
 
-#register_service \
-#"Watchtower" \
-#"http://localhost" \
-#"System" \
-#"watchtower.png"
+EOF
 
 }

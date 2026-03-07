@@ -2,63 +2,87 @@
 
 STACK_DIR="/opt/media-stack"
 INSTALL_DIR="/opt/media-server-installer"
-CLI="/usr/local/bin/media-stack"
 
 ########################################
-# NEW: Validate installer exists
+# Ensure installer exists
 ########################################
+
+check_installer() {
 
 if [ ! -d "$INSTALL_DIR" ]; then
-echo "Media Stack installer not found at:"
-echo "$INSTALL_DIR"
-echo ""
-echo "Please reinstall the stack."
-exit 1
+    echo "Media Stack installer not found."
+    exit 1
 fi
+
+}
+
+########################################
+# Help menu
+########################################
 
 show_help() {
 
 echo ""
-echo "Media Stack CLI"
+echo "================================"
+echo " Media Stack CLI"
+echo "================================"
 echo ""
+
 echo "Commands:"
 echo ""
-echo "media-stack install"
-echo "media-stack update"
-echo "media-stack status"
-echo "media-stack services"
-echo "media-stack restart"
-echo "media-stack logs"
-echo "media-stack maintenance"
-echo "media-stack backup"
-echo "media-stack reset"
-echo "media-stack doctor"
+
+echo "media-stack install      Install stack"
+echo "media-stack update       Update containers"
+echo "media-stack status       Show container status"
+echo "media-stack services     List services"
+echo "media-stack restart      Restart stack"
+echo "media-stack logs         View logs"
+echo "media-stack backup       Backup configuration"
+echo "media-stack doctor       Diagnose stack"
+echo "media-stack maintenance  Clean Docker"
+echo "media-stack reset        Remove stack"
+
 echo ""
 
 }
 
+########################################
+# Install stack
+########################################
+
 install_stack() {
 
+check_installer
 cd "$INSTALL_DIR" || exit
 bash installer.sh
 
 }
 
+########################################
+# Update stack
+########################################
+
 update_stack() {
 
+check_installer
 bash "$INSTALL_DIR/scripts/updates.sh"
 
 }
 
+########################################
+# Status
+########################################
+
 status_stack() {
 
-########################################
-# Uses compose helper for status
-########################################
-
+check_installer
 bash "$INSTALL_DIR/scripts/compose.sh" status
 
 }
+
+########################################
+# Services
+########################################
 
 services_stack() {
 
@@ -75,44 +99,70 @@ fi
 
 }
 
+########################################
+# Restart stack
+########################################
+
 restart_stack() {
 
+check_installer
 bash "$INSTALL_DIR/scripts/compose.sh" restart
 
 }
 
+########################################
+# Logs
+########################################
+
 logs_stack() {
 
+check_installer
 bash "$INSTALL_DIR/scripts/compose.sh" logs
 
 }
 
+########################################
+# Backup
+########################################
+
 backup_stack() {
 
+check_installer
 bash "$INSTALL_DIR/scripts/backup.sh"
 
 }
 
-maintenance_stack() {
+########################################
+# Diagnostics
+########################################
+
+doctor_stack() {
+
+check_installer
+bash "$INSTALL_DIR/scripts/doctor.sh"
+
+}
 
 ########################################
-# Existing cleanup tasks
+# Maintenance
 ########################################
+
+maintenance_stack() {
+
+echo "Cleaning unused Docker resources..."
 
 docker image prune -f
 docker container prune -f
 
-########################################
-# Pull updated images if compose exists
-########################################
-
-if [ -f "$INSTALL_DIR/scripts/compose.sh" ]; then
-bash "$INSTALL_DIR/scripts/compose.sh" pull
-fi
-
 }
 
+########################################
+# Reset stack
+########################################
+
 reset_stack() {
+
+check_installer
 
 echo "Resetting Media Stack..."
 
@@ -121,14 +171,8 @@ bash "$INSTALL_DIR/reset-stack.sh"
 }
 
 ########################################
-# NEW: Diagnostic command
+# Command router
 ########################################
-
-doctor_stack() {
-
-bash "$INSTALL_DIR/scripts/doctor.sh"
-
-}
 
 case "$1" in
 
@@ -156,20 +200,20 @@ logs)
 logs_stack
 ;;
 
-maintenance)
-maintenance_stack
-;;
-
 backup)
 backup_stack
 ;;
 
-reset)
-reset_stack
-;;
-
 doctor)
 doctor_stack
+;;
+
+maintenance)
+maintenance_stack
+;;
+
+reset)
+reset_stack
 ;;
 
 *)

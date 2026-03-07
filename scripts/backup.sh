@@ -2,48 +2,57 @@
 
 STACK_DIR="/opt/media-stack"
 BACKUP_DIR="/opt/media-stack-backups"
-DATE=$(date +%Y%m%d-%H%M)
+
+DATE=$(date +%Y%m%d-%H%M%S)
+
+BACKUP_FILE="$BACKUP_DIR/media-stack-backup-$DATE.tar.gz"
+
+echo ""
+echo "================================"
+echo " Media Stack Backup"
+echo "================================"
+echo ""
 
 ########################################
-# NEW: Verify stack directory exists
+# Ensure stack exists
 ########################################
 
 if [ ! -d "$STACK_DIR" ]; then
-echo "Media stack directory not found:"
-echo "$STACK_DIR"
-echo ""
-echo "Nothing to back up."
-exit 1
+    echo "Stack directory not found."
+    exit 1
 fi
 
 ########################################
-# NEW: Verify tar is available
+# Create backup directory
 ########################################
-
-if ! command -v tar >/dev/null 2>&1; then
-echo "tar utility not found."
-echo "Backup cannot proceed."
-exit 1
-fi
 
 mkdir -p "$BACKUP_DIR"
 
-echo ""
-echo "Creating Media Stack Backup"
-echo ""
-
-BACKUP_FILE="$BACKUP_DIR/media-stack-$DATE.tar.gz"
-
-tar -czf "$BACKUP_FILE" "$STACK_DIR"
-
 ########################################
-# NEW: Show backup file size
+# Create archive
 ########################################
 
-SIZE=$(du -h "$BACKUP_FILE" | awk '{print $1}')
+echo "Creating backup..."
 
-echo ""
-echo "Backup saved:"
-echo "$BACKUP_FILE"
-echo "Backup size: $SIZE"
+tar -czf "$BACKUP_FILE" \
+"$STACK_DIR/docker-compose.yml" \
+"$STACK_DIR/config" \
+"$STACK_DIR/services.json" \
+"$STACK_DIR/ports.json" \
+"$STACK_DIR/stack.env" 2>/dev/null
+
+########################################
+# Verify backup
+########################################
+
+if [ -f "$BACKUP_FILE" ]; then
+    echo ""
+    echo "Backup successful."
+    echo "Backup file:"
+    echo "$BACKUP_FILE"
+else
+    echo "Backup failed."
+    exit 1
+fi
+
 echo ""

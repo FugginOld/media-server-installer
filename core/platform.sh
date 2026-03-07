@@ -1,98 +1,160 @@
 #!/usr/bin/env bash
 
 ########################################
-# Platform detection
+# Platform Variables
 ########################################
 
-HOST_PLATFORM="baremetal"
+PLATFORM_OS="unknown"
+PLATFORM_FAMILY="unknown"
+PLATFORM_ENV="unknown"
+
+PACKAGE_MANAGER="unknown"
+SERVICE_MANAGER="unknown"
+
+########################################
+# Detect OS
+########################################
 
 detect_platform() {
 
-echo "Detecting host platform..."
+echo "Detecting platform..."
 
-if [ -f /etc/unraid-version ]; then
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+fi
 
-    HOST_PLATFORM="unraid"
+########################################
+# Debian
+########################################
 
-elif grep -qi truenas /etc/os-release 2>/dev/null; then
+if echo "$ID" | grep -qi debian; then
 
-    HOST_PLATFORM="truenas"
+    PLATFORM_OS="debian"
+    PLATFORM_FAMILY="debian"
+    PACKAGE_MANAGER="apt"
+    SERVICE_MANAGER="systemd"
 
-elif grep -qi openmediavault /etc/os-release 2>/dev/null; then
+########################################
+# Devuan
+########################################
 
-    HOST_PLATFORM="openmediavault"
+elif echo "$ID" | grep -qi devuan; then
 
-elif grep -qi proxmox /etc/os-release 2>/dev/null; then
+    PLATFORM_OS="devuan"
+    PLATFORM_FAMILY="debian"
+    PACKAGE_MANAGER="apt"
+    SERVICE_MANAGER="sysvinit"
 
-    HOST_PLATFORM="proxmox"
+########################################
+# Ubuntu
+########################################
 
-elif grep -qi synology /etc/os-release 2>/dev/null; then
+elif echo "$ID" | grep -qi ubuntu; then
 
-    HOST_PLATFORM="synology"
+    PLATFORM_OS="ubuntu"
+    PLATFORM_FAMILY="debian"
+    PACKAGE_MANAGER="apt"
+    SERVICE_MANAGER="systemd"
+
+########################################
+# Unraid
+########################################
+
+elif [ -f /etc/unraid-version ]; then
+
+    PLATFORM_OS="unraid"
+    PLATFORM_FAMILY="slackware"
+    PLATFORM_ENV="nas"
+    PACKAGE_MANAGER="none"
+    SERVICE_MANAGER="none"
+
+########################################
+# TrueNAS
+########################################
+
+elif echo "$NAME" | grep -qi truenas; then
+
+    PLATFORM_OS="truenas"
+    PLATFORM_FAMILY="freebsd"
+    PLATFORM_ENV="nas"
+    PACKAGE_MANAGER="none"
+    SERVICE_MANAGER="none"
+
+########################################
+# Generic Linux
+########################################
 
 else
 
-    HOST_PLATFORM="baremetal"
+    PLATFORM_OS="$ID"
+    PLATFORM_FAMILY="linux"
+    PACKAGE_MANAGER="unknown"
+    SERVICE_MANAGER="unknown"
 
 fi
 
-echo "Detected platform: $HOST_PLATFORM"
+########################################
+# Detect Environment
+########################################
+
+detect_environment
+
+########################################
+# Print Results
+########################################
+
+echo "OS: $PLATFORM_OS"
+echo "Family: $PLATFORM_FAMILY"
+echo "Environment: $PLATFORM_ENV"
+echo "Package Manager: $PACKAGE_MANAGER"
+echo "Service Manager: $SERVICE_MANAGER"
 
 }
 
 ########################################
-# Storage path configuration
+# Detect Runtime Environment
 ########################################
 
-configure_storage_paths() {
+detect_environment() {
 
-case "$HOST_PLATFORM" in
+########################################
+# Docker container
+########################################
 
-baremetal)
+if grep -qa docker /proc/1/cgroup; then
 
-    MEDIA_PATH="/mnt/media"
-    DOWNLOAD_PATH="/mnt/downloads"
-    ;;
+    PLATFORM_ENV="docker"
 
-proxmox)
+########################################
+# LXC container
+########################################
 
-    MEDIA_PATH="/mnt/media"
-    DOWNLOAD_PATH="/mnt/downloads"
-    ;;
+elif grep -qa lxc /proc/1/cgroup; then
 
-unraid)
+    PLATFORM_ENV="lxc"
 
-    MEDIA_PATH="/mnt/user/media"
-    DOWNLOAD_PATH="/mnt/user/downloads"
-    ;;
+########################################
+# VM detection
+########################################
 
-truenas)
+elif command -v systemd-detect-virt >/dev/null 2>&1; then
 
-    MEDIA_PATH="/mnt/tank/media"
-    DOWNLOAD_PATH="/mnt/tank/downloads"
-    ;;
+    VIRT=$(systemd-detect-virt)
 
-openmediavault)
+    if [ "$VIRT" != "none" ]; then
+        PLATFORM_ENV="vm"
+    else
+        PLATFORM_ENV="baremetal"
+    fi
 
-    MEDIA_PATH="/srv/dev-disk-by-label-media"
-    DOWNLOAD_PATH="/srv/dev-disk-by-label-downloads"
-    ;;
+########################################
+# Fallback
+########################################
 
-synology)
+else
 
-    MEDIA_PATH="/volume1/media"
-    DOWNLOAD_PATH="/volume1/downloads"
-    ;;
+    PLATFORM_ENV="baremetal"
 
-*)
-
-    MEDIA_PATH="/mnt/media"
-    DOWNLOAD_PATH="/mnt/downloads"
-    ;;
-
-esac
-
-echo "Media path: $MEDIA_PATH"
-echo "Download path: $DOWNLOAD_PATH"
+fi
 
 }

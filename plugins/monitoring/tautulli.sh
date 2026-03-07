@@ -1,71 +1,105 @@
-PLUGIN_NAME="grafana"
-PLUGIN_DESCRIPTION="Metrics dashboard"
+#!/usr/bin/env bash
+
+########################################
+# Plugin Metadata
+########################################
+
+PLUGIN_NAME="tautulli"
+PLUGIN_DESCRIPTION="Plex monitoring and analytics platform"
 PLUGIN_CATEGORY="Monitoring"
-PLUGIN_DEPENDS=("prometheus")
+PLUGIN_DEPENDS=("plex")
+
 PLUGIN_DASHBOARD=true
+PLUGIN_PORTS=(8181)
+PLUGIN_HOST_NETWORK=false
+
+########################################
+# Install Service
+########################################
 
 install_service() {
 
-echo "Installing Grafana..."
+echo "Installing Tautulli..."
+
+COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
 
 ########################################
-# Create config directories
+# Load helpers
 ########################################
 
-mkdir -p /opt/media-stack/config/grafana
-mkdir -p /opt/media-stack/config/grafana/provisioning/datasources
-mkdir -p /opt/media-stack/config/grafana/dashboards
+source "$INSTALL_DIR/scripts/service-registry.sh"
+source "$INSTALL_DIR/scripts/port-helper.sh"
 
 ########################################
-# Configure Prometheus datasource
+# Create config directory
 ########################################
 
-cat <<EOF > /opt/media-stack/config/grafana/provisioning/datasources/prometheus.yml
-apiVersion: 1
-
-datasources:
-  - name: Prometheus
-    type: prometheus
-    access: proxy
-    url: http://prometheus:9090
-    isDefault: true
-EOF
+mkdir -p "$CONFIG_DIR/tautulli"
 
 ########################################
-# Add container
+# Reserve port
 ########################################
 
-cat <<EOF >> /opt/media-stack/docker-compose.yml
+PORT_MAPPING=$(get_port_mapping "tautulli" 8181 8181)
 
-  grafana:
-    image: grafana/grafana
-    container_name: grafana
-    ports:
-      - "3001:3000"
-    volumes:
-      - ./config/grafana:/var/lib/grafana
-    restart: unless-stopped
+########################################
+# Add container to docker-compose
+########################################
+
+cat <<EOF >> "$COMPOSE_FILE"
+
+  tautulli:
+    image: lscr.io/linuxserver/tautulli
+    container_name: tautulli
     networks:
       - media-network
+    ports:
+      - "$PORT_MAPPING"
+    environment:
+      - PUID=\${PUID}
+      - PGID=\${PGID}
+      - TZ=\${TIMEZONE}
+    volumes:
+      - $CONFIG_DIR/tautulli:/config
+EOF
 
+########################################
+# GPU Support
+########################################
+
+if [ "$GPU_TYPE" != "none" ]; then
+echo "$GPU_DEVICES" >> "$COMPOSE_FILE"
+fi
+
+########################################
+# Restart policy
+########################################
+
+cat <<EOF >> "$COMPOSE_FILE"
+    restart: unless-stopped
+EOF
+
+########################################
+# Health Check
+########################################
+
+cat <<EOF >> "$COMPOSE_FILE"
     healthcheck:
-      test: ["CMD","wget","--spider","http://localhost:3000"]
+      test: ["CMD", "curl", "-f", "http://localhost:8181"]
       interval: 30s
       timeout: 10s
-      retries: 5
+      retries: 3
 
 EOF
 
 ########################################
-# Register service
+# Register dashboard
 ########################################
 
-source ./scripts/service-registry.sh
-
 register_service \
-"Grafana" \
-"http://localhost:3001" \
+"Tautulli" \
+"http://localhost:8181" \
 "Monitoring" \
-"grafana.png"
+"tautulli.png"
 
 }

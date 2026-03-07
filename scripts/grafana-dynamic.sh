@@ -1,86 +1,71 @@
 #!/usr/bin/env bash
 
 STACK_DIR="/opt/media-stack"
-REGISTRY_FILE="$STACK_DIR/services.json"
-DASHBOARD_DIR="$STACK_DIR/config/grafana/dashboards"
+CONFIG_DIR="$STACK_DIR/config/grafana"
 
-mkdir -p "$DASHBOARD_DIR"
+GRAFANA_URL="http://localhost:3000"
+GRAFANA_USER="admin"
+GRAFANA_PASS="admin"
 
-########################################
-# Helper: check service
-########################################
-
-has_service() {
-
-jq -e ".services[] | select(.name == \"$1\")" \
-"$REGISTRY_FILE" >/dev/null
-
-}
+echo ""
+echo "================================"
+echo " Grafana Auto Configuration"
+echo "================================"
+echo ""
 
 ########################################
-# Install system dashboard
+# Wait for Grafana startup
 ########################################
 
-if has_service "NodeExporter"; then
+echo "Waiting for Grafana..."
 
-echo "Installing system monitoring dashboard..."
+until curl -s "$GRAFANA_URL/api/health" >/dev/null; do
+sleep 5
+done
 
-curl -L \
-https://grafana.com/api/dashboards/1860/revisions/37/download \
--o "$DASHBOARD_DIR/node-exporter.json"
+echo "Grafana detected."
+
+########################################
+# Create Prometheus datasource
+########################################
+
+echo "Creating Prometheus datasource..."
+
+curl -s -X POST "$GRAFANA_URL/api/datasources" \
+-H "Content-Type: application/json" \
+-u "$GRAFANA_USER:$GRAFANA_PASS" \
+-d '{
+"name":"Prometheus",
+"type":"prometheus",
+"url":"http://prometheus:9090",
+"access":"proxy",
+"isDefault":true
+}' >/dev/null
+
+########################################
+# Import dashboards
+########################################
+
+DASHBOARD_DIR="$CONFIG_DIR/dashboards"
+
+if [ -d "$DASHBOARD_DIR" ]; then
+
+echo "Importing dashboards..."
+
+for DASHBOARD in "$DASHBOARD_DIR"/*.json
+do
+
+curl -s -X POST "$GRAFANA_URL/api/dashboards/db" \
+-H "Content-Type: application/json" \
+-u "$GRAFANA_USER:$GRAFANA_PASS" \
+-d @"$DASHBOARD" >/dev/null
+
+echo "Imported $(basename "$DASHBOARD")"
+
+done
 
 fi
 
-########################################
-# Install Plex dashboard
-########################################
-
-if has_service "Plex"; then
-
-echo "Installing Plex dashboard..."
-
-curl -L \
-https://grafana.com/api/dashboards/14161/revisions/1/download \
--o "$DASHBOARD_DIR/plex.json"
-
-fi
-
-########################################
-# Install ARR dashboards
-########################################
-
-if has_service "Radarr"; then
-
-echo "Installing Radarr dashboard..."
-
-curl -L \
-https://grafana.com/api/dashboards/15007/revisions/1/download \
--o "$DASHBOARD_DIR/radarr.json"
-
-fi
-
-if has_service "Sonarr"; then
-
-echo "Installing Sonarr dashboard..."
-
-curl -L \
-https://grafana.com/api/dashboards/15008/revisions/1/download \
--o "$DASHBOARD_DIR/sonarr.json"
-
-fi
-
-########################################
-# Install Prometheus dashboard
-########################################
-
-if has_service "Prometheus"; then
-
-echo "Installing Prometheus dashboard..."
-
-curl -L \
-https://grafana.com/api/dashboards/3662/revisions/2/download \
--o "$DASHBOARD_DIR/prometheus.json"
-
-fi
-
-echo "Grafana dashboard provisioning complete"
+echo ""
+echo "Grafana configuration complete."
+echo ""

@@ -4,14 +4,13 @@
 # Plugin Metadata
 ########################################
 
-PLUGIN_NAME="plex"
-PLUGIN_DESCRIPTION="Plex Media Server"
-PLUGIN_CATEGORY="Media"
+PLUGIN_NAME="example"
+PLUGIN_DESCRIPTION="Example Service"
+PLUGIN_CATEGORY="Utility"
 PLUGIN_DEPENDS=()
-
+PLUGIN_PORTS=(1234)
+PLUGIN_HOST_NETWORK=false
 PLUGIN_DASHBOARD=true
-PLUGIN_PORTS=(32400)
-PLUGIN_HOST_NETWORK=true
 
 ########################################
 # Install Service
@@ -19,42 +18,42 @@ PLUGIN_HOST_NETWORK=true
 
 install_service() {
 
-echo "Installing Plex Media Server..."
+INSTALL_DIR="/opt/media-server-installer"
+STACK_DIR="/opt/media-stack"
 
-COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
-
-########################################
-# Load helpers
-########################################
-
+source "$INSTALL_DIR/scripts/port-helper.sh"
 source "$INSTALL_DIR/scripts/service-registry.sh"
+
+########################################
+# Assign port
+########################################
+
+PORT_MAPPING=$(get_port_mapping "$PLUGIN_NAME" 1234 1234)
 
 ########################################
 # Create config directory
 ########################################
 
-mkdir -p "$CONFIG_DIR/plex"
+mkdir -p "$STACK_DIR/config/$PLUGIN_NAME"
 
 ########################################
-# Begin compose definition
+# Add container to compose
 ########################################
 
-cat <<EOF >> "$COMPOSE_FILE"
+cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
-  plex:
-    image: lscr.io/linuxserver/plex
-    container_name: plex
-    network_mode: host
+  $PLUGIN_NAME:
+    image: example/example:latest
+    container_name: $PLUGIN_NAME
+    ports:
+      - "$PORT_MAPPING"
+    volumes:
+      - ./config/$PLUGIN_NAME:/config
     environment:
       - PUID=\${PUID}
       - PGID=\${PGID}
-      - VERSION=docker
       - TZ=\${TIMEZONE}
-    volumes:
-      - $CONFIG_DIR/plex:/config
-      - $MOVIES_PATH:/movies
-      - $TV_PATH:/tv
-      - $MEDIA_PATH:/media
+    restart: unless-stopped
 EOF
 
 ########################################
@@ -62,38 +61,33 @@ EOF
 ########################################
 
 if [ "$GPU_TYPE" != "none" ]; then
-echo "$GPU_DEVICES" >> "$COMPOSE_FILE"
+echo "$GPU_DEVICES" >> "$STACK_DIR/docker-compose.yml"
 fi
-
-########################################
-# Restart policy
-########################################
-
-cat <<EOF >> "$COMPOSE_FILE"
-    restart: unless-stopped
-EOF
 
 ########################################
 # Health Check
 ########################################
 
-cat <<EOF >> "$COMPOSE_FILE"
+cat <<EOF >> "$STACK_DIR/docker-compose.yml"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:32400/web"]
+      test: ["CMD-SHELL", "curl -f http://localhost:1234 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-
 EOF
 
 ########################################
 # Register Dashboard
 ########################################
 
+if [ "$PLUGIN_DASHBOARD" = true ]; then
+
 register_service \
-"Plex" \
-"http://localhost:32400/web" \
-"Media" \
-"plex.png"
+"$PLUGIN_NAME" \
+"http://localhost:1234" \
+"$PLUGIN_CATEGORY" \
+"$PLUGIN_NAME.png"
+
+fi
 
 }

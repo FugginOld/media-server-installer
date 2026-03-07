@@ -1,55 +1,77 @@
+#!/usr/bin/env bash
+
+########################################
+# Plugin Metadata
+########################################
+
 PLUGIN_NAME="plex-exporter"
-PLUGIN_DESCRIPTION="Plex metrics exporter"
+PLUGIN_DESCRIPTION="Prometheus exporter for Plex metrics"
 PLUGIN_CATEGORY="Monitoring"
 PLUGIN_DEPENDS=("plex" "prometheus")
+
 PLUGIN_DASHBOARD=false
+PLUGIN_PORTS=(9594)
+PLUGIN_HOST_NETWORK=false
+
+########################################
+# Install Service
+########################################
 
 install_service() {
 
 echo "Installing Plex Exporter..."
 
-########################################
-# Create config directory
-########################################
-
-mkdir -p /opt/media-stack/config/plex-exporter
+COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
 
 ########################################
-# Add container
+# Load helpers
 ########################################
 
-cat <<EOF >> /opt/media-stack/docker-compose.yml
+source "$INSTALL_DIR/scripts/port-helper.sh"
+
+########################################
+# Reserve port
+########################################
+
+PORT_MAPPING=$(get_port_mapping "plex-exporter" 9594 9594)
+
+########################################
+# Add container to docker-compose
+########################################
+
+cat <<EOF >> "$COMPOSE_FILE"
 
   plex-exporter:
     image: granra/plex_exporter
     container_name: plex-exporter
-    environment:
-      - PLEX_SERVER=http://plex:32400
-      - PLEX_TOKEN=
-    ports:
-      - "9594:9594"
-    restart: unless-stopped
     networks:
       - media-network
-
-    healthcheck:
-      test: ["CMD","wget","--spider","http://localhost:9594/metrics"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
+    ports:
+      - "$PORT_MAPPING"
+    environment:
+      - PLEX_ADDR=http://plex:32400
+      - TZ=\${TIMEZONE}
 EOF
 
 ########################################
-# Register service
+# Restart policy
 ########################################
 
-#source ./scripts/service-registry.sh
+cat <<EOF >> "$COMPOSE_FILE"
+    restart: unless-stopped
+EOF
 
-#register_service \
-#"Plex Exporter" \
-#"http://localhost:9594/metrics" \
-#"Monitoring" \
-#"plex-exporter.png"
+########################################
+# Health Check
+########################################
+
+cat <<EOF >> "$COMPOSE_FILE"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9594/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+EOF
 
 }

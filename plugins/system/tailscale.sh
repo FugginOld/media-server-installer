@@ -1,60 +1,62 @@
+#!/usr/bin/env bash
+
+########################################
+# Plugin Metadata
+########################################
+
 PLUGIN_NAME="tailscale"
-PLUGIN_DESCRIPTION="Secure mesh VPN remote access"
+PLUGIN_DESCRIPTION="Mesh VPN for secure remote access"
 PLUGIN_CATEGORY="System"
 PLUGIN_DEPENDS=()
+
 PLUGIN_DASHBOARD=false
+PLUGIN_PORTS=()
+PLUGIN_HOST_NETWORK=true
+
+########################################
+# Install Service
+########################################
 
 install_service() {
 
 echo "Installing Tailscale..."
 
+COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
+
 ########################################
 # Create config directory
 ########################################
 
-mkdir -p /opt/media-stack/config/tailscale
+mkdir -p "$CONFIG_DIR/tailscale"
 
 ########################################
 # Add container to docker-compose
 ########################################
 
-cat <<EOF >> /opt/media-stack/docker-compose.yml
+cat <<EOF >> "$COMPOSE_FILE"
 
   tailscale:
     image: tailscale/tailscale:latest
     container_name: tailscale
-    hostname: media-server
-    environment:
-      - TS_STATE_DIR=/var/lib/tailscale
-      - TS_AUTHKEY=
-    volumes:
-      - ./config/tailscale:/var/lib/tailscale
-      - /dev/net/tun:/dev/net/tun
+    network_mode: host
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
-    restart: unless-stopped
-    networks:
-      - media-network
-
-    healthcheck:
-      test: ["CMD","tailscale","status"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-
+    environment:
+      - TZ=\${TIMEZONE}
+      - TS_STATE_DIR=/var/lib/tailscale
+    volumes:
+      - $CONFIG_DIR/tailscale:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
 EOF
 
 ########################################
-# Register service
+# Restart policy
 ########################################
 
-#source ./scripts/service-registry.sh
+cat <<EOF >> "$COMPOSE_FILE"
+    restart: unless-stopped
 
-#register_service \
-#"Tailscale" \
-#"http://localhost" \
-#"System" \
-#"tailscale.png"
+EOF
 
 }
