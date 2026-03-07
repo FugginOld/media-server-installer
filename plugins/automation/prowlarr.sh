@@ -2,6 +2,7 @@ PLUGIN_NAME="prowlarr"
 PLUGIN_DESCRIPTION="Indexer manager"
 PLUGIN_CATEGORY="Automation"
 PLUGIN_DEPENDS=("radarr" "sonarr")
+PLUGIN_DASHBOARD=true
 
 install_service() {
 

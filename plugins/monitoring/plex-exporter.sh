@@ -2,6 +2,7 @@ PLUGIN_NAME="plex-exporter"
 PLUGIN_DESCRIPTION="Plex metrics exporter"
 PLUGIN_CATEGORY="Monitoring"
 PLUGIN_DEPENDS=("plex" "prometheus")
+PLUGIN_DASHBOARD=false
 
 install_service() {
 
@@ -43,12 +44,12 @@ EOF
 # Register service
 ########################################
 
-source ./scripts/service-registry.sh
+#source ./scripts/service-registry.sh
 
-register_service \
-"Plex Exporter" \
-"http://localhost:9594/metrics" \
-"Monitoring" \
-"plex-exporter.png"
+#register_service \
+#"Plex Exporter" \
+#"http://localhost:9594/metrics" \
+#"Monitoring" \
+#"plex-exporter.png"
 
 }

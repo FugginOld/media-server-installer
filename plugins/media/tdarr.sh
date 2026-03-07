@@ -8,6 +8,7 @@ PLUGIN_NAME="tdarr"
 PLUGIN_DESCRIPTION="Distributed transcoding and media processing"
 PLUGIN_CATEGORY="media"
 PLUGIN_DEPENDS=()
+PLUGIN_DASHBOARD=true
 
 ########################################
 # Install Service

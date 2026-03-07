@@ -2,6 +2,7 @@ PLUGIN_NAME="grafana"
 PLUGIN_DESCRIPTION="Metrics dashboard"
 PLUGIN_CATEGORY="Monitoring"
 PLUGIN_DEPENDS=("prometheus")
+PLUGIN_DASHBOARD=true
 
 install_service() {
 

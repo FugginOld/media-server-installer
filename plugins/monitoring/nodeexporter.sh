@@ -2,6 +2,7 @@ PLUGIN_NAME="nodeexporter"
 PLUGIN_DESCRIPTION="System metrics exporter"
 PLUGIN_CATEGORY="Monitoring"
 PLUGIN_DEPENDS=()
+PLUGIN_DASHBOARD=false
 
 install_service() {
 
@@ -42,12 +43,12 @@ EOF
 # Register service
 ########################################
 
-source ./scripts/service-registry.sh
+#source ./scripts/service-registry.sh
 
-register_service \
-"NodeExporter" \
-"http://localhost:9100/metrics" \
-"Monitoring" \
-"nodeexporter.png"
+#register_service \
+#"NodeExporter" \
+#"http://localhost:9100/metrics" \
+#"Monitoring" \
+#"nodeexporter.png"
 
 }

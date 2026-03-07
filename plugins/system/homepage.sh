@@ -2,6 +2,7 @@ PLUGIN_NAME="homepage"
 PLUGIN_DESCRIPTION="Service dashboard"
 PLUGIN_CATEGORY="System"
 PLUGIN_DEPENDS=()
+PLUGIN_DASHBOARD=true
 
 install_service() {
 

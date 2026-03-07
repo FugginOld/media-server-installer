@@ -2,6 +2,7 @@ PLUGIN_NAME="tailscale"
 PLUGIN_DESCRIPTION="Secure mesh VPN remote access"
 PLUGIN_CATEGORY="System"
 PLUGIN_DEPENDS=()
+PLUGIN_DASHBOARD=false
 
 install_service() {
 
@@ -48,12 +49,12 @@ EOF
 # Register service
 ########################################
 
-source ./scripts/service-registry.sh
+#source ./scripts/service-registry.sh
 
-register_service \
-"Tailscale" \
-"http://localhost" \
-"System" \
-"tailscale.png"
+#register_service \
+#"Tailscale" \
+#"http://localhost" \
+#"System" \
+#"tailscale.png"
 
 }

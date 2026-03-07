@@ -2,6 +2,7 @@ PLUGIN_NAME="bazarr"
 PLUGIN_DESCRIPTION="Subtitle automation service"
 PLUGIN_CATEGORY="Automation"
 PLUGIN_DEPENDS=("radarr" "sonarr")
+PLUGIN_DASHBOARD=true
 
 install_service() {
 

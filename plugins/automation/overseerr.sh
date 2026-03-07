@@ -8,6 +8,7 @@ PLUGIN_NAME="overseerr"
 PLUGIN_DESCRIPTION="Request management for Plex"
 PLUGIN_CATEGORY="automation"
 PLUGIN_DEPENDS=("plex")
+PLUGIN_DASHBOARD=true
 
 ########################################
 # Install Service

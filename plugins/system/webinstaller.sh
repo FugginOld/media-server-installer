@@ -2,6 +2,7 @@ PLUGIN_NAME="webinstaller"
 PLUGIN_DESCRIPTION="Browser-based installer interface"
 PLUGIN_CATEGORY="System"
 PLUGIN_DEPENDS=()
+PLUGIN_DASHBOARD=true
 
 install_service() {
 

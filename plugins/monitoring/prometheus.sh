@@ -2,6 +2,7 @@ PLUGIN_NAME="prometheus"
 PLUGIN_DESCRIPTION="Metrics monitoring system"
 PLUGIN_CATEGORY="Monitoring"
 PLUGIN_DEPENDS=("nodeexporter")
+PLUGIN_DASHBOARD=false
 
 install_service() {
 
@@ -62,12 +63,12 @@ EOF
 # Register service
 ########################################
 
-source ./scripts/service-registry.sh
+#source ./scripts/service-registry.sh
 
-register_service \
-"Prometheus" \
-"http://localhost:9090" \
-"Monitoring" \
-"prometheus.png"
+#register_service \
+#"Prometheus" \
+#"http://localhost:9090" \
+#"Monitoring" \
+#"prometheus.png"
 
 }

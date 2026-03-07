@@ -2,6 +2,7 @@ PLUGIN_NAME="watchtower"
 PLUGIN_DESCRIPTION="Automatic container updates"
 PLUGIN_CATEGORY="System"
 PLUGIN_DEPENDS=()
+PLUGIN_DASHBOARD=false
 
 install_service() {
 
@@ -35,12 +36,12 @@ EOF
 # Register service
 ########################################
 
-source ./scripts/service-registry.sh
+#source ./scripts/service-registry.sh
 
-register_service \
-"Watchtower" \
-"http://localhost" \
-"System" \
-"watchtower.png"
+#register_service \
+#"Watchtower" \
+#"http://localhost" \
+#"System" \
+#"watchtower.png"
 
 }

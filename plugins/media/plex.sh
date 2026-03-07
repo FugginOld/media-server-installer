@@ -2,6 +2,7 @@ PLUGIN_NAME="plex"
 PLUGIN_DESCRIPTION="Plex Media Server"
 PLUGIN_CATEGORY="Media"
 PLUGIN_DEPENDS=()
+PLUGIN_DASHBOARD=true
 
 install_service() {
 

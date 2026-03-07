@@ -40,8 +40,14 @@ fi
 
 grep -q "PLUGIN_NAME" "$FILE" || { echo "Missing PLUGIN_NAME"; FAIL=1; }
 grep -q "install_service()" "$FILE" || { echo "Missing install_service"; FAIL=1; }
-grep -q "register_service" "$FILE" || { echo "Missing registry call"; FAIL=1; }
 
+########################################
+# Dashboard validation
+########################################
+
+if grep -q "PLUGIN_DASHBOARD=true" "$FILE"; then
+grep -q "register_service" "$FILE" || { echo "Missing registry call"; FAIL=1; }
+fi
 echo ""
 
 done < <(find "$PLUGIN_DIR" -name "*.sh")

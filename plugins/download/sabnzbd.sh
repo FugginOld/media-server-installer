@@ -2,6 +2,7 @@ PLUGIN_NAME="sabnzbd"
 PLUGIN_DESCRIPTION="Usenet downloader"
 PLUGIN_CATEGORY="Download"
 PLUGIN_DEPENDS=()
+PLUGIN_DASHBOARD=true
 
 install_service() {
 

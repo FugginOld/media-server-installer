@@ -2,6 +2,7 @@ PLUGIN_NAME="radarr"
 PLUGIN_DESCRIPTION="Movie automation service"
 PLUGIN_CATEGORY="Automation"
 PLUGIN_DEPENDS=("sabnzbd")
+PLUGIN_DASHBOARD=true
 
 install_service() {
 

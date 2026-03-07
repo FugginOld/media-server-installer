@@ -2,6 +2,7 @@ PLUGIN_NAME="unpackerr"
 PLUGIN_DESCRIPTION="Automatic archive extraction"
 PLUGIN_CATEGORY="System"
 PLUGIN_DEPENDS=("radarr" "sonarr" "sabnzbd")
+PLUGIN_DASHBOARD=false
 
 install_service() {
 
@@ -65,12 +66,12 @@ EOF
 # Register service
 ########################################
 
-source ./scripts/service-registry.sh
+#source ./scripts/service-registry.sh
 
-register_service \
-"Unpackerr" \
-"http://localhost:5656" \
-"System" \
-"unpackerr.png"
+#register_service \
+#"Unpackerr" \
+#"http://localhost:5656" \
+#"System" \
+#"unpackerr.png"
 
 }
