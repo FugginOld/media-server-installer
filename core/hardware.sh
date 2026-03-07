@@ -107,3 +107,16 @@ apt install -y nvidia-container-toolkit
 systemctl restart docker
 
 }
+
+########################################
+# Hardware Detection Entry Point
+########################################
+# This function is called by installer.sh
+
+detect_hardware() {
+
+detect_gpu
+configure_gpu_devices
+install_nvidia_runtime
+
+}
