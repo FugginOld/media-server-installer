@@ -27,6 +27,19 @@ source ./core/directories.sh
 source ./core/hardware.sh
 source ./core/docker.sh
 source ./core/config-wizard.sh
+source ./core/permissions.sh
+
+########################################
+# Detect platform
+########################################
+
+detect_platform
+
+########################################
+# Ensure Docker installed
+########################################
+
+ensure_docker
 
 ########################################
 # Create stack directory
@@ -84,7 +97,6 @@ echo "================================"
 echo " Media Stack Web Installer"
 echo "================================"
 echo ""
-
 echo "Open your browser:"
 echo ""
 echo "http://$IP:8088"
@@ -109,7 +121,7 @@ echo ""
 run_configuration_wizard
 
 ########################################
-# Load saved configuration
+# Load configuration
 ########################################
 
 if [ -f "$STACK_DIR/stack.env" ]; then
@@ -117,10 +129,10 @@ source "$STACK_DIR/stack.env"
 fi
 
 ########################################
-# Detect system platform
+# Setup permissions (NAS compatible)
 ########################################
 
-detect_platform
+setup_permissions
 
 ########################################
 # Detect GPU hardware
@@ -155,11 +167,8 @@ AVAILABLE_PLUGINS=()
 
 for file in $(find "$PLUGIN_DIR" -name "*.sh")
 do
-
-plugin=$(basename "$file" .sh)
-
-AVAILABLE_PLUGINS+=("$plugin")
-
+    plugin=$(basename "$file" .sh)
+    AVAILABLE_PLUGINS+=("$plugin")
 done
 
 }
@@ -174,9 +183,7 @@ OPTIONS=()
 
 for plugin in "${AVAILABLE_PLUGINS[@]}"
 do
-
-OPTIONS+=("$plugin" "")
-
+    OPTIONS+=("$plugin" "")
 done
 
 CHOICES=$(whiptail \
@@ -188,9 +195,7 @@ CHOICES=$(whiptail \
 
 for service in $CHOICES
 do
-
-SELECTED_SERVICES+=("${service//\"/}")
-
+    SELECTED_SERVICES+=("${service//\"/}")
 done
 
 }
@@ -320,7 +325,7 @@ done
 bash ./scripts/compose.sh up
 
 ########################################
-# Run post install automation
+# Post install automation
 ########################################
 
 if [ -f ./scripts/post-install.sh ]; then

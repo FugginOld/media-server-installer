@@ -1,67 +1,19 @@
 #!/usr/bin/env bash
 
 ########################################
-# Docker Setup
-#
-# Ensures Docker and Docker Compose
-# are installed and running.
+# Docker Installation Module
 ########################################
 
-DOCKER_INSTALLED=false
-DOCKER_COMPOSE_AVAILABLE=false
-
 ########################################
-# Ensure Docker is installed
+# Check if Docker exists
 ########################################
 
-ensure_docker() {
-
-echo ""
-echo "Checking Docker installation..."
-echo ""
-
-########################################
-# Check docker binary
-########################################
+docker_installed() {
 
 if command -v docker >/dev/null 2>&1; then
-
-echo "Docker already installed."
-DOCKER_INSTALLED=true
-
+    return 0
 else
-
-install_docker
-
-fi
-
-########################################
-# Check docker compose plugin
-########################################
-
-if docker compose version >/dev/null 2>&1; then
-
-echo "Docker Compose available."
-DOCKER_COMPOSE_AVAILABLE=true
-
-else
-
-install_compose_plugin
-
-fi
-
-########################################
-# Ensure Docker daemon running
-########################################
-
-if docker info >/dev/null 2>&1; then
-
-echo "Docker daemon running."
-
-else
-
-start_docker
-
+    return 1
 fi
 
 }
@@ -74,63 +26,189 @@ install_docker() {
 
 echo "Installing Docker..."
 
-if [ "$PACKAGE_MANAGER" = "apt" ]; then
+case "$PLATFORM_FAMILY" in
 
-apt update
-apt install -y docker.io
+########################################
+# Debian / Ubuntu / Devuan
+########################################
 
-else
+debian)
 
-echo "Unsupported package manager."
+pkg_update
+
+pkg_install \
+ca-certificates \
+curl \
+gnupg \
+lsb-release
+
+mkdir -p /etc/apt/keyrings
+
+curl -fsSL https://download.docker.com/linux/$PLATFORM_ID/gpg \
+| gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+echo \
+"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+https://download.docker.com/linux/$PLATFORM_ID \
+$(lsb_release -cs) stable" \
+> /etc/apt/sources.list.d/docker.list
+
+pkg_update
+
+pkg_install \
+docker-ce \
+docker-ce-cli \
+containerd.io \
+docker-buildx-plugin \
+docker-compose-plugin
+
+;;
+
+########################################
+# RedHat / Fedora
+########################################
+
+redhat)
+
+pkg_update
+
+pkg_install \
+dnf-plugins-core
+
+dnf config-manager \
+--add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+
+pkg_install \
+docker-ce \
+docker-ce-cli \
+containerd.io \
+docker-buildx-plugin \
+docker-compose-plugin
+
+;;
+
+########################################
+# Arch Linux
+########################################
+
+arch)
+
+pkg_update
+
+pkg_install \
+docker \
+docker-compose
+
+;;
+
+########################################
+# openSUSE
+########################################
+
+suse)
+
+pkg_update
+
+pkg_install \
+docker \
+docker-compose
+
+;;
+
+########################################
+# Alpine
+########################################
+
+alpine)
+
+pkg_update
+
+pkg_install \
+docker \
+docker-cli-compose
+
+;;
+
+########################################
+# Unsupported platform
+########################################
+
+*)
+
+echo "Unsupported Linux platform for automatic Docker installation."
+echo "Please install Docker manually."
+
 exit 1
 
-fi
+;;
 
-DOCKER_INSTALLED=true
-
-}
-
-########################################
-# Install Docker Compose plugin
-########################################
-
-install_compose_plugin() {
-
-echo "Installing Docker Compose plugin..."
-
-if [ "$PACKAGE_MANAGER" = "apt" ]; then
-
-apt install -y docker-compose-plugin
-
-else
-
-echo "Cannot install docker-compose-plugin automatically."
-fi
-
-DOCKER_COMPOSE_AVAILABLE=true
+esac
 
 }
 
 ########################################
-# Start Docker daemon
+# Enable Docker Service
 ########################################
 
-start_docker() {
+enable_docker_service() {
 
 echo "Starting Docker service..."
 
-if [ "$SERVICE_MANAGER" = "systemd" ]; then
+if command -v systemctl >/dev/null 2>&1; then
 
-systemctl start docker
 systemctl enable docker
-
-elif [ "$SERVICE_MANAGER" = "sysvinit" ]; then
-
-service docker start
+systemctl start docker
 
 else
 
-echo "Unknown service manager."
+service docker start
+
 fi
 
 }
+
+########################################
+# Add user to docker group
+########################################
+
+configure_docker_permissions() {
+
+if [ -n "$SUDO_USER" ]; then
+
+usermod -aG docker "$SUDO_USER"
+
+echo ""
+echo "User $SUDO_USER added to docker group."
+echo "You may need to log out and back in."
+
+fi
+
+}
+
+########################################
+# Ensure Docker is installed
+########################################
+
+ensure_docker() {
+
+if docker_installed; then
+
+echo "Docker already installed."
+
+else
+
+install_docker
+
+fi
+
+enable_docker_service
+
+configure_docker_permissions
+
+}
+
+########################################
+# Export function
+########################################
+
+export -f ensure_docker

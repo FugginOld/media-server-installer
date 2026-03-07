@@ -1,170 +1,139 @@
 #!/usr/bin/env bash
 
 ########################################
-# Platform Detection
-#
-# Determines operating system,
-# package manager, service manager,
-# and runtime environment.
+# Media Stack Platform Detection
 ########################################
 
-PLATFORM_OS="unknown"
-PLATFORM_FAMILY="unknown"
-PLATFORM_ENV="unknown"
-
-PACKAGE_MANAGER="unknown"
-SERVICE_MANAGER="unknown"
+PLATFORM_ID=""
+PLATFORM_FAMILY=""
+PACKAGE_MANAGER=""
+NAS_PLATFORM="none"
 
 ########################################
-# Detect OS
+# Detect Linux Distribution
 ########################################
 
 detect_platform() {
 
-echo ""
-echo "Detecting platform..."
-echo ""
-
-########################################
-# Load OS metadata
-########################################
+echo "Detecting operating system..."
 
 if [ -f /etc/os-release ]; then
-. /etc/os-release
-fi
-
-########################################
-# Debian
-########################################
-
-if echo "$ID" | grep -qi debian; then
-
-PLATFORM_OS="debian"
-PLATFORM_FAMILY="debian"
-PACKAGE_MANAGER="apt"
-SERVICE_MANAGER="systemd"
-
-########################################
-# Devuan
-########################################
-
-elif echo "$ID" | grep -qi devuan; then
-
-PLATFORM_OS="devuan"
-PLATFORM_FAMILY="debian"
-PACKAGE_MANAGER="apt"
-SERVICE_MANAGER="sysvinit"
-
-########################################
-# Ubuntu
-########################################
-
-elif echo "$ID" | grep -qi ubuntu; then
-
-PLATFORM_OS="ubuntu"
-PLATFORM_FAMILY="debian"
-PACKAGE_MANAGER="apt"
-SERVICE_MANAGER="systemd"
-
-########################################
-# Unraid
-########################################
-
-elif [ -f /etc/unraid-version ]; then
-
-PLATFORM_OS="unraid"
-PLATFORM_FAMILY="slackware"
-PLATFORM_ENV="nas"
-PACKAGE_MANAGER="none"
-SERVICE_MANAGER="none"
-
-########################################
-# TrueNAS
-########################################
-
-elif echo "$NAME" | grep -qi truenas; then
-
-PLATFORM_OS="truenas"
-PLATFORM_FAMILY="freebsd"
-PLATFORM_ENV="nas"
-PACKAGE_MANAGER="none"
-SERVICE_MANAGER="none"
-
-########################################
-# Generic Linux
-########################################
-
+    source /etc/os-release
+    PLATFORM_ID="$ID"
 else
-
-PLATFORM_OS="$ID"
-PLATFORM_FAMILY="linux"
-PACKAGE_MANAGER="unknown"
-SERVICE_MANAGER="unknown"
-
+    PLATFORM_ID="unknown"
 fi
 
 ########################################
-# Detect runtime environment
+# Detect NAS Platforms
 ########################################
 
-detect_environment
+if [ -f /etc/unraid-version ]; then
+    NAS_PLATFORM="unraid"
+fi
+
+if grep -qi "truenas" /etc/os-release 2>/dev/null; then
+    NAS_PLATFORM="truenas"
+fi
+
+if grep -qi "openmediavault" /etc/os-release 2>/dev/null; then
+    NAS_PLATFORM="openmediavault"
+fi
+
+if grep -qi "casaos" /etc/os-release 2>/dev/null; then
+    NAS_PLATFORM="casaos"
+fi
 
 ########################################
-# Display results
+# Determine platform family
 ########################################
 
-echo "OS: $PLATFORM_OS"
-echo "Family: $PLATFORM_FAMILY"
-echo "Environment: $PLATFORM_ENV"
-echo "Package Manager: $PACKAGE_MANAGER"
-echo "Service Manager: $SERVICE_MANAGER"
+case "$PLATFORM_ID" in
+
+    debian|ubuntu|devuan|linuxmint|pop)
+        PLATFORM_FAMILY="debian"
+        PACKAGE_MANAGER="apt"
+    ;;
+
+    fedora|rhel|centos|rocky|almalinux)
+        PLATFORM_FAMILY="redhat"
+        PACKAGE_MANAGER="dnf"
+    ;;
+
+    arch|manjaro|endeavouros)
+        PLATFORM_FAMILY="arch"
+        PACKAGE_MANAGER="pacman"
+    ;;
+
+    opensuse*|sles)
+        PLATFORM_FAMILY="suse"
+        PACKAGE_MANAGER="zypper"
+    ;;
+
+    alpine)
+        PLATFORM_FAMILY="alpine"
+        PACKAGE_MANAGER="apk"
+    ;;
+
+    *)
+        PLATFORM_FAMILY="unknown"
+        PACKAGE_MANAGER="unknown"
+    ;;
+
+esac
+
+echo "Detected OS: $PLATFORM_ID"
+echo "Platform family: $PLATFORM_FAMILY"
+
+if [ "$NAS_PLATFORM" != "none" ]; then
+    echo "Detected NAS platform: $NAS_PLATFORM"
+fi
 
 }
 
 ########################################
-# Detect runtime environment
+# Package Manager Abstraction
 ########################################
 
-detect_environment() {
+pkg_update() {
 
-########################################
-# Docker container
-########################################
+case "$PACKAGE_MANAGER" in
 
-if grep -qa docker /proc/1/cgroup; then
+apt) apt update ;;
+dnf) dnf makecache ;;
+pacman) pacman -Sy --noconfirm ;;
+zypper) zypper refresh ;;
+apk) apk update ;;
 
-PLATFORM_ENV="docker"
+*)
+echo "Unsupported package manager"
+exit 1
+;;
 
-########################################
-# LXC container
-########################################
-
-elif grep -qa lxc /proc/1/cgroup; then
-
-PLATFORM_ENV="lxc"
-
-########################################
-# VM detection
-########################################
-
-elif command -v systemd-detect-virt >/dev/null 2>&1; then
-
-VIRT=$(systemd-detect-virt)
-
-if [ "$VIRT" != "none" ]; then
-PLATFORM_ENV="vm"
-else
-PLATFORM_ENV="baremetal"
-fi
-
-########################################
-# Fallback
-########################################
-
-else
-
-PLATFORM_ENV="baremetal"
-
-fi
+esac
 
 }
+
+pkg_install() {
+
+case "$PACKAGE_MANAGER" in
+
+apt) apt install -y "$@" ;;
+dnf) dnf install -y "$@" ;;
+pacman) pacman -S --noconfirm "$@" ;;
+zypper) zypper install -y "$@" ;;
+apk) apk add "$@" ;;
+
+*)
+echo "Unsupported package manager"
+exit 1
+;;
+
+esac
+
+}
+
+export PLATFORM_ID
+export PLATFORM_FAMILY
+export PACKAGE_MANAGER
+export NAS_PLATFORM
