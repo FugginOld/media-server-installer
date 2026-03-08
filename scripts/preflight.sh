@@ -3,9 +3,17 @@
 ########################################
 # Media Stack Preflight Checks
 #
-# Ensures the system has the required
-# dependencies before running installer
+# Verifies system readiness before
+# running the Media Stack installer.
 ########################################
+
+########################################
+# Load environment (if available)
+########################################
+
+if [ -n "$INSTALL_DIR" ] && [ -f "$INSTALL_DIR/core/env.sh" ]; then
+source "$INSTALL_DIR/core/env.sh"
+fi
 
 echo ""
 echo "================================"
@@ -14,7 +22,7 @@ echo "================================"
 echo ""
 
 ########################################
-# Ensure script is run as root
+# Ensure running as root
 ########################################
 
 if [ "$EUID" -ne 0 ]; then
@@ -25,7 +33,7 @@ fi
 echo "Running as root: OK"
 
 ########################################
-# Detect OS
+# Detect operating system
 ########################################
 
 if [ -f /etc/os-release ]; then
@@ -46,12 +54,28 @@ exit 1
 esac
 
 ########################################
+# CPU architecture
+########################################
+
+ARCH=$(uname -m)
+
+case "$ARCH" in
+x86_64|amd64|aarch64|arm64)
+echo "Supported architecture: $ARCH"
+;;
+*)
+echo "Unsupported architecture: $ARCH"
+exit 1
+;;
+esac
+
+########################################
 # Internet connectivity
 ########################################
 
 echo "Checking internet connectivity..."
 
-if ping -c 1 github.com >/dev/null 2>&1; then
+if curl -fsSL https://github.com >/dev/null 2>&1; then
 echo "Internet connectivity: OK"
 else
 echo "Internet connection failed."
@@ -69,36 +93,62 @@ jq
 pciutils
 )
 
+MISSING=()
+
 for CMD in "${REQUIRED_CMDS[@]}"
 do
 
 if command -v "$CMD" >/dev/null 2>&1; then
-
 echo "$CMD installed"
-
 else
-
-echo "$CMD missing — installing..."
-
-apt update
-apt install -y "$CMD"
-
+echo "$CMD missing"
+MISSING+=("$CMD")
 fi
 
 done
 
 ########################################
+# Install missing dependencies
+########################################
+
+if [ "${#MISSING[@]}" -gt 0 ]; then
+
+echo ""
+echo "Installing missing dependencies..."
+echo ""
+
+apt update
+
+for PKG in "${MISSING[@]}"
+do
+apt install -y "$PKG"
+done
+
+fi
+
+########################################
+# Docker check
+########################################
+
+if command -v docker >/dev/null 2>&1; then
+echo "Docker detected"
+else
+echo "Docker not installed (will be installed later)"
+fi
+
+########################################
 # Disk space check
 ########################################
 
-FREE_SPACE=$(df / | awk 'NR==2 {print $4}')
+FREE_KB=$(df / | awk 'NR==2 {print $4}')
+FREE_GB=$((FREE_KB / 1024 / 1024))
 
-if [ "$FREE_SPACE" -lt 1048576 ]; then
+if [ "$FREE_KB" -lt 1048576 ]; then
 echo "Less than 1GB free disk space."
 exit 1
 fi
 
-echo "Disk space check: OK"
+echo "Disk space available: ${FREE_GB}GB"
 
 echo ""
 echo "Preflight checks passed."

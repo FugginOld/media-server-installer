@@ -19,13 +19,10 @@ export INSTALL_DIR
 
 source "$INSTALL_DIR/core/env.sh"
 
-########################################
-# Plugin directory
-########################################
-
 PLUGIN_DIR="$INSTALL_DIR/plugins"
 
 SELECTED_SERVICES=()
+AVAILABLE_PLUGINS=()
 
 ########################################
 # Run preflight checks
@@ -75,14 +72,12 @@ web "Web Installer" \
 3>&1 1>&2 2>&3)
 
 ########################################
-# WEB INSTALLER MODE
+# WEB INSTALLER
 ########################################
 
 if [ "$INTERFACE" = "web" ]; then
 
-echo ""
 echo "Launching Web Installer..."
-echo ""
 
 mkdir -p "$CONFIG_DIR/webinstaller"
 
@@ -101,18 +96,12 @@ services:
 EOF
 
 cd "$STACK_DIR"
-
 docker compose up -d
 
 IP=$(hostname -I | awk '{print $1}')
 
 echo ""
-echo "================================"
-echo " Media Stack Web Installer"
-echo "================================"
-echo ""
-echo "Open your browser:"
-echo ""
+echo "Open browser:"
 echo "http://$IP:8088"
 echo ""
 
@@ -121,7 +110,7 @@ exit 0
 fi
 
 ########################################
-# CLI INSTALLER MODE
+# CLI INSTALLER
 ########################################
 
 echo ""
@@ -129,7 +118,7 @@ echo "Starting CLI installer..."
 echo ""
 
 ########################################
-# Run configuration wizard
+# Configuration wizard
 ########################################
 
 run_configuration_wizard
@@ -143,13 +132,13 @@ source "$STACK_DIR/stack.env"
 fi
 
 ########################################
-# Setup permissions (NAS compatible)
+# Setup permissions
 ########################################
 
 setup_permissions
 
 ########################################
-# Detect GPU hardware
+# GPU detection
 ########################################
 
 detect_gpu
@@ -172,18 +161,16 @@ init_port_registry
 bash "$INSTALL_DIR/scripts/plugin-validator.sh"
 
 ########################################
-# Discover plugins automatically
+# Discover plugins
 ########################################
 
 discover_plugins() {
 
-AVAILABLE_PLUGINS=()
-
-for file in $(find "$PLUGIN_DIR" -name "*.sh")
+while IFS= read -r file
 do
-    plugin=$(basename "$file" .sh)
-    AVAILABLE_PLUGINS+=("$plugin")
-done
+plugin=$(basename "$file" .sh)
+AVAILABLE_PLUGINS+=("$plugin")
+done < <(find "$PLUGIN_DIR" -maxdepth 1 -type f -name "*.sh")
 
 }
 
@@ -197,7 +184,7 @@ OPTIONS=()
 
 for plugin in "${AVAILABLE_PLUGINS[@]}"
 do
-    OPTIONS+=("$plugin" "")
+OPTIONS+=("$plugin" "")
 done
 
 CHOICES=$(whiptail \
@@ -209,7 +196,7 @@ CHOICES=$(whiptail \
 
 for service in $CHOICES
 do
-    SELECTED_SERVICES+=("${service//\"/}")
+SELECTED_SERVICES+=("${service//\"/}")
 done
 
 }
@@ -220,23 +207,32 @@ done
 
 resolve_dependencies() {
 
+CHANGED=true
+
+while [ "$CHANGED" = true ]
+do
+
+CHANGED=false
+
 for SERVICE in "${SELECTED_SERVICES[@]}"
 do
 
-PLUGIN_FILE=$(find "$PLUGIN_DIR" -name "$SERVICE.sh")
+PLUGIN_FILE="$PLUGIN_DIR/$SERVICE.sh"
+
+[ -f "$PLUGIN_FILE" ] || continue
 
 source "$PLUGIN_FILE"
 
 for dep in "${PLUGIN_DEPENDS[@]}"
 do
 
-if [[ ! " ${SELECTED_SERVICES[@]} " =~ " ${dep} " ]]; then
-
+if [[ ! " ${SELECTED_SERVICES[*]} " =~ " ${dep} " ]]; then
 echo "Adding dependency: $dep"
-
 SELECTED_SERVICES+=("$dep")
-
+CHANGED=true
 fi
+
+done
 
 done
 
@@ -257,7 +253,7 @@ custom "Choose services manually" \
 3>&1 1>&2 2>&3)
 
 ########################################
-# Quick install preset
+# Quick preset
 ########################################
 
 if [ "$MODE" = "quick" ]; then
@@ -296,12 +292,19 @@ fi
 resolve_dependencies
 
 ########################################
+# Remove duplicates
+########################################
+
+SELECTED_SERVICES=($(printf "%s\n" "${SELECTED_SERVICES[@]}" | sort -u))
+
+########################################
 # Generate docker compose
 ########################################
 
+TMP_COMPOSE="$STACK_DIR/docker-compose.tmp"
 COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
 
-cat <<EOF > "$COMPOSE_FILE"
+cat <<EOF > "$TMP_COMPOSE"
 
 networks:
   media-network:
@@ -311,7 +314,7 @@ services:
 EOF
 
 ########################################
-# Install selected plugins
+# Install services
 ########################################
 
 echo ""
@@ -323,13 +326,20 @@ do
 
 echo "Installing $SERVICE"
 
-PLUGIN_FILE=$(find "$PLUGIN_DIR" -name "$SERVICE.sh")
+PLUGIN_FILE="$PLUGIN_DIR/$SERVICE.sh"
+
+if [ ! -f "$PLUGIN_FILE" ]; then
+echo "Plugin missing: $SERVICE"
+continue
+fi
 
 source "$PLUGIN_FILE"
 
 install_service
 
 done
+
+mv "$TMP_COMPOSE" "$COMPOSE_FILE"
 
 ########################################
 # Start containers
@@ -338,7 +348,7 @@ done
 bash "$INSTALL_DIR/scripts/compose.sh" up
 
 ########################################
-# Post install automation
+# Post install
 ########################################
 
 if [ -f "$INSTALL_DIR/scripts/post-install.sh" ]; then
@@ -346,7 +356,7 @@ bash "$INSTALL_DIR/scripts/post-install.sh"
 fi
 
 ########################################
-# Show dashboard
+# Completion message
 ########################################
 
 IP=$(hostname -I | awk '{print $1}')

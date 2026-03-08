@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
 
 ########################################
-# Post Install Automation
+# Media Stack Post Install Automation
 #
-# Runs after containers are started to
+# Runs after containers start to
 # configure dashboards and monitoring.
 ########################################
 
-INSTALL_DIR="/opt/media-server-installer"
-STACK_DIR="/opt/media-stack"
+########################################
+# Load environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
 
 echo ""
 echo "================================"
@@ -17,11 +20,15 @@ echo "================================"
 echo ""
 
 ########################################
-# Wait for containers to start
+# Wait for containers to initialize
 ########################################
 
 echo "Waiting for containers to initialize..."
-sleep 10
+
+for i in {1..15}
+do
+sleep 1
+done
 
 ########################################
 # Configure Grafana dashboards
@@ -37,17 +44,18 @@ bash "$INSTALL_DIR/scripts/grafana-dynamic.sh"
 fi
 
 ########################################
-# Generate Homepage service list
+# Display registered services
 ########################################
 
-if [ -f "$STACK_DIR/services.json" ]; then
+if [ -f "$SERVICE_REGISTRY" ] && command -v jq >/dev/null 2>&1; then
 
 echo ""
-echo "Services registered:"
+echo "Registered services:"
 echo ""
 
-cat "$STACK_DIR/services.json" \
-| jq -r '.services[] | "\(.name) -> \(.url)"'
+jq -r '.services[] | "\(.name) -> \(.url)"' "$SERVICE_REGISTRY"
+
+echo ""
 
 fi
 
@@ -60,7 +68,22 @@ if [ -f "$INSTALL_DIR/scripts/health-monitor.sh" ]; then
 echo ""
 echo "Starting service health monitor..."
 
-bash "$INSTALL_DIR/scripts/health-monitor.sh" &
+bash "$INSTALL_DIR/scripts/health-monitor.sh" \
+>> "$STACK_DIR/logs/health-monitor.log" 2>&1 &
+
+fi
+
+########################################
+# Display container status
+########################################
+
+if command -v docker >/dev/null 2>&1; then
+
+echo ""
+echo "Container status:"
+echo ""
+
+bash "$INSTALL_DIR/scripts/compose.sh" status
 
 fi
 

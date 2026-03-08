@@ -3,11 +3,15 @@
 ########################################
 # Media Stack Update System
 #
-# Updates installer repository and
-# Docker containers.
+# Updates the installer repository
+# and refreshes Docker containers.
 ########################################
 
-INSTALL_DIR="/opt/media-server-installer"
+########################################
+# Load environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
 
 echo ""
 echo "================================"
@@ -19,12 +23,12 @@ echo ""
 # Ensure installer directory exists
 ########################################
 
-if [ ! -d "$INSTALL_DIR" ]; then
-echo "Installer directory not found."
+if [ ! -d "$INSTALL_DIR/.git" ]; then
+echo "Installer repository not found: $INSTALL_DIR"
 exit 1
 fi
 
-cd "$INSTALL_DIR" || exit
+cd "$INSTALL_DIR" || exit 1
 
 ########################################
 # Update installer repository
@@ -32,7 +36,10 @@ cd "$INSTALL_DIR" || exit
 
 echo "Pulling latest installer updates..."
 
-git pull
+if ! git pull --ff-only; then
+echo "Failed to update installer repository."
+exit 1
+fi
 
 ########################################
 # Validate plugins after update
@@ -41,7 +48,16 @@ git pull
 echo ""
 echo "Validating plugins..."
 
-bash scripts/plugin-validator.sh
+bash "$INSTALL_DIR/scripts/plugin-validator.sh"
+
+########################################
+# Validate docker compose configuration
+########################################
+
+echo ""
+echo "Validating compose configuration..."
+
+bash "$INSTALL_DIR/scripts/compose.sh" validate
 
 ########################################
 # Pull container updates
@@ -50,7 +66,7 @@ bash scripts/plugin-validator.sh
 echo ""
 echo "Updating container images..."
 
-bash scripts/compose.sh pull
+bash "$INSTALL_DIR/scripts/compose.sh" pull
 
 ########################################
 # Restart containers
@@ -59,7 +75,7 @@ bash scripts/compose.sh pull
 echo ""
 echo "Restarting containers..."
 
-bash scripts/compose.sh up
+bash "$INSTALL_DIR/scripts/compose.sh" up
 
 echo ""
 echo "Media Stack update complete."

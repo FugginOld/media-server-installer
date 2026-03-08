@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
 
 ########################################
-# Media Stack Reset
+# Media Stack Reset Utility
 #
 # Completely removes the Media Stack
 # installation so it can be reinstalled.
 ########################################
 
-STACK_DIR="/opt/media-stack"
-INSTALL_DIR="/opt/media-server-installer"
+########################################
+# Load environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
 
 echo ""
 echo "================================"
@@ -28,6 +31,20 @@ exit 0
 fi
 
 ########################################
+# Offer backup before reset
+########################################
+
+read -rp "Create a backup before reset? (y/N): " BACKUP
+
+if [[ "$BACKUP" == "y" || "$BACKUP" == "Y" ]]; then
+
+if [ -f "$INSTALL_DIR/scripts/backup.sh" ]; then
+bash "$INSTALL_DIR/scripts/backup.sh"
+fi
+
+fi
+
+########################################
 # Stop containers
 ########################################
 
@@ -36,8 +53,7 @@ if [ -f "$STACK_DIR/docker-compose.yml" ]; then
 echo ""
 echo "Stopping containers..."
 
-cd "$STACK_DIR" || exit
-docker compose down
+bash "$INSTALL_DIR/scripts/compose.sh" down
 
 fi
 
@@ -55,38 +71,44 @@ rm -rf "$STACK_DIR"
 fi
 
 ########################################
-# Optional: remove containers
+# Optional Docker cleanup
+########################################
+
+if command -v docker >/dev/null 2>&1; then
+
+########################################
+# Remove containers
 ########################################
 
 read -rp "Remove unused Docker containers? (y/N): " REMOVE_CONTAINERS
 
-if [[ "$REMOVE_CONTAINERS" == "y" || "$REMOVE_CONTAINERS" == "Y" ]]; then
-
+if [[ "$REMOVE_CONTAINERS" =~ ^[Yy]$ ]]; then
 docker container prune -f
-
 fi
 
 ########################################
-# Optional: remove images
+# Remove images
 ########################################
 
 read -rp "Remove unused Docker images? (y/N): " REMOVE_IMAGES
 
-if [[ "$REMOVE_IMAGES" == "y" || "$REMOVE_IMAGES" == "Y" ]]; then
-
+if [[ "$REMOVE_IMAGES" =~ ^[Yy]$ ]]; then
 docker image prune -f
-
 fi
 
 ########################################
-# Optional: remove volumes
+# Remove volumes
 ########################################
 
 read -rp "Remove unused Docker volumes? (y/N): " REMOVE_VOLUMES
 
-if [[ "$REMOVE_VOLUMES" == "y" || "$REMOVE_VOLUMES" == "Y" ]]; then
-
+if [[ "$REMOVE_VOLUMES" =~ ^[Yy]$ ]]; then
 docker volume prune -f
+fi
+
+else
+
+echo "Docker not installed — skipping container cleanup."
 
 fi
 

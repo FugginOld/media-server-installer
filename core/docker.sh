@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 
 ########################################
-# Docker Installation Module
+# Media Stack Docker Installation Module
 ########################################
+
+########################################
+# Load environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
 
 ########################################
 # Check if Docker exists
@@ -10,11 +16,7 @@
 
 docker_installed() {
 
-if command -v docker >/dev/null 2>&1; then
-    return 0
-else
-    return 1
-fi
+command -v docker >/dev/null 2>&1
 
 }
 
@@ -47,6 +49,8 @@ mkdir -p /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/$PLATFORM_ID/gpg \
 | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 
+chmod a+r /etc/apt/keyrings/docker.gpg
+
 echo \
 "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
 https://download.docker.com/linux/$PLATFORM_ID \
@@ -72,11 +76,10 @@ redhat)
 
 pkg_update
 
-pkg_install \
-dnf-plugins-core
+pkg_install dnf-plugins-core
 
 dnf config-manager \
---add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+--add-repo https://download.docker.com/linux/$PLATFORM_ID/docker-ce.repo
 
 pkg_install \
 docker-ce \
@@ -168,10 +171,14 @@ fi
 }
 
 ########################################
-# Add user to docker group
+# Configure docker group permissions
 ########################################
 
 configure_docker_permissions() {
+
+if ! getent group docker >/dev/null; then
+groupadd docker
+fi
 
 if [ -n "$SUDO_USER" ]; then
 
@@ -186,7 +193,22 @@ fi
 }
 
 ########################################
-# Ensure Docker is installed
+# Verify Docker installation
+########################################
+
+verify_docker() {
+
+if docker info >/dev/null 2>&1; then
+echo "Docker installation verified."
+else
+echo "Docker failed to start correctly."
+exit 1
+fi
+
+}
+
+########################################
+# Ensure Docker installed
 ########################################
 
 ensure_docker() {
@@ -202,8 +224,8 @@ install_docker
 fi
 
 enable_docker_service
-
 configure_docker_permissions
+verify_docker
 
 }
 

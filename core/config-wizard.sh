@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
 
 ########################################
-# Configuration Wizard
+# Media Stack Configuration Wizard
 #
 # Collects runtime configuration for
-# the Media Stack installation.
+# the Media Stack installation and
+# saves it to stack.env
 ########################################
 
-STACK_DIR="/opt/media-stack"
+########################################
+# Load environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
+
 CONFIG_FILE="$STACK_DIR/stack.env"
 
 ########################################
@@ -25,44 +31,52 @@ echo ""
 mkdir -p "$STACK_DIR"
 
 ########################################
-# Detect system timezone
+# Load existing configuration if present
 ########################################
 
-DEFAULT_TZ=$(timedatectl show --property=Timezone --value 2>/dev/null)
+if [ -f "$CONFIG_FILE" ]; then
+source "$CONFIG_FILE"
+fi
+
+########################################
+# Detect timezone
+########################################
+
+DEFAULT_TZ=${TIMEZONE:-$(timedatectl show --property=Timezone --value 2>/dev/null)}
 
 if [ -z "$DEFAULT_TZ" ]; then
 DEFAULT_TZ="UTC"
 fi
 
-read -rp "Timezone [$DEFAULT_TZ]: " TIMEZONE
-TIMEZONE=${TIMEZONE:-$DEFAULT_TZ}
+read -rp "Timezone [$DEFAULT_TZ]: " INPUT
+TIMEZONE=${INPUT:-$DEFAULT_TZ}
 
 ########################################
-# Detect current user ID
+# Detect user ID
 ########################################
 
-DEFAULT_UID=$(id -u)
+DEFAULT_UID=${PUID:-$(id -u)}
 
-read -rp "PUID [$DEFAULT_UID]: " PUID
-PUID=${PUID:-$DEFAULT_UID}
+read -rp "PUID [$DEFAULT_UID]: " INPUT
+PUID=${INPUT:-$DEFAULT_UID}
 
 ########################################
 # Detect group ID
 ########################################
 
-DEFAULT_GID=$(id -g)
+DEFAULT_GID=${PGID:-$(id -g)}
 
-read -rp "PGID [$DEFAULT_GID]: " PGID
-PGID=${PGID:-$DEFAULT_GID}
+read -rp "PGID [$DEFAULT_GID]: " INPUT
+PGID=${INPUT:-$DEFAULT_GID}
 
 ########################################
 # Docker network configuration
 ########################################
 
-DEFAULT_NET="media-network"
+DEFAULT_NET=${DOCKER_NETWORK:-media-network}
 
-read -rp "Docker network [$DEFAULT_NET]: " DOCKER_NETWORK
-DOCKER_NETWORK=${DOCKER_NETWORK:-$DEFAULT_NET}
+read -rp "Docker network [$DEFAULT_NET]: " INPUT
+DOCKER_NETWORK=${INPUT:-$DEFAULT_NET}
 
 ########################################
 # Save configuration

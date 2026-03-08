@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 
 ########################################
-# Plugin Validator
+# Media Stack Plugin Validator
 #
 # Validates plugin scripts before the
-# installer attempts to execute them.
+# installer executes them.
 ########################################
 
-PLUGIN_DIR="./plugins"
+########################################
+# Load environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
 
 echo ""
 echo "================================"
@@ -16,67 +20,93 @@ echo "================================"
 echo ""
 
 FAIL=0
+COUNT=0
 
 ########################################
-# Validate each plugin script
+# Ensure plugin directory exists
 ########################################
 
-for FILE in $(find "$PLUGIN_DIR" -name "*.sh")
+if [ ! -d "$PLUGIN_DIR" ]; then
+echo "Plugin directory not found: $PLUGIN_DIR"
+exit 1
+fi
+
+########################################
+# Validate plugins
+########################################
+
+while IFS= read -r FILE
 do
 
-echo "Checking plugin: $FILE"
+COUNT=$((COUNT+1))
+
+PLUGIN=$(basename "$FILE")
+
+echo "Checking plugin: $PLUGIN"
 
 ########################################
 # Syntax check
 ########################################
 
-bash -n "$FILE"
-
-if [ $? -ne 0 ]; then
-echo "Syntax error detected."
+if ! bash -n "$FILE"; then
+echo "  Syntax error detected"
 FAIL=1
 fi
 
 ########################################
-# Validate required fields
+# Required metadata fields
 ########################################
 
-grep -q "PLUGIN_NAME=" "$FILE" || { echo "Missing PLUGIN_NAME"; FAIL=1; }
+check_field() {
 
-grep -q "PLUGIN_DESCRIPTION=" "$FILE" || { echo "Missing PLUGIN_DESCRIPTION"; FAIL=1; }
+FIELD=$1
 
-grep -q "PLUGIN_CATEGORY=" "$FILE" || { echo "Missing PLUGIN_CATEGORY"; FAIL=1; }
+if ! grep -q "$FIELD=" "$FILE"; then
+echo "  Missing $FIELD"
+FAIL=1
+fi
 
-grep -q "PLUGIN_DEPENDS=" "$FILE" || { echo "Missing PLUGIN_DEPENDS"; FAIL=1; }
+}
 
-grep -q "PLUGIN_PORTS=" "$FILE" || { echo "Missing PLUGIN_PORTS"; FAIL=1; }
-
-grep -q "PLUGIN_HOST_NETWORK=" "$FILE" || { echo "Missing PLUGIN_HOST_NETWORK"; FAIL=1; }
-
-grep -q "PLUGIN_DASHBOARD=" "$FILE" || { echo "Missing PLUGIN_DASHBOARD"; FAIL=1; }
+check_field "PLUGIN_NAME"
+check_field "PLUGIN_DESCRIPTION"
+check_field "PLUGIN_CATEGORY"
+check_field "PLUGIN_VERSION"
+check_field "PLUGIN_IMAGE"
+check_field "PLUGIN_DEPENDS"
+check_field "PLUGIN_PORTS"
+check_field "PLUGIN_HOST_NETWORK"
+check_field "PLUGIN_DASHBOARD"
 
 ########################################
 # Validate install function
 ########################################
 
-grep -q "install_service()" "$FILE" || { echo "Missing install_service()"; FAIL=1; }
+if ! grep -q "install_service()" "$FILE"; then
+echo "  Missing install_service()"
+FAIL=1
+fi
 
 echo ""
 
-done
+done < <(find "$PLUGIN_DIR" -maxdepth 1 -type f -name "*.sh")
 
 ########################################
-# Exit if failures occurred
+# Ensure plugins exist
 ########################################
 
-if [ $FAIL -eq 1 ]; then
-
-echo "Plugin validation failed."
-
+if [ "$COUNT" -eq 0 ]; then
+echo "No plugins found in $PLUGIN_DIR"
 exit 1
+fi
 
+########################################
+# Final result
+########################################
+
+if [ "$FAIL" -eq 1 ]; then
+echo "Plugin validation failed."
+exit 1
 else
-
-echo "All plugins passed validation."
-
+echo "All $COUNT plugins passed validation."
 fi

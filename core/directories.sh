@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 ########################################
-# Directory Management
+# Media Stack Directory Management
 #
 # Handles filesystem layout for media,
 # downloads, and configuration.
@@ -11,13 +11,13 @@
 #  - TRaSH Guides layout
 ########################################
 
-STACK_DIR="/opt/media-stack"
+########################################
+# Load environment
+########################################
 
-MEDIA_PATH=""
-MOVIES_PATH=""
-TV_PATH=""
-DOWNLOADS_PATH=""
-CONFIG_PATH="$STACK_DIR/config"
+source "$INSTALL_DIR/core/env.sh"
+
+CONFIG_FILE="$STACK_DIR/stack.env"
 
 ########################################
 # Setup directory structure
@@ -45,11 +45,13 @@ read -rp "Selection [1]: " LAYOUT
 LAYOUT=${LAYOUT:-1}
 
 ########################################
-# Ask for base storage path
+# Base storage path
 ########################################
 
-read -rp "Enter base storage path [/data]: " BASE_PATH
-BASE_PATH=${BASE_PATH:-/data}
+DEFAULT_BASE="/data"
+
+read -rp "Enter base storage path [$DEFAULT_BASE]: " BASE_PATH
+BASE_PATH=${BASE_PATH:-$DEFAULT_BASE}
 
 ########################################
 # Default layout
@@ -60,7 +62,6 @@ if [ "$LAYOUT" = "1" ]; then
 MEDIA_PATH="$BASE_PATH/media"
 MOVIES_PATH="$MEDIA_PATH/movies"
 TV_PATH="$MEDIA_PATH/tv"
-
 DOWNLOADS_PATH="$BASE_PATH/downloads"
 
 ########################################
@@ -74,6 +75,7 @@ MOVIES_PATH="$MEDIA_PATH/movies"
 TV_PATH="$MEDIA_PATH/tv"
 
 DOWNLOADS_PATH="$BASE_PATH/downloads"
+COMPLETE_PATH="$DOWNLOADS_PATH/complete"
 INCOMPLETE_PATH="$DOWNLOADS_PATH/incomplete"
 
 fi
@@ -86,15 +88,24 @@ mkdir -p "$MEDIA_PATH"
 mkdir -p "$MOVIES_PATH"
 mkdir -p "$TV_PATH"
 mkdir -p "$DOWNLOADS_PATH"
-mkdir -p "$CONFIG_PATH"
-
-########################################
-# Create incomplete directory if needed
-########################################
+mkdir -p "$CONFIG_DIR"
 
 if [ "$LAYOUT" = "2" ]; then
+mkdir -p "$COMPLETE_PATH"
 mkdir -p "$INCOMPLETE_PATH"
 fi
+
+########################################
+# Persist paths to stack.env
+########################################
+
+cat >> "$CONFIG_FILE" <<EOF
+
+MEDIA_PATH=$MEDIA_PATH
+MOVIES_PATH=$MOVIES_PATH
+TV_PATH=$TV_PATH
+DOWNLOADS_PATH=$DOWNLOADS_PATH
+EOF
 
 ########################################
 # Display results
@@ -108,7 +119,12 @@ echo "Media: $MEDIA_PATH"
 echo "Movies: $MOVIES_PATH"
 echo "TV: $TV_PATH"
 echo "Downloads: $DOWNLOADS_PATH"
-echo "Config: $CONFIG_PATH"
+echo "Config: $CONFIG_DIR"
+
+if [ "$LAYOUT" = "2" ]; then
+echo "Downloads Complete: $COMPLETE_PATH"
+echo "Downloads Incomplete: $INCOMPLETE_PATH"
+fi
 
 echo ""
 

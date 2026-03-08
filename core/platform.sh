@@ -4,6 +4,12 @@
 # Media Stack Platform Detection
 ########################################
 
+########################################
+# Load environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
+
 PLATFORM_ID=""
 PLATFORM_FAMILY=""
 PACKAGE_MANAGER=""
@@ -18,31 +24,31 @@ detect_platform() {
 echo "Detecting operating system..."
 
 if [ -f /etc/os-release ]; then
-    source /etc/os-release
-    PLATFORM_ID="$ID"
+. /etc/os-release
+PLATFORM_ID="$ID"
 else
-    PLATFORM_ID="unknown"
+PLATFORM_ID="unknown"
 fi
 
 ########################################
-# Detect NAS Platforms
+# Detect NAS platforms
 ########################################
 
 if [ -f /etc/unraid-version ]; then
-    NAS_PLATFORM="unraid"
+NAS_PLATFORM="unraid"
 fi
 
-if grep -qi "truenas" /etc/os-release 2>/dev/null; then
-    NAS_PLATFORM="truenas"
-fi
-
-if grep -qi "openmediavault" /etc/os-release 2>/dev/null; then
-    NAS_PLATFORM="openmediavault"
-fi
-
-if grep -qi "casaos" /etc/os-release 2>/dev/null; then
-    NAS_PLATFORM="casaos"
-fi
+case "$ID" in
+truenas*)
+NAS_PLATFORM="truenas"
+;;
+openmediavault)
+NAS_PLATFORM="openmediavault"
+;;
+casaos)
+NAS_PLATFORM="casaos"
+;;
+esac
 
 ########################################
 # Determine platform family
@@ -50,35 +56,40 @@ fi
 
 case "$PLATFORM_ID" in
 
-    debian|ubuntu|devuan|linuxmint|pop)
-        PLATFORM_FAMILY="debian"
-        PACKAGE_MANAGER="apt"
-    ;;
+debian|ubuntu|devuan|linuxmint|pop)
+PLATFORM_FAMILY="debian"
+PACKAGE_MANAGER="apt"
+;;
 
-    fedora|rhel|centos|rocky|almalinux)
-        PLATFORM_FAMILY="redhat"
-        PACKAGE_MANAGER="dnf"
-    ;;
+fedora|rhel|centos|rocky|almalinux)
+PLATFORM_FAMILY="redhat"
 
-    arch|manjaro|endeavouros)
-        PLATFORM_FAMILY="arch"
-        PACKAGE_MANAGER="pacman"
-    ;;
+if command -v dnf >/dev/null 2>&1; then
+PACKAGE_MANAGER="dnf"
+else
+PACKAGE_MANAGER="yum"
+fi
+;;
 
-    opensuse*|sles)
-        PLATFORM_FAMILY="suse"
-        PACKAGE_MANAGER="zypper"
-    ;;
+arch|manjaro|endeavouros)
+PLATFORM_FAMILY="arch"
+PACKAGE_MANAGER="pacman"
+;;
 
-    alpine)
-        PLATFORM_FAMILY="alpine"
-        PACKAGE_MANAGER="apk"
-    ;;
+opensuse*|sles)
+PLATFORM_FAMILY="suse"
+PACKAGE_MANAGER="zypper"
+;;
 
-    *)
-        PLATFORM_FAMILY="unknown"
-        PACKAGE_MANAGER="unknown"
-    ;;
+alpine)
+PLATFORM_FAMILY="alpine"
+PACKAGE_MANAGER="apk"
+;;
+
+*)
+PLATFORM_FAMILY="unknown"
+PACKAGE_MANAGER="unknown"
+;;
 
 esac
 
@@ -86,7 +97,12 @@ echo "Detected OS: $PLATFORM_ID"
 echo "Platform family: $PLATFORM_FAMILY"
 
 if [ "$NAS_PLATFORM" != "none" ]; then
-    echo "Detected NAS platform: $NAS_PLATFORM"
+echo "Detected NAS platform: $NAS_PLATFORM"
+fi
+
+if [ "$PACKAGE_MANAGER" = "unknown" ]; then
+echo "Unsupported Linux distribution."
+exit 1
 fi
 
 }
@@ -99,11 +115,29 @@ pkg_update() {
 
 case "$PACKAGE_MANAGER" in
 
-apt) apt update ;;
-dnf) dnf makecache ;;
-pacman) pacman -Sy --noconfirm ;;
-zypper) zypper refresh ;;
-apk) apk update ;;
+apt)
+apt update
+;;
+
+dnf)
+dnf makecache
+;;
+
+yum)
+yum makecache
+;;
+
+pacman)
+pacman -Syu --noconfirm
+;;
+
+zypper)
+zypper refresh
+;;
+
+apk)
+apk update
+;;
 
 *)
 echo "Unsupported package manager"
@@ -118,11 +152,29 @@ pkg_install() {
 
 case "$PACKAGE_MANAGER" in
 
-apt) apt install -y "$@" ;;
-dnf) dnf install -y "$@" ;;
-pacman) pacman -S --noconfirm "$@" ;;
-zypper) zypper install -y "$@" ;;
-apk) apk add "$@" ;;
+apt)
+apt install -y "$@"
+;;
+
+dnf)
+dnf install -y "$@"
+;;
+
+yum)
+yum install -y "$@"
+;;
+
+pacman)
+pacman -S --noconfirm "$@"
+;;
+
+zypper)
+zypper install -y "$@"
+;;
+
+apk)
+apk add "$@"
+;;
 
 *)
 echo "Unsupported package manager"
@@ -133,7 +185,14 @@ esac
 
 }
 
+########################################
+# Export variables
+########################################
+
 export PLATFORM_ID
 export PLATFORM_FAMILY
 export PACKAGE_MANAGER
 export NAS_PLATFORM
+export -f detect_platform
+export -f pkg_update
+export -f pkg_install

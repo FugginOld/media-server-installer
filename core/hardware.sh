@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 
 ########################################
-# Hardware Detection
+# Media Stack Hardware Detection
 #
 # Detects GPU hardware and prepares
-# Docker container configuration for
-# hardware acceleration.
+# Docker configuration for hardware
+# acceleration in containers.
 ########################################
+
+########################################
+# Load environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
 
 GPU_TYPE="none"
 GPU_DEVICES=""
@@ -27,31 +33,29 @@ echo ""
 
 if ! command -v lspci >/dev/null 2>&1; then
 echo "pciutils not installed, skipping GPU detection."
+GPU_TYPE="none"
 return
 fi
 
 ########################################
-# NVIDIA GPU detection
+# NVIDIA detection
 ########################################
 
 if lspci | grep -qi nvidia; then
-
 GPU_TYPE="nvidia"
 
 ########################################
-# Intel GPU detection
+# Intel detection
 ########################################
 
-elif lspci | grep -Ei "vga|display" | grep -qi intel; then
-
+elif lspci | grep -Ei "vga|3d|display" | grep -qi intel; then
 GPU_TYPE="intel"
 
 ########################################
-# AMD GPU detection
+# AMD detection
 ########################################
 
-elif lspci | grep -Ei "vga|display" | grep -qi amd; then
-
+elif lspci | grep -Ei "vga|3d|display" | grep -qi amd; then
 GPU_TYPE="amd"
 
 ########################################
@@ -59,9 +63,7 @@ GPU_TYPE="amd"
 ########################################
 
 else
-
 GPU_TYPE="none"
-
 fi
 
 echo "Detected GPU type: $GPU_TYPE"
@@ -69,7 +71,7 @@ echo "Detected GPU type: $GPU_TYPE"
 }
 
 ########################################
-# Configure GPU devices for Docker
+# Configure Docker GPU devices
 ########################################
 
 configure_gpu_devices() {
@@ -102,6 +104,7 @@ GPU_DEVICES="
       - NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
 "
 
+install_nvidia_runtime
 ;;
 
 ########################################
@@ -132,21 +135,32 @@ echo ""
 echo "Installing NVIDIA container toolkit..."
 echo ""
 
+########################################
+# Debian / Ubuntu systems
+########################################
+
 if command -v apt >/dev/null 2>&1; then
 
 apt update
 apt install -y nvidia-container-toolkit
 
 ########################################
-# Restart docker to enable runtime
+# Restart Docker
 ########################################
 
-if [ "$SERVICE_MANAGER" = "systemd" ]; then
+if command -v systemctl >/dev/null 2>&1; then
 systemctl restart docker
-elif [ "$SERVICE_MANAGER" = "sysvinit" ]; then
+else
 service docker restart
 fi
 
 fi
 
 }
+
+########################################
+# Export functions
+########################################
+
+export -f detect_gpu
+export -f configure_gpu_devices

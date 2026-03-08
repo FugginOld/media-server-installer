@@ -1,33 +1,44 @@
 #!/usr/bin/env bash
 
 ########################################
-# Docker Compose Controller
+# Media Stack Docker Compose Controller
 #
-# Handles lifecycle management of the
-# Media Stack containers.
+# Manages lifecycle operations for the
+# Media Stack container environment.
 ########################################
 
-STACK_DIR="/opt/media-stack"
-
 ########################################
-# Verify stack directory exists
+# Load environment
 ########################################
 
-if [ ! -d "$STACK_DIR" ]; then
-echo "Media stack directory not found."
-exit 1
-fi
-
-########################################
-# Ensure compose file exists
-########################################
+source "$INSTALL_DIR/core/env.sh"
 
 COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
 
-if [ ! -f "$COMPOSE_FILE" ]; then
-echo "docker-compose.yml missing."
+########################################
+# Validate environment
+########################################
+
+if [ ! -d "$STACK_DIR" ]; then
+echo "Media Stack directory not found: $STACK_DIR"
 exit 1
 fi
+
+if [ ! -f "$COMPOSE_FILE" ]; then
+echo "docker-compose.yml missing in $STACK_DIR"
+exit 1
+fi
+
+if ! command -v docker >/dev/null 2>&1; then
+echo "Docker is not installed."
+exit 1
+fi
+
+########################################
+# Change to stack directory
+########################################
+
+cd "$STACK_DIR" || exit 1
 
 ########################################
 # Command handler
@@ -42,10 +53,7 @@ case "$1" in
 up)
 
 echo "Starting Media Stack..."
-
-cd "$STACK_DIR"
 docker compose up -d
-
 ;;
 
 ########################################
@@ -55,10 +63,7 @@ docker compose up -d
 down)
 
 echo "Stopping Media Stack..."
-
-cd "$STACK_DIR"
 docker compose down
-
 ;;
 
 ########################################
@@ -68,10 +73,7 @@ docker compose down
 restart)
 
 echo "Restarting Media Stack..."
-
-cd "$STACK_DIR"
 docker compose restart
-
 ;;
 
 ########################################
@@ -81,32 +83,38 @@ docker compose restart
 pull)
 
 echo "Pulling container updates..."
-
-cd "$STACK_DIR"
 docker compose pull
-
 ;;
 
 ########################################
-# Show container logs
+# Logs
 ########################################
 
 logs)
 
-cd "$STACK_DIR"
+if [ -n "$2" ]; then
+docker compose logs -f "$2"
+else
 docker compose logs -f
-
+fi
 ;;
 
 ########################################
-# Show container status
+# Container status
 ########################################
 
 status)
 
-cd "$STACK_DIR"
 docker compose ps
+;;
 
+########################################
+# Validate compose config
+########################################
+
+validate)
+
+docker compose config >/dev/null && echo "Compose file valid."
 ;;
 
 ########################################
@@ -116,9 +124,17 @@ docker compose ps
 *)
 
 echo ""
-echo "Usage: compose.sh [up|down|restart|pull|logs|status]"
+echo "Media Stack Compose Controller"
 echo ""
-
+echo "Usage:"
+echo "compose.sh up"
+echo "compose.sh down"
+echo "compose.sh restart"
+echo "compose.sh pull"
+echo "compose.sh logs [service]"
+echo "compose.sh status"
+echo "compose.sh validate"
+echo ""
 ;;
 
 esac

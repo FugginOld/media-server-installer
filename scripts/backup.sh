@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
 
 ########################################
-# Media Stack Backup
+# Media Stack Backup System
 #
-# Creates a compressed backup of the
-# Media Stack configuration directory.
+# Creates a compressed backup of
+# Media Stack configuration and
+# registry files.
 ########################################
 
-STACK_DIR="/opt/media-stack"
-BACKUP_DIR="/opt/media-stack-backups"
+########################################
+# Load environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
+
 DATE=$(date +%Y%m%d-%H%M)
 
 ########################################
@@ -16,12 +21,12 @@ DATE=$(date +%Y%m%d-%H%M)
 ########################################
 
 if [ ! -d "$STACK_DIR" ]; then
-echo "Media stack directory not found."
+echo "Media Stack directory not found: $STACK_DIR"
 exit 1
 fi
 
 ########################################
-# Create backup directory if needed
+# Ensure backup directory exists
 ########################################
 
 mkdir -p "$BACKUP_DIR"
@@ -43,10 +48,24 @@ echo "Destination: $BACKUP_FILE"
 echo ""
 
 ########################################
-# Create compressed backup
+# Files to include in backup
 ########################################
 
-tar -czf "$BACKUP_FILE" "$STACK_DIR"
+FILES=(
+config
+docker-compose.yml
+stack.env
+services.json
+ports.json
+)
+
+########################################
+# Create backup
+########################################
+
+tar -czf "$BACKUP_FILE" \
+-C "$STACK_DIR" \
+"${FILES[@]}" 2>/dev/null
 
 ########################################
 # Verify backup
@@ -54,7 +73,10 @@ tar -czf "$BACKUP_FILE" "$STACK_DIR"
 
 if [ -f "$BACKUP_FILE" ]; then
 
+SIZE=$(du -h "$BACKUP_FILE" | awk '{print $1}')
+
 echo "Backup created successfully."
+echo "Backup size: $SIZE"
 echo ""
 echo "Backup file:"
 echo "$BACKUP_FILE"
@@ -62,7 +84,16 @@ echo "$BACKUP_FILE"
 else
 
 echo "Backup failed."
+exit 1
 
 fi
+
+########################################
+# Cleanup old backups (keep last 10)
+########################################
+
+ls -1t "$BACKUP_DIR"/media-stack-*.tar.gz 2>/dev/null \
+| tail -n +11 \
+| xargs -r rm
 
 echo ""

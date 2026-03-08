@@ -9,6 +9,30 @@
 
 STACK_DIR="/opt/media-stack"
 INSTALL_DIR="/opt/media-server-installer"
+PLUGIN_DIR="$INSTALL_DIR/plugins"
+
+PASS_COUNT=0
+WARN_COUNT=0
+FAIL_COUNT=0
+
+########################################
+# Output helpers
+########################################
+
+pass() {
+echo "PASS  $1"
+((PASS_COUNT++))
+}
+
+warn() {
+echo "WARN  $1"
+((WARN_COUNT++))
+}
+
+fail() {
+echo "FAIL  $1"
+((FAIL_COUNT++))
+}
 
 echo ""
 echo "================================"
@@ -17,92 +41,175 @@ echo "================================"
 echo ""
 
 ########################################
-# Check installer directory
+# Installer directory
 ########################################
 
 if [ -d "$INSTALL_DIR" ]; then
-  echo "Installer directory OK."
+pass "Installer directory present"
 else
-  echo "Installer directory missing."
+fail "Installer directory missing ($INSTALL_DIR)"
 fi
 
 ########################################
-# Check stack directory
+# Stack directory
 ########################################
 
 if [ -d "$STACK_DIR" ]; then
-  echo "Stack directory OK."
+pass "Stack directory present"
 else
-  echo "Stack directory missing."
+fail "Stack directory missing ($STACK_DIR)"
 fi
 
 ########################################
-# Check Docker installation
+# Docker binary
 ########################################
 
 if command -v docker >/dev/null 2>&1; then
-  echo "Docker installed."
+pass "Docker installed"
+DOCKER_PRESENT=true
 else
-  echo "Docker NOT installed."
+fail "Docker NOT installed"
+DOCKER_PRESENT=false
 fi
 
 ########################################
-# Check Docker daemon
+# Docker daemon
 ########################################
+
+if [ "$DOCKER_PRESENT" = true ]; then
 
 if docker info >/dev/null 2>&1; then
-  echo "Docker daemon running."
+pass "Docker daemon running"
 else
-  echo "Docker daemon NOT running."
+fail "Docker daemon NOT running"
+fi
+
+else
+warn "Skipping daemon check (docker missing)"
 fi
 
 ########################################
-# Check docker compose
+# Docker compose
 ########################################
+
+if [ "$DOCKER_PRESENT" = true ]; then
 
 if docker compose version >/dev/null 2>&1; then
-  echo "Docker Compose OK."
+pass "Docker Compose available"
 else
-  echo "Docker Compose NOT available."
+fail "Docker Compose NOT available"
+fi
+
+else
+warn "Skipping compose check"
 fi
 
 ########################################
-# Check docker-compose.yml
+# docker-compose.yml
 ########################################
 
 if [ -f "$STACK_DIR/docker-compose.yml" ]; then
-  echo "docker-compose.yml present."
+pass "docker-compose.yml present"
 else
-  echo "docker-compose.yml missing."
+fail "docker-compose.yml missing"
 fi
 
 ########################################
-# Check service registry
+# Service registry
 ########################################
 
 if [ -f "$STACK_DIR/services.json" ]; then
-  echo "Service registry OK."
+pass "Service registry present"
 else
-  echo "Service registry missing."
+warn "services.json missing"
 fi
 
 ########################################
-# Check port registry
+# Port registry
 ########################################
 
-if [ -f "$STACK_DIR/ports.json" ]; then
-  echo "Port registry OK."
+PORT_FILE="$STACK_DIR/ports.json"
+
+if [ -f "$PORT_FILE" ]; then
+pass "Port registry present"
+PORT_REGISTRY=true
 else
-  echo "Port registry missing."
+warn "Port registry missing"
+PORT_REGISTRY=false
 fi
 
 ########################################
-# Check running containers
+# Plugin directory
+########################################
+
+if [ -d "$PLUGIN_DIR" ]; then
+
+PLUGIN_COUNT=$(find "$PLUGIN_DIR" -mindepth 1 -maxdepth 1 -type d | wc -l)
+
+if [ "$PLUGIN_COUNT" -gt 0 ]; then
+pass "Plugins detected ($PLUGIN_COUNT)"
+else
+warn "Plugin directory empty"
+fi
+
+else
+warn "Plugin directory missing"
+fi
+
+########################################
+# Running containers
 ########################################
 
 echo ""
-echo "Running Containers:"
+echo "Container Status"
+
+if [ "$DOCKER_PRESENT" = true ]; then
+
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
+else
+
+echo "Docker unavailable"
+
+fi
+
+########################################
+# Port conflict check
+########################################
+
+if [ "$PORT_REGISTRY" = true ] && command -v jq >/dev/null 2>&1; then
+
+DUPLICATES=$(jq -r '.[]?.port' "$PORT_FILE" 2>/dev/null | sort | uniq -d)
+
+if [ -z "$DUPLICATES" ]; then
+pass "No duplicate ports in registry"
+else
+fail "Duplicate ports detected: $DUPLICATES"
+fi
+
+else
+warn "Skipping port conflict check"
+fi
+
+########################################
+# Summary
+########################################
+
 echo ""
-echo "Doctor check complete."
+echo "================================"
+echo " Doctor Summary"
+echo "================================"
+
+echo "PASS: $PASS_COUNT"
+echo "WARN: $WARN_COUNT"
+echo "FAIL: $FAIL_COUNT"
+
+echo ""
+
+if [ "$FAIL_COUNT" -eq 0 ]; then
+echo "System health: OK"
+else
+echo "System health: ISSUES DETECTED"
+fi
+
+echo ""

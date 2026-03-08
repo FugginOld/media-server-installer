@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
 
 ########################################
-# Container Permission Management
+# Media Stack Container Permission
+# Management
 ########################################
 
-STACK_DIR="/opt/media-stack"
+########################################
+# Load environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
 
 ########################################
 # Determine PUID / PGID
@@ -13,11 +18,11 @@ STACK_DIR="/opt/media-stack"
 detect_user_ids() {
 
 if [ -z "$PUID" ]; then
-    PUID=$(id -u)
+PUID=$(id -u)
 fi
 
 if [ -z "$PGID" ]; then
-    PGID=$(id -g)
+PGID=$(id -g)
 fi
 
 echo "Using PUID=$PUID"
@@ -26,26 +31,28 @@ echo "Using PGID=$PGID"
 }
 
 ########################################
-# Fix media directory permissions
+# Fix directory permissions
 ########################################
 
 fix_media_permissions() {
 
-echo "Fixing media directory permissions..."
+echo "Fixing directory permissions..."
 
 DIRS=(
 "$MEDIA_PATH"
 "$MOVIES_PATH"
 "$TV_PATH"
 "$DOWNLOADS_PATH"
+"$CONFIG_DIR"
 )
 
 for DIR in "${DIRS[@]}"
 do
 
-if [ -d "$DIR" ]; then
-    chown -R "$PUID:$PGID" "$DIR"
-    chmod -R 775 "$DIR"
+if [ -n "$DIR" ] && [ -d "$DIR" ]; then
+echo "Fixing permissions: $DIR"
+chown -R "$PUID:$PGID" "$DIR"
+chmod -R 775 "$DIR"
 fi
 
 done
@@ -53,7 +60,7 @@ done
 }
 
 ########################################
-# NAS specific fixes
+# NAS specific adjustments
 ########################################
 
 apply_nas_permissions() {
@@ -91,6 +98,12 @@ casaos)
 echo "Applying CasaOS docker permissions..."
 
 chmod -R 775 "$MEDIA_PATH"
+
+;;
+
+*)
+
+echo "No NAS-specific permission rules applied."
 
 ;;
 
