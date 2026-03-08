@@ -60,7 +60,7 @@ PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
 cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
   plex-exporter:
-    image: ghcr.io/ekofr/plex-exporter:latest
+    image: ghcr.io/jsclayton/prometheus-plex-exporter
     container_name: plex-exporter
     ports:
       - "$PORT:${PLUGIN_PORTS[0]}"

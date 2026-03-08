@@ -43,7 +43,7 @@ jq --arg svc "$SERVICE" --argjson port "$PORT" \
 
 mv "$TMP_FILE" "$PORT_REGISTRY"
 
-echo "Registered port $PORT for $SERVICE"
+echo "Registered port $PORT for $SERVICE" >&2
 
 }
 

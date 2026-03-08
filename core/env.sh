@@ -56,6 +56,14 @@ mkdir -p "$STACK_DIR"
 mkdir -p "$CONFIG_DIR"
 
 ########################################
+# Default container permissions
+########################################
+
+PUID=${PUID:-$(id -u)}
+PGID=${PGID:-$(id -g)}
+TIMEZONE=${TIMEZONE:-UTC}
+
+########################################
 # Export variables
 ########################################
 
@@ -69,3 +77,7 @@ export MEDIA_PATH
 export MOVIES_PATH
 export TV_PATH
 export DOWNLOADS_PATH
+
+export PUID
+export PGID
+export TIMEZONE

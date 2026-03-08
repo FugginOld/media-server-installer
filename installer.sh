@@ -87,7 +87,6 @@ echo ""
 mkdir -p "$CONFIG_DIR/webinstaller"
 
 cat <<EOF > "$STACK_DIR/docker-compose.yml"
-version: "3.9"
 
 services:
 
@@ -303,7 +302,6 @@ resolve_dependencies
 COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
 
 cat <<EOF > "$COMPOSE_FILE"
-version: "3.9"
 
 networks:
   media-network:
