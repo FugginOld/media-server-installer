@@ -1,3 +1,4 @@
+![Version](https://img.shields.io/badge/version-0.1.0--alpha-orange)
 ![Status](https://img.shields.io/badge/status-alpha-red)
 
 # Media Stack Installer
