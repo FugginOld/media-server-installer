@@ -7,9 +7,14 @@
 # the Media Stack installation.
 ########################################
 
+set -e
+
+########################################
+# Paths
+########################################
+
 STACK_DIR="/opt/media-stack"
 INSTALL_DIR="/opt/media-server-installer"
-CLI="/usr/local/bin/media-stack"
 
 ########################################
 # Help Menu
@@ -27,11 +32,13 @@ echo "media-stack update"
 echo "media-stack status"
 echo "media-stack services"
 echo "media-stack doctor"
+echo "media-stack verify"
 echo "media-stack restart"
 echo "media-stack logs"
 echo "media-stack maintenance"
 echo "media-stack backup"
 echo "media-stack reset"
+echo "media-stack version"
 echo ""
 
 }
@@ -42,7 +49,7 @@ echo ""
 
 install_stack() {
 
-cd "$INSTALL_DIR" || exit
+cd "$INSTALL_DIR"
 bash installer.sh
 
 }
@@ -75,8 +82,8 @@ services_stack() {
 
 if [ -f "$STACK_DIR/services.json" ]; then
 
-cat "$STACK_DIR/services.json" \
-| jq -r '.services[] | "\(.name) -> \(.url)"'
+jq -r '.services[] | "\(.name) -> \(.url)"' \
+"$STACK_DIR/services.json"
 
 else
 
@@ -87,12 +94,54 @@ fi
 }
 
 ########################################
-# Doctor Command
+# Doctor
 ########################################
 
 doctor_stack() {
 
 bash "$INSTALL_DIR/scripts/doctor.sh"
+
+}
+
+########################################
+# Verify System
+########################################
+
+verify_stack() {
+
+echo ""
+echo "================================"
+echo " Media Stack Verification"
+echo "================================"
+echo ""
+
+########################################
+# Preflight
+########################################
+
+bash "$INSTALL_DIR/scripts/preflight.sh"
+
+########################################
+# Plugin validation
+########################################
+
+bash "$INSTALL_DIR/scripts/plugin-validator.sh"
+
+########################################
+# Doctor diagnostics
+########################################
+
+bash "$INSTALL_DIR/scripts/doctor.sh"
+
+########################################
+# Compose validation
+########################################
+
+bash "$INSTALL_DIR/scripts/compose.sh" validate
+
+echo ""
+echo "Verification complete."
+echo ""
 
 }
 
@@ -107,22 +156,12 @@ bash "$INSTALL_DIR/scripts/compose.sh" restart
 }
 
 ########################################
-# View Logs
+# Logs
 ########################################
 
 logs_stack() {
 
-bash "$INSTALL_DIR/scripts/compose.sh" logs
-
-}
-
-########################################
-# Backup Stack
-########################################
-
-backup_stack() {
-
-bash "$INSTALL_DIR/scripts/backup.sh"
+bash "$INSTALL_DIR/scripts/compose.sh" logs "$2"
 
 }
 
@@ -134,18 +173,41 @@ maintenance_stack() {
 
 docker image prune -f
 docker container prune -f
+docker volume prune -f
 
 }
 
 ########################################
-# Reset Stack
+# Backup
+########################################
+
+backup_stack() {
+
+bash "$INSTALL_DIR/scripts/backup.sh"
+
+}
+
+########################################
+# Reset
 ########################################
 
 reset_stack() {
 
-echo "Resetting Media Stack..."
+bash "$INSTALL_DIR/scripts/reset-stack.sh"
 
-bash "$INSTALL_DIR/reset-stack.sh"
+}
+
+########################################
+# Version
+########################################
+
+version_stack() {
+
+if [ -f "$STACK_DIR/version" ]; then
+echo "Media Stack version: $(cat $STACK_DIR/version)"
+else
+echo "Media Stack version unknown"
+fi
 
 }
 
@@ -175,12 +237,16 @@ doctor)
 doctor_stack
 ;;
 
+verify)
+verify_stack
+;;
+
 restart)
 restart_stack
 ;;
 
 logs)
-logs_stack
+logs_stack "$@"
 ;;
 
 maintenance)
@@ -193,6 +259,10 @@ backup_stack
 
 reset)
 reset_stack
+;;
+
+version)
+version_stack
 ;;
 
 *)
