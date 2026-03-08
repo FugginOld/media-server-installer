@@ -9,39 +9,35 @@
 
 STACK_DIR="/opt/media-stack"
 INSTALL_DIR="/opt/media-server-installer"
+CLI="/usr/local/bin/media-stack"
 
 ########################################
-# Help menu
+# Help Menu
 ########################################
 
 show_help() {
 
 echo ""
-echo "================================"
-echo " Media Stack CLI"
-echo "================================"
+echo "Media Stack CLI"
 echo ""
-
 echo "Commands:"
 echo ""
-
-echo "media-stack install      Install stack"
-echo "media-stack update       Update containers"
-echo "media-stack status       Show container status"
-echo "media-stack services     List registered services"
-echo "media-stack restart      Restart containers"
-echo "media-stack logs         View container logs"
-echo "media-stack backup       Backup stack"
-echo "media-stack doctor       Diagnose stack"
-echo "media-stack maintenance  Clean docker resources"
-echo "media-stack reset        Remove stack"
-
+echo "media-stack install"
+echo "media-stack update"
+echo "media-stack status"
+echo "media-stack services"
+echo "media-stack doctor"
+echo "media-stack restart"
+echo "media-stack logs"
+echo "media-stack maintenance"
+echo "media-stack backup"
+echo "media-stack reset"
 echo ""
 
 }
 
 ########################################
-# Install stack
+# Install Stack
 ########################################
 
 install_stack() {
@@ -52,7 +48,7 @@ bash installer.sh
 }
 
 ########################################
-# Update containers
+# Update Stack
 ########################################
 
 update_stack() {
@@ -62,7 +58,7 @@ bash "$INSTALL_DIR/scripts/updates.sh"
 }
 
 ########################################
-# Show container status
+# Stack Status
 ########################################
 
 status_stack() {
@@ -72,7 +68,7 @@ bash "$INSTALL_DIR/scripts/compose.sh" status
 }
 
 ########################################
-# List registered services
+# List Services
 ########################################
 
 services_stack() {
@@ -91,37 +87,7 @@ fi
 }
 
 ########################################
-# Restart containers
-########################################
-
-restart_stack() {
-
-bash "$INSTALL_DIR/scripts/compose.sh" restart
-
-}
-
-########################################
-# Show container logs
-########################################
-
-logs_stack() {
-
-bash "$INSTALL_DIR/scripts/compose.sh" logs
-
-}
-
-########################################
-# Backup stack
-########################################
-
-backup_stack() {
-
-bash "$INSTALL_DIR/scripts/backup.sh"
-
-}
-
-########################################
-# Run diagnostics
+# Doctor Command
 ########################################
 
 doctor_stack() {
@@ -131,12 +97,40 @@ bash "$INSTALL_DIR/scripts/doctor.sh"
 }
 
 ########################################
-# Clean docker resources
+# Restart Containers
+########################################
+
+restart_stack() {
+
+bash "$INSTALL_DIR/scripts/compose.sh" restart
+
+}
+
+########################################
+# View Logs
+########################################
+
+logs_stack() {
+
+bash "$INSTALL_DIR/scripts/compose.sh" logs
+
+}
+
+########################################
+# Backup Stack
+########################################
+
+backup_stack() {
+
+bash "$INSTALL_DIR/scripts/backup.sh"
+
+}
+
+########################################
+# Maintenance
 ########################################
 
 maintenance_stack() {
-
-echo "Cleaning unused Docker resources..."
 
 docker image prune -f
 docker container prune -f
@@ -144,7 +138,7 @@ docker container prune -f
 }
 
 ########################################
-# Reset stack
+# Reset Stack
 ########################################
 
 reset_stack() {
@@ -156,7 +150,7 @@ bash "$INSTALL_DIR/reset-stack.sh"
 }
 
 ########################################
-# Command router
+# Command Router
 ########################################
 
 case "$1" in
@@ -177,6 +171,10 @@ services)
 services_stack
 ;;
 
+doctor)
+doctor_stack
+;;
+
 restart)
 restart_stack
 ;;
@@ -185,16 +183,12 @@ logs)
 logs_stack
 ;;
 
-backup)
-backup_stack
-;;
-
-doctor)
-doctor_stack
-;;
-
 maintenance)
 maintenance_stack
+;;
+
+backup)
+backup_stack
 ;;
 
 reset)

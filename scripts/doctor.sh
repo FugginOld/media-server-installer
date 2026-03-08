@@ -21,9 +21,9 @@ echo ""
 ########################################
 
 if [ -d "$INSTALL_DIR" ]; then
-echo "Installer directory OK."
+  echo "Installer directory OK."
 else
-echo "Installer directory missing."
+  echo "Installer directory missing."
 fi
 
 ########################################
@@ -31,9 +31,9 @@ fi
 ########################################
 
 if [ -d "$STACK_DIR" ]; then
-echo "Stack directory OK."
+  echo "Stack directory OK."
 else
-echo "Stack directory missing."
+  echo "Stack directory missing."
 fi
 
 ########################################
@@ -41,9 +41,9 @@ fi
 ########################################
 
 if command -v docker >/dev/null 2>&1; then
-echo "Docker installed."
+  echo "Docker installed."
 else
-echo "Docker not installed."
+  echo "Docker NOT installed."
 fi
 
 ########################################
@@ -51,29 +51,58 @@ fi
 ########################################
 
 if docker info >/dev/null 2>&1; then
-echo "Docker daemon running."
+  echo "Docker daemon running."
 else
-echo "Docker daemon not running."
+  echo "Docker daemon NOT running."
 fi
 
 ########################################
-# Check compose file
+# Check docker compose
+########################################
+
+if docker compose version >/dev/null 2>&1; then
+  echo "Docker Compose OK."
+else
+  echo "Docker Compose NOT available."
+fi
+
+########################################
+# Check docker-compose.yml
 ########################################
 
 if [ -f "$STACK_DIR/docker-compose.yml" ]; then
-echo "docker-compose.yml found."
+  echo "docker-compose.yml present."
 else
-echo "docker-compose.yml missing."
+  echo "docker-compose.yml missing."
 fi
 
 ########################################
-# List containers
+# Check service registry
+########################################
+
+if [ -f "$STACK_DIR/services.json" ]; then
+  echo "Service registry OK."
+else
+  echo "Service registry missing."
+fi
+
+########################################
+# Check port registry
+########################################
+
+if [ -f "$STACK_DIR/ports.json" ]; then
+  echo "Port registry OK."
+else
+  echo "Port registry missing."
+fi
+
+########################################
+# Check running containers
 ########################################
 
 echo ""
-echo "Running containers:"
-echo ""
-
+echo "Running Containers:"
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
 echo ""
+echo "Doctor check complete."
