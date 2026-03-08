@@ -1,3 +1,5 @@
+![Status](https://img.shields.io/badge/status-alpha-red)
+
 # Media Stack Installer
 
 Media Stack Installer is a modular Docker-based platform that deploys a complete automated media server ecosystem using a plugin-based architecture.
