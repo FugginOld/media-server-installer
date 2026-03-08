@@ -9,11 +9,17 @@
 ########################################
 
 ########################################
+# Load Media Stack Environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
+
+########################################
 # Plugin Metadata
 ########################################
 
 PLUGIN_NAME="unpackerr"
-PLUGIN_DESCRIPTION="Download Extraction Automation"
+PLUGIN_DESCRIPTION="Automatic Archive Extraction"
 PLUGIN_CATEGORY="System"
 
 PLUGIN_DEPENDS=(sabnzbd)
@@ -30,17 +36,13 @@ PLUGIN_DASHBOARD=false
 
 install_service() {
 
-########################################
-# Core paths
-########################################
-
-STACK_DIR="/opt/media-stack"
+echo "Installing Unpackerr..."
 
 ########################################
 # Create configuration directory
 ########################################
 
-mkdir -p "$STACK_DIR/config/unpackerr"
+mkdir -p "$CONFIG_DIR/unpackerr"
 
 ########################################
 # Add container to docker-compose
@@ -49,10 +51,11 @@ mkdir -p "$STACK_DIR/config/unpackerr"
 cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
   unpackerr:
-    image: golift/unpackerr
+    image: ghcr.io/unpackerr/unpackerr:latest
     container_name: unpackerr
     environment:
       - TZ=\${TIMEZONE}
+      - UNPACKERR_DEBUG=false
     volumes:
       - ./config/unpackerr:/config
       - $DOWNLOADS_PATH:/downloads
@@ -70,5 +73,7 @@ cat <<EOF >> "$STACK_DIR/docker-compose.yml"
       timeout: 10s
       retries: 3
 EOF
+
+echo "Unpackerr installation complete."
 
 }

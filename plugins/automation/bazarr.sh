@@ -9,14 +9,26 @@
 ########################################
 
 ########################################
+# Load Media Stack Environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
+
+########################################
+# Load helpers
+########################################
+
+source "$INSTALL_DIR/scripts/port-helper.sh"
+source "$INSTALL_DIR/scripts/service-registry.sh"
+
+########################################
 # Plugin Metadata
 ########################################
 
 PLUGIN_NAME="bazarr"
-PLUGIN_DESCRIPTION="Subtitle Manager"
+PLUGIN_DESCRIPTION="Subtitle Management"
 PLUGIN_CATEGORY="Automation"
 
-# Bazarr works with Radarr and Sonarr
 PLUGIN_DEPENDS=(radarr sonarr)
 
 PLUGIN_PORTS=(6767)
@@ -31,31 +43,19 @@ PLUGIN_DASHBOARD=true
 
 install_service() {
 
-########################################
-# Core paths
-########################################
-
-INSTALL_DIR="/opt/media-server-installer"
-STACK_DIR="/opt/media-stack"
-
-########################################
-# Load helpers
-########################################
-
-source "$INSTALL_DIR/scripts/port-helper.sh"
-source "$INSTALL_DIR/scripts/service-registry.sh"
+echo "Installing Bazarr..."
 
 ########################################
 # Request port mapping
 ########################################
 
-PORT=$(get_port_mapping "bazarr" 6767 6767)
+PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
 
 ########################################
 # Create configuration directory
 ########################################
 
-mkdir -p "$STACK_DIR/config/bazarr"
+mkdir -p "$CONFIG_DIR/bazarr"
 
 ########################################
 # Add container to docker-compose
@@ -64,10 +64,10 @@ mkdir -p "$STACK_DIR/config/bazarr"
 cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
   bazarr:
-    image: lscr.io/linuxserver/bazarr
+    image: lscr.io/linuxserver/bazarr:latest
     container_name: bazarr
     ports:
-      - "$PORT"
+      - "$PORT:${PLUGIN_PORTS[0]}"
     environment:
       - PUID=\${PUID}
       - PGID=\${PGID}
@@ -85,24 +85,26 @@ EOF
 
 cat <<EOF >> "$STACK_DIR/docker-compose.yml"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:6767 || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:$PORT || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
 EOF
 
 ########################################
-# Register service
+# Register Service
 ########################################
 
 if [ "$PLUGIN_DASHBOARD" = true ]; then
 
 register_service \
 "Bazarr" \
-"http://localhost:6767" \
-"Automation" \
+"http://localhost:$PORT" \
+"$PLUGIN_CATEGORY" \
 "bazarr.png"
 
 fi
+
+echo "Bazarr installation complete."
 
 }

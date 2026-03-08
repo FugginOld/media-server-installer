@@ -1,14 +1,10 @@
 #!/usr/bin/env bash
 
 ########################################
-# Service Registry
-#
-# Tracks installed services so they can
-# be displayed in dashboards and CLI.
+# Load Media Stack Environment
 ########################################
 
-STACK_DIR="/opt/media-stack"
-REGISTRY_FILE="$STACK_DIR/services.json"
+source "$INSTALL_DIR/core/env.sh"
 
 ########################################
 # Initialize registry
@@ -18,9 +14,9 @@ init_registry() {
 
 mkdir -p "$STACK_DIR"
 
-if [ ! -f "$REGISTRY_FILE" ]; then
+if [ ! -f "$SERVICE_REGISTRY" ]; then
 
-cat <<EOF > "$REGISTRY_FILE"
+cat <<EOF > "$SERVICE_REGISTRY"
 {
   "services": []
 }
@@ -50,9 +46,9 @@ jq ".services += [{
   \"url\": \"$URL\",
   \"category\": \"$CATEGORY\",
   \"icon\": \"$ICON\"
-}]" "$REGISTRY_FILE" > "$TMP_FILE"
+}]" "$SERVICE_REGISTRY" > "$TMP_FILE"
 
-mv "$TMP_FILE" "$REGISTRY_FILE"
+mv "$TMP_FILE" "$SERVICE_REGISTRY"
 
 echo "Registered service: $NAME"
 
@@ -66,16 +62,12 @@ remove_service() {
 
 NAME=$1
 
-init_registry
-
 TMP_FILE=$(mktemp)
 
 jq "del(.services[] | select(.name == \"$NAME\"))" \
-"$REGISTRY_FILE" > "$TMP_FILE"
+"$SERVICE_REGISTRY" > "$TMP_FILE"
 
-mv "$TMP_FILE" "$REGISTRY_FILE"
-
-echo "Removed service: $NAME"
+mv "$TMP_FILE" "$SERVICE_REGISTRY"
 
 }
 
@@ -87,6 +79,6 @@ list_services() {
 
 init_registry
 
-cat "$REGISTRY_FILE"
+cat "$SERVICE_REGISTRY"
 
 }

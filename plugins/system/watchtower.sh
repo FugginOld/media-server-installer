@@ -8,6 +8,18 @@
 ########################################
 
 ########################################
+# Load Media Stack Environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
+
+########################################
+# Load helpers
+########################################
+
+source "$INSTALL_DIR/scripts/service-registry.sh"
+
+########################################
 # Plugin Metadata
 ########################################
 
@@ -29,12 +41,7 @@ PLUGIN_DASHBOARD=false
 
 install_service() {
 
-########################################
-# Core paths
-########################################
-
-INSTALL_DIR="/opt/media-server-installer"
-STACK_DIR="/opt/media-stack"
+echo "Installing Watchtower..."
 
 ########################################
 # Add container to docker-compose
@@ -43,24 +50,16 @@ STACK_DIR="/opt/media-stack"
 cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
   watchtower:
-    image: containrrr/watchtower
+    image: containrrr/watchtower:latest
     container_name: watchtower
+    command: --cleanup --schedule "0 0 4 * * *"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: --cleanup --schedule "0 0 4 * * *"
+    environment:
+      - TZ=\${TIMEZONE}
     restart: unless-stopped
 EOF
 
-########################################
-# Health Check
-########################################
-
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
-    healthcheck:
-      test: ["CMD-SHELL", "pgrep watchtower || exit 1"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-EOF
+echo "Watchtower installation complete."
 
 }

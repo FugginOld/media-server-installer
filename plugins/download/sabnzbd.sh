@@ -13,6 +13,19 @@
 ########################################
 
 ########################################
+# Load Media Stack Environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
+
+########################################
+# Load helpers
+########################################
+
+source "$INSTALL_DIR/scripts/port-helper.sh"
+source "$INSTALL_DIR/scripts/service-registry.sh"
+
+########################################
 # Plugin Metadata
 ########################################
 
@@ -34,31 +47,19 @@ PLUGIN_DASHBOARD=true
 
 install_service() {
 
-########################################
-# Core paths
-########################################
-
-INSTALL_DIR="/opt/media-server-installer"
-STACK_DIR="/opt/media-stack"
-
-########################################
-# Load helpers
-########################################
-
-source "$INSTALL_DIR/scripts/port-helper.sh"
-source "$INSTALL_DIR/scripts/service-registry.sh"
+echo "Installing SABnzbd..."
 
 ########################################
 # Request port mapping
 ########################################
 
-PORT=$(get_port_mapping "sabnzbd" 8080 8080)
+PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
 
 ########################################
 # Create configuration directory
 ########################################
 
-mkdir -p "$STACK_DIR/config/sabnzbd"
+mkdir -p "$CONFIG_DIR/sabnzbd"
 
 ########################################
 # Add container to docker-compose
@@ -67,10 +68,10 @@ mkdir -p "$STACK_DIR/config/sabnzbd"
 cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
   sabnzbd:
-    image: lscr.io/linuxserver/sabnzbd
+    image: lscr.io/linuxserver/sabnzbd:latest
     container_name: sabnzbd
     ports:
-      - "$PORT"
+      - "$PORT:${PLUGIN_PORTS[0]}"
     environment:
       - PUID=\${PUID}
       - PGID=\${PGID}
@@ -87,24 +88,26 @@ EOF
 
 cat <<EOF >> "$STACK_DIR/docker-compose.yml"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080 || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:$PORT || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
 EOF
 
 ########################################
-# Register service
+# Register Service
 ########################################
 
 if [ "$PLUGIN_DASHBOARD" = true ]; then
 
 register_service \
 "SABnzbd" \
-"http://localhost:8080" \
-"Download" \
+"http://localhost:$PORT" \
+"$PLUGIN_CATEGORY" \
 "sabnzbd.png"
 
 fi
+
+echo "SABnzbd installation complete."
 
 }

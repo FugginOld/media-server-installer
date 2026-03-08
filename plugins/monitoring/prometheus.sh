@@ -13,11 +13,24 @@
 ########################################
 
 ########################################
+# Load Media Stack Environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
+
+########################################
+# Load helpers
+########################################
+
+source "$INSTALL_DIR/scripts/port-helper.sh"
+source "$INSTALL_DIR/scripts/service-registry.sh"
+
+########################################
 # Plugin Metadata
 ########################################
 
 PLUGIN_NAME="prometheus"
-PLUGIN_DESCRIPTION="Metrics Monitoring System"
+PLUGIN_DESCRIPTION="Metrics Collection Server"
 PLUGIN_CATEGORY="Monitoring"
 
 PLUGIN_DEPENDS=()
@@ -34,37 +47,25 @@ PLUGIN_DASHBOARD=true
 
 install_service() {
 
-########################################
-# Core paths
-########################################
-
-INSTALL_DIR="/opt/media-server-installer"
-STACK_DIR="/opt/media-stack"
-
-########################################
-# Load helpers
-########################################
-
-source "$INSTALL_DIR/scripts/port-helper.sh"
-source "$INSTALL_DIR/scripts/service-registry.sh"
+echo "Installing Prometheus..."
 
 ########################################
 # Request port mapping
 ########################################
 
-PORT=$(get_port_mapping "prometheus" 9090 9090)
+PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
 
 ########################################
 # Create configuration directory
 ########################################
 
-mkdir -p "$STACK_DIR/config/prometheus"
+mkdir -p "$CONFIG_DIR/prometheus"
 
 ########################################
-# Create default Prometheus config
+# Generate default Prometheus config
 ########################################
 
-cat <<EOF > "$STACK_DIR/config/prometheus/prometheus.yml"
+cat <<EOF > "$CONFIG_DIR/prometheus/prometheus.yml"
 global:
   scrape_interval: 15s
 
@@ -90,12 +91,12 @@ EOF
 cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
   prometheus:
-    image: prom/prometheus
+    image: prom/prometheus:latest
     container_name: prometheus
     ports:
-      - "$PORT"
+      - "$PORT:${PLUGIN_PORTS[0]}"
     volumes:
-      - ./config/prometheus:/etc/prometheus
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     restart: unless-stopped
 EOF
 
@@ -105,24 +106,26 @@ EOF
 
 cat <<EOF >> "$STACK_DIR/docker-compose.yml"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9090 || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:$PORT/-/healthy || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
 EOF
 
 ########################################
-# Register service
+# Register Service
 ########################################
 
 if [ "$PLUGIN_DASHBOARD" = true ]; then
 
 register_service \
 "Prometheus" \
-"http://localhost:9090" \
-"Monitoring" \
+"http://localhost:$PORT" \
+"$PLUGIN_CATEGORY" \
 "prometheus.png"
 
 fi
+
+echo "Prometheus installation complete."
 
 }

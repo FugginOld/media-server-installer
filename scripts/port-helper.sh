@@ -1,88 +1,66 @@
 #!/usr/bin/env bash
 
 ########################################
-# Port Helper
-#
-# Used by plugins to safely request
-# port assignments from the registry.
+# Load Media Stack Environment
 ########################################
 
-INSTALL_DIR="/opt/media-server-installer"
-STACK_DIR="/opt/media-stack"
-
+source "$INSTALL_DIR/core/env.sh"
 source "$INSTALL_DIR/scripts/port-registry.sh"
 
 ########################################
-# Request single port mapping
-#
-# Usage:
-# PORT=$(get_port_mapping service host container)
+# Check if port already in use
 ########################################
 
-get_port_mapping() {
+port_in_use() {
 
-SERVICE="$1"
-HOST_PORT="$2"
-CONTAINER_PORT="$3"
+PORT=$1
 
-########################################
-# Ensure registry exists
-########################################
-
-init_port_registry
-
-########################################
-# Check if port already assigned
-########################################
-
-if is_port_in_use "$HOST_PORT"; then
-
-echo "Warning: port $HOST_PORT already registered."
-
+if ss -tuln | grep -q ":$PORT "; then
+    return 0
+else
+    return 1
 fi
-
-########################################
-# Register port
-########################################
-
-register_port "$SERVICE" "$HOST_PORT"
-
-########################################
-# Return docker compose format
-########################################
-
-echo "$HOST_PORT:$CONTAINER_PORT"
 
 }
 
 ########################################
-# Request multiple ports
-#
-# Usage:
-# get_multi_port_mapping service host1 cont1 host2 cont2 ...
+# Get port mapping for service
 ########################################
 
-get_multi_port_mapping() {
+get_port_mapping() {
 
-SERVICE="$1"
-shift
+SERVICE=$1
+DEFAULT_PORT=$2
 
-PORT_BLOCK=""
+init_port_registry
 
-while [ $# -gt 0 ]; do
+PORT=$(jq -r --arg svc "$SERVICE" '.[$svc]' "$PORT_REGISTRY")
 
-HOST_PORT="$1"
-CONTAINER_PORT="$2"
+########################################
+# If service not yet assigned
+########################################
 
-register_port "$SERVICE-$HOST_PORT" "$HOST_PORT"
+if [ "$PORT" = "null" ]; then
 
-PORT_BLOCK="$PORT_BLOCK
-      - \"$HOST_PORT:$CONTAINER_PORT\""
+PORT=$DEFAULT_PORT
 
-shift 2
+########################################
+# Avoid collisions
+########################################
 
+while port_in_use "$PORT"
+do
+    PORT=$((PORT + 1))
 done
 
-echo "$PORT_BLOCK"
+########################################
+# Save to registry
+########################################
+
+register_port "$SERVICE" "$PORT"
+
+fi
+
+echo "$PORT"
 
 }

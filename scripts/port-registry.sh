@@ -1,14 +1,10 @@
 #!/usr/bin/env bash
 
 ########################################
-# Port Registry
-#
-# Maintains a registry of ports used by
-# installed services to prevent conflicts.
+# Load Media Stack Environment
 ########################################
 
-STACK_DIR="/opt/media-stack"
-PORT_FILE="$STACK_DIR/ports.json"
+source "$INSTALL_DIR/core/env.sh"
 
 ########################################
 # Initialize port registry
@@ -18,12 +14,10 @@ init_port_registry() {
 
 mkdir -p "$STACK_DIR"
 
-if [ ! -f "$PORT_FILE" ]; then
+if [ ! -f "$PORT_REGISTRY" ]; then
 
-cat <<EOF > "$PORT_FILE"
-{
-  "ports": {}
-}
+cat <<EOF > "$PORT_REGISTRY"
+{}
 EOF
 
 fi
@@ -31,7 +25,7 @@ fi
 }
 
 ########################################
-# Register a port
+# Register port
 ########################################
 
 register_port() {
@@ -43,57 +37,41 @@ init_port_registry
 
 TMP_FILE=$(mktemp)
 
-jq ".ports.\"$SERVICE\" = $PORT" "$PORT_FILE" > "$TMP_FILE"
+jq --arg svc "$SERVICE" --argjson port "$PORT" \
+'. + {($svc): $port}' \
+"$PORT_REGISTRY" > "$TMP_FILE"
 
-mv "$TMP_FILE" "$PORT_FILE"
+mv "$TMP_FILE" "$PORT_REGISTRY"
 
 echo "Registered port $PORT for $SERVICE"
 
 }
 
 ########################################
-# Check if port is already used
-########################################
-
-is_port_in_use() {
-
-PORT=$1
-
-init_port_registry
-
-jq -e ".ports | to_entries[] | select(.value == $PORT)" \
-"$PORT_FILE" >/dev/null 2>&1
-
-}
-
-########################################
-# Get port assigned to service
-########################################
-
-get_service_port() {
-
-SERVICE=$1
-
-init_port_registry
-
-jq -r ".ports.\"$SERVICE\"" "$PORT_FILE"
-
-}
-
-########################################
-# Remove service port
+# Remove port
 ########################################
 
 remove_port() {
 
 SERVICE=$1
 
-init_port_registry
-
 TMP_FILE=$(mktemp)
 
-jq "del(.ports.\"$SERVICE\")" "$PORT_FILE" > "$TMP_FILE"
+jq "del(.\"$SERVICE\")" \
+"$PORT_REGISTRY" > "$TMP_FILE"
 
-mv "$TMP_FILE" "$PORT_FILE"
+mv "$TMP_FILE" "$PORT_REGISTRY"
+
+}
+
+########################################
+# List ports
+########################################
+
+list_ports() {
+
+init_port_registry
+
+cat "$PORT_REGISTRY"
 
 }

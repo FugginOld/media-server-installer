@@ -6,9 +6,24 @@ set -e
 # Media Stack Installer
 ########################################
 
-STACK_DIR="/opt/media-stack"
-INSTALL_DIR="/opt/media-server-installer"
-PLUGIN_DIR="./plugins"
+########################################
+# Determine installer directory
+########################################
+
+INSTALL_DIR="$(cd "$(dirname "$0")" && pwd)"
+export INSTALL_DIR
+
+########################################
+# Load environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
+
+########################################
+# Plugin directory
+########################################
+
+PLUGIN_DIR="$INSTALL_DIR/plugins"
 
 SELECTED_SERVICES=()
 
@@ -16,18 +31,18 @@ SELECTED_SERVICES=()
 # Run preflight checks
 ########################################
 
-bash ./scripts/preflight.sh
+bash "$INSTALL_DIR/scripts/preflight.sh"
 
 ########################################
 # Load core modules
 ########################################
 
-source ./core/platform.sh
-source ./core/directories.sh
-source ./core/hardware.sh
-source ./core/docker.sh
-source ./core/config-wizard.sh
-source ./core/permissions.sh
+source "$INSTALL_DIR/core/platform.sh"
+source "$INSTALL_DIR/core/directories.sh"
+source "$INSTALL_DIR/core/hardware.sh"
+source "$INSTALL_DIR/core/docker.sh"
+source "$INSTALL_DIR/core/config-wizard.sh"
+source "$INSTALL_DIR/core/permissions.sh"
 
 ########################################
 # Detect platform
@@ -69,7 +84,7 @@ echo ""
 echo "Launching Web Installer..."
 echo ""
 
-mkdir -p "$STACK_DIR/config/webinstaller"
+mkdir -p "$CONFIG_DIR/webinstaller"
 
 cat <<EOF > "$STACK_DIR/docker-compose.yml"
 version: "3.9"
@@ -121,7 +136,7 @@ echo ""
 run_configuration_wizard
 
 ########################################
-# Load configuration
+# Load saved configuration
 ########################################
 
 if [ -f "$STACK_DIR/stack.env" ]; then
@@ -145,17 +160,17 @@ configure_gpu_devices
 # Initialize registries
 ########################################
 
-source ./scripts/service-registry.sh
+source "$INSTALL_DIR/scripts/service-registry.sh"
 init_registry
 
-source ./scripts/port-registry.sh
+source "$INSTALL_DIR/scripts/port-registry.sh"
 init_port_registry
 
 ########################################
 # Validate plugins
 ########################################
 
-bash ./scripts/plugin-validator.sh
+bash "$INSTALL_DIR/scripts/plugin-validator.sh"
 
 ########################################
 # Discover plugins automatically
@@ -282,7 +297,7 @@ fi
 resolve_dependencies
 
 ########################################
-# Generate docker compose file
+# Generate docker compose
 ########################################
 
 COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
@@ -322,18 +337,18 @@ done
 # Start containers
 ########################################
 
-bash ./scripts/compose.sh up
+bash "$INSTALL_DIR/scripts/compose.sh" up
 
 ########################################
 # Post install automation
 ########################################
 
-if [ -f ./scripts/post-install.sh ]; then
-bash ./scripts/post-install.sh
+if [ -f "$INSTALL_DIR/scripts/post-install.sh" ]; then
+bash "$INSTALL_DIR/scripts/post-install.sh"
 fi
 
 ########################################
-# Display completion message
+# Show dashboard
 ########################################
 
 IP=$(hostname -I | awk '{print $1}')
@@ -344,15 +359,14 @@ echo " Installation Complete"
 echo "================================"
 echo ""
 
-echo "Homepage Dashboard:"
+echo "Homepage:"
 echo "http://$IP:3001"
 echo ""
 
-echo "Grafana Monitoring:"
+echo "Grafana:"
 echo "http://$IP:3000"
 echo ""
 
-echo "Run CLI with:"
-echo ""
+echo "Run CLI:"
 echo "media-stack"
 echo ""

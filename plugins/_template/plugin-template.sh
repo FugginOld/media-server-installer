@@ -18,6 +18,19 @@
 ########################################
 
 ########################################
+# Load Media Stack Environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
+
+########################################
+# Load helpers
+########################################
+
+source "$INSTALL_DIR/scripts/port-helper.sh"
+source "$INSTALL_DIR/scripts/service-registry.sh"
+
+########################################
 # Plugin Metadata
 ########################################
 
@@ -43,31 +56,19 @@ PLUGIN_DASHBOARD=true
 
 install_service() {
 
-########################################
-# Core paths
-########################################
-
-INSTALL_DIR="/opt/media-server-installer"
-STACK_DIR="/opt/media-stack"
-
-########################################
-# Load helpers
-########################################
-
-source "$INSTALL_DIR/scripts/port-helper.sh"
-source "$INSTALL_DIR/scripts/service-registry.sh"
+echo "Installing $PLUGIN_NAME..."
 
 ########################################
 # Request port mapping
 ########################################
 
-PORT=$(get_port_mapping "$PLUGIN_NAME" 1234 1234)
+PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
 
 ########################################
 # Create configuration directory
 ########################################
 
-mkdir -p "$STACK_DIR/config/$PLUGIN_NAME"
+mkdir -p "$CONFIG_DIR/$PLUGIN_NAME"
 
 ########################################
 # Add container to docker-compose
@@ -79,7 +80,7 @@ cat <<EOF >> "$STACK_DIR/docker-compose.yml"
     image: example/example:latest
     container_name: $PLUGIN_NAME
     ports:
-      - "$PORT"
+      - "$PORT:${PLUGIN_PORTS[0]}"
     environment:
       - PUID=\${PUID}
       - PGID=\${PGID}
@@ -103,7 +104,7 @@ fi
 
 cat <<EOF >> "$STACK_DIR/docker-compose.yml"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:1234 || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:$PORT || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -117,10 +118,12 @@ if [ "$PLUGIN_DASHBOARD" = true ]; then
 
 register_service \
 "$PLUGIN_NAME" \
-"http://localhost:1234" \
+"http://localhost:$PORT" \
 "$PLUGIN_CATEGORY" \
 "$PLUGIN_NAME.png"
 
 fi
+
+echo "$PLUGIN_NAME installation complete."
 
 }

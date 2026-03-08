@@ -13,11 +13,24 @@
 ########################################
 
 ########################################
+# Load Media Stack Environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
+
+########################################
+# Load helpers
+########################################
+
+source "$INSTALL_DIR/scripts/port-helper.sh"
+source "$INSTALL_DIR/scripts/service-registry.sh"
+
+########################################
 # Plugin Metadata
 ########################################
 
 PLUGIN_NAME="overseerr"
-PLUGIN_DESCRIPTION="Media Request Manager"
+PLUGIN_DESCRIPTION="Media Request Management"
 PLUGIN_CATEGORY="Automation"
 
 PLUGIN_DEPENDS=(radarr sonarr)
@@ -34,31 +47,19 @@ PLUGIN_DASHBOARD=true
 
 install_service() {
 
-########################################
-# Core paths
-########################################
-
-INSTALL_DIR="/opt/media-server-installer"
-STACK_DIR="/opt/media-stack"
-
-########################################
-# Load helpers
-########################################
-
-source "$INSTALL_DIR/scripts/port-helper.sh"
-source "$INSTALL_DIR/scripts/service-registry.sh"
+echo "Installing Overseerr..."
 
 ########################################
 # Request port mapping
 ########################################
 
-PORT=$(get_port_mapping "overseerr" 5055 5055)
+PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
 
 ########################################
 # Create configuration directory
 ########################################
 
-mkdir -p "$STACK_DIR/config/overseerr"
+mkdir -p "$CONFIG_DIR/overseerr"
 
 ########################################
 # Add container to docker-compose
@@ -67,16 +68,15 @@ mkdir -p "$STACK_DIR/config/overseerr"
 cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
   overseerr:
-    image: lscr.io/linuxserver/overseerr
+    image: sctx/overseerr:latest
     container_name: overseerr
     ports:
-      - "$PORT"
+      - "$PORT:${PLUGIN_PORTS[0]}"
     environment:
-      - PUID=\${PUID}
-      - PGID=\${PGID}
+      - LOG_LEVEL=info
       - TZ=\${TIMEZONE}
     volumes:
-      - ./config/overseerr:/config
+      - ./config/overseerr:/app/config
     restart: unless-stopped
 EOF
 
@@ -86,24 +86,26 @@ EOF
 
 cat <<EOF >> "$STACK_DIR/docker-compose.yml"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5055 || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:$PORT || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
 EOF
 
 ########################################
-# Register service
+# Register Service
 ########################################
 
 if [ "$PLUGIN_DASHBOARD" = true ]; then
 
 register_service \
 "Overseerr" \
-"http://localhost:5055" \
-"Automation" \
+"http://localhost:$PORT" \
+"$PLUGIN_CATEGORY" \
 "overseerr.png"
 
 fi
+
+echo "Overseerr installation complete."
 
 }

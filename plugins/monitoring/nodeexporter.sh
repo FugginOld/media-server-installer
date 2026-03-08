@@ -13,6 +13,19 @@
 ########################################
 
 ########################################
+# Load Media Stack Environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
+
+########################################
+# Load helpers
+########################################
+
+source "$INSTALL_DIR/scripts/port-helper.sh"
+source "$INSTALL_DIR/scripts/service-registry.sh"
+
+########################################
 # Plugin Metadata
 ########################################
 
@@ -34,24 +47,13 @@ PLUGIN_DASHBOARD=false
 
 install_service() {
 
-########################################
-# Core paths
-########################################
-
-INSTALL_DIR="/opt/media-server-installer"
-STACK_DIR="/opt/media-stack"
-
-########################################
-# Load helpers
-########################################
-
-source "$INSTALL_DIR/scripts/port-helper.sh"
+echo "Installing Node Exporter..."
 
 ########################################
 # Request port mapping
 ########################################
 
-PORT=$(get_port_mapping "nodeexporter" 9100 9100)
+PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
 
 ########################################
 # Add container to docker-compose
@@ -60,15 +62,10 @@ PORT=$(get_port_mapping "nodeexporter" 9100 9100)
 cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
   nodeexporter:
-    image: prom/node-exporter
+    image: prom/node-exporter:latest
     container_name: nodeexporter
     ports:
-      - "$PORT"
-    pid: host
-    volumes:
-      - /:/host:ro,rslave
-    command:
-      - '--path.rootfs=/host'
+      - "$PORT:${PLUGIN_PORTS[0]}"
     restart: unless-stopped
 EOF
 
@@ -78,10 +75,12 @@ EOF
 
 cat <<EOF >> "$STACK_DIR/docker-compose.yml"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9100/metrics || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:$PORT/metrics || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
 EOF
+
+echo "Node Exporter installation complete."
 
 }

@@ -12,6 +12,18 @@
 ########################################
 
 ########################################
+# Load Media Stack Environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
+
+########################################
+# Load helpers
+########################################
+
+source "$INSTALL_DIR/scripts/port-helper.sh"
+
+########################################
 # Plugin Metadata
 ########################################
 
@@ -19,7 +31,7 @@ PLUGIN_NAME="plex-exporter"
 PLUGIN_DESCRIPTION="Plex Metrics Exporter"
 PLUGIN_CATEGORY="Monitoring"
 
-PLUGIN_DEPENDS=(plex prometheus)
+PLUGIN_DEPENDS=(prometheus plex)
 
 PLUGIN_PORTS=(9594)
 
@@ -33,24 +45,13 @@ PLUGIN_DASHBOARD=false
 
 install_service() {
 
-########################################
-# Core paths
-########################################
-
-INSTALL_DIR="/opt/media-server-installer"
-STACK_DIR="/opt/media-stack"
-
-########################################
-# Load helpers
-########################################
-
-source "$INSTALL_DIR/scripts/port-helper.sh"
+echo "Installing Plex Exporter..."
 
 ########################################
 # Request port mapping
 ########################################
 
-PORT=$(get_port_mapping "plex-exporter" 9594 9594)
+PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
 
 ########################################
 # Add container to docker-compose
@@ -59,13 +60,13 @@ PORT=$(get_port_mapping "plex-exporter" 9594 9594)
 cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
   plex-exporter:
-    image: ghcr.io/timothymiller/plex-exporter
+    image: ghcr.io/ekofr/plex-exporter:latest
     container_name: plex-exporter
     ports:
-      - "$PORT"
+      - "$PORT:${PLUGIN_PORTS[0]}"
     environment:
-      - PLEX_ADDR=http://plex:32400
-      - PLEX_TOKEN=\${PLEX_TOKEN}
+      - TZ=\${TIMEZONE}
+      - PLEX_SERVER=http://plex:32400
     restart: unless-stopped
 EOF
 
@@ -75,10 +76,12 @@ EOF
 
 cat <<EOF >> "$STACK_DIR/docker-compose.yml"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9594/metrics || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:$PORT/metrics || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
 EOF
+
+echo "Plex Exporter installation complete."
 
 }

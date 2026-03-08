@@ -8,6 +8,18 @@
 ########################################
 
 ########################################
+# Load Media Stack Environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
+
+########################################
+# Load helpers
+########################################
+
+source "$INSTALL_DIR/scripts/service-registry.sh"
+
+########################################
 # Plugin Metadata
 ########################################
 
@@ -29,11 +41,13 @@ PLUGIN_DASHBOARD=false
 
 install_service() {
 
+echo "Installing Tailscale..."
+
 ########################################
-# Core paths
+# Create configuration directory
 ########################################
 
-STACK_DIR="/opt/media-stack"
+mkdir -p "$CONFIG_DIR/tailscale"
 
 ########################################
 # Add container to docker-compose
@@ -42,18 +56,19 @@ STACK_DIR="/opt/media-stack"
 cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
   tailscale:
-    image: tailscale/tailscale
+    image: tailscale/tailscale:latest
     container_name: tailscale
     network_mode: host
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
-    volumes:
-      - ./config/tailscale:/var/lib/tailscale
-      - /dev/net/tun:/dev/net/tun
     environment:
       - TS_STATE_DIR=/var/lib/tailscale
       - TS_USERSPACE=false
+      - TZ=\${TIMEZONE}
+    volumes:
+      - ./config/tailscale:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
     restart: unless-stopped
 EOF
 
@@ -68,5 +83,7 @@ cat <<EOF >> "$STACK_DIR/docker-compose.yml"
       timeout: 10s
       retries: 3
 EOF
+
+echo "Tailscale installation complete."
 
 }

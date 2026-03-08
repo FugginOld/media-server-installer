@@ -12,11 +12,24 @@
 ########################################
 
 ########################################
+# Load Media Stack Environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
+
+########################################
+# Load helpers
+########################################
+
+source "$INSTALL_DIR/scripts/port-helper.sh"
+source "$INSTALL_DIR/scripts/service-registry.sh"
+
+########################################
 # Plugin Metadata
 ########################################
 
 PLUGIN_NAME="sonarr"
-PLUGIN_DESCRIPTION="TV Automation Manager"
+PLUGIN_DESCRIPTION="TV Show Collection Manager"
 PLUGIN_CATEGORY="Automation"
 
 PLUGIN_DEPENDS=(sabnzbd)
@@ -33,31 +46,19 @@ PLUGIN_DASHBOARD=true
 
 install_service() {
 
-########################################
-# Core paths
-########################################
-
-INSTALL_DIR="/opt/media-server-installer"
-STACK_DIR="/opt/media-stack"
-
-########################################
-# Load helpers
-########################################
-
-source "$INSTALL_DIR/scripts/port-helper.sh"
-source "$INSTALL_DIR/scripts/service-registry.sh"
+echo "Installing Sonarr..."
 
 ########################################
 # Request port mapping
 ########################################
 
-PORT=$(get_port_mapping "sonarr" 8989 8989)
+PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
 
 ########################################
 # Create configuration directory
 ########################################
 
-mkdir -p "$STACK_DIR/config/sonarr"
+mkdir -p "$CONFIG_DIR/sonarr"
 
 ########################################
 # Add container to docker-compose
@@ -66,10 +67,10 @@ mkdir -p "$STACK_DIR/config/sonarr"
 cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
   sonarr:
-    image: lscr.io/linuxserver/sonarr
+    image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
     ports:
-      - "$PORT"
+      - "$PORT:${PLUGIN_PORTS[0]}"
     environment:
       - PUID=\${PUID}
       - PGID=\${PGID}
@@ -87,24 +88,26 @@ EOF
 
 cat <<EOF >> "$STACK_DIR/docker-compose.yml"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8989 || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:$PORT || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
 EOF
 
 ########################################
-# Register service
+# Register Service
 ########################################
 
 if [ "$PLUGIN_DASHBOARD" = true ]; then
 
 register_service \
 "Sonarr" \
-"http://localhost:8989" \
-"Automation" \
+"http://localhost:$PORT" \
+"$PLUGIN_CATEGORY" \
 "sonarr.png"
 
 fi
+
+echo "Sonarr installation complete."
 
 }

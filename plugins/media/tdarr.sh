@@ -11,14 +11,27 @@
 ########################################
 
 ########################################
+# Load Media Stack Environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
+
+########################################
+# Load helpers
+########################################
+
+source "$INSTALL_DIR/scripts/port-helper.sh"
+source "$INSTALL_DIR/scripts/service-registry.sh"
+
+########################################
 # Plugin Metadata
 ########################################
 
 PLUGIN_NAME="tdarr"
-PLUGIN_DESCRIPTION="Distributed Transcoding System"
+PLUGIN_DESCRIPTION="Media Transcoding Automation"
 PLUGIN_CATEGORY="Media"
 
-PLUGIN_DEPENDS=(plex)
+PLUGIN_DEPENDS=()
 
 PLUGIN_PORTS=(8265)
 
@@ -32,31 +45,21 @@ PLUGIN_DASHBOARD=true
 
 install_service() {
 
-########################################
-# Core paths
-########################################
-
-INSTALL_DIR="/opt/media-server-installer"
-STACK_DIR="/opt/media-stack"
-
-########################################
-# Load helpers
-########################################
-
-source "$INSTALL_DIR/scripts/port-helper.sh"
-source "$INSTALL_DIR/scripts/service-registry.sh"
+echo "Installing Tdarr..."
 
 ########################################
 # Request port mapping
 ########################################
 
-PORT=$(get_port_mapping "tdarr" 8265 8265)
+PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
 
 ########################################
-# Create configuration directory
+# Create configuration directories
 ########################################
 
-mkdir -p "$STACK_DIR/config/tdarr"
+mkdir -p "$CONFIG_DIR/tdarr/server"
+mkdir -p "$CONFIG_DIR/tdarr/config"
+mkdir -p "$CONFIG_DIR/tdarr/logs"
 
 ########################################
 # Add container to docker-compose
@@ -65,14 +68,18 @@ mkdir -p "$STACK_DIR/config/tdarr"
 cat <<EOF >> "$STACK_DIR/docker-compose.yml"
 
   tdarr:
-    image: ghcr.io/haveagitgat/tdarr
+    image: ghcr.io/haveagitgat/tdarr:latest
     container_name: tdarr
     ports:
-      - "$PORT"
+      - "$PORT:${PLUGIN_PORTS[0]}"
     environment:
       - TZ=\${TIMEZONE}
+      - PUID=\${PUID}
+      - PGID=\${PGID}
     volumes:
-      - ./config/tdarr:/app/config
+      - ./config/tdarr/server:/app/server
+      - ./config/tdarr/config:/app/configs
+      - ./config/tdarr/logs:/app/logs
       - $MEDIA_PATH:/media
       - $MOVIES_PATH:/movies
       - $TV_PATH:/tv
@@ -93,24 +100,26 @@ fi
 
 cat <<EOF >> "$STACK_DIR/docker-compose.yml"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8265 || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:$PORT || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
 EOF
 
 ########################################
-# Register service
+# Register Service
 ########################################
 
 if [ "$PLUGIN_DASHBOARD" = true ]; then
 
 register_service \
 "Tdarr" \
-"http://localhost:8265" \
-"Media" \
+"http://localhost:$PORT" \
+"$PLUGIN_CATEGORY" \
 "tdarr.png"
 
 fi
+
+echo "Tdarr installation complete."
 
 }
