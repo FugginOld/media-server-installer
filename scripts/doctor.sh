@@ -144,12 +144,12 @@ fi
 
 if [ -d "$PLUGIN_DIR" ]; then
 
-PLUGIN_COUNT=$(find "$PLUGIN_DIR" -mindepth 1 -maxdepth 1 -type d | wc -l)
+PLUGIN_COUNT=$(find "$PLUGIN_DIR" -type f -name "*.sh" ! -path "*/_template/*" | wc -l)
 
 if [ "$PLUGIN_COUNT" -gt 0 ]; then
 pass "Plugins detected ($PLUGIN_COUNT)"
 else
-warn "Plugin directory empty"
+warn "No plugins found"
 fi
 
 else
