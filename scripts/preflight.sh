@@ -132,6 +132,13 @@ fi
 
 if command -v docker >/dev/null 2>&1; then
 echo "Docker detected"
+
+if docker compose version >/dev/null 2>&1; then
+echo "Docker Compose detected"
+else
+echo "Docker Compose missing (will be installed later)"
+fi
+
 else
 echo "Docker not installed (will be installed later)"
 fi

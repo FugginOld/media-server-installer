@@ -7,6 +7,16 @@
 # configure dashboards and monitoring.
 ########################################
 
+set -e
+
+########################################
+# Determine installer directory
+########################################
+
+if [ -z "$INSTALL_DIR" ]; then
+INSTALL_DIR="/opt/media-server-installer"
+fi
+
 ########################################
 # Load environment
 ########################################
@@ -20,15 +30,17 @@ echo "================================"
 echo ""
 
 ########################################
+# Ensure log directory exists
+########################################
+
+mkdir -p "$LOG_DIR"
+
+########################################
 # Wait for containers to initialize
 ########################################
 
 echo "Waiting for containers to initialize..."
-
-for i in {1..15}
-do
-sleep 1
-done
+sleep 20
 
 ########################################
 # Configure Grafana dashboards
@@ -60,7 +72,7 @@ echo ""
 fi
 
 ########################################
-# Start health monitoring if available
+# Start health monitoring
 ########################################
 
 if [ -f "$INSTALL_DIR/scripts/health-monitor.sh" ]; then
@@ -69,7 +81,7 @@ echo ""
 echo "Starting service health monitor..."
 
 bash "$INSTALL_DIR/scripts/health-monitor.sh" \
->> "$STACK_DIR/logs/health-monitor.log" 2>&1 &
+>> "$LOG_DIR/health-monitor.log" 2>&1 &
 
 fi
 

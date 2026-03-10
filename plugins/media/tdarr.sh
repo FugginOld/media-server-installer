@@ -65,7 +65,7 @@ mkdir -p "$CONFIG_DIR/tdarr/logs"
 # Add container to docker-compose
 ########################################
 
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+cat <<EOF >> "$TMP_COMPOSE"
 
   tdarr:
     image: ghcr.io/haveagitgat/tdarr:latest
@@ -91,14 +91,14 @@ EOF
 ########################################
 
 if [ "$GPU_TYPE" != "none" ]; then
-echo "$GPU_DEVICES" >> "$STACK_DIR/docker-compose.yml"
+echo "$GPU_DEVICES" >> "$TMP_COMPOSE"
 fi
 
 ########################################
 # Health Check
 ########################################
 
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+cat <<EOF >> "$TMP_COMPOSE"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:$PORT || exit 1"]
       interval: 30s

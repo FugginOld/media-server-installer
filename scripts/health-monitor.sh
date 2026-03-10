@@ -7,19 +7,52 @@
 # services to ensure they are reachable.
 ########################################
 
-STACK_DIR="/opt/media-stack"
-REGISTRY_FILE="$STACK_DIR/services.json"
+set -e
+
+########################################
+# Determine installer directory
+########################################
+
+if [ -z "$INSTALL_DIR" ]; then
+INSTALL_DIR="/opt/media-server-installer"
+fi
+
+########################################
+# Load environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
 
 CHECK_INTERVAL=60
+
+########################################
+# Ensure dependencies exist
+########################################
+
+if ! command -v jq >/dev/null 2>&1; then
+echo "jq is required for health monitoring."
+exit 1
+fi
+
+if ! command -v curl >/dev/null 2>&1; then
+echo "curl is required for health monitoring."
+exit 1
+fi
 
 ########################################
 # Verify registry exists
 ########################################
 
-if [ ! -f "$REGISTRY_FILE" ]; then
+if [ ! -f "$SERVICE_REGISTRY" ]; then
 echo "Service registry not found."
 exit 1
 fi
+
+########################################
+# Handle shutdown
+########################################
+
+trap "echo ''; echo 'Health monitor stopped.'; exit 0" SIGINT SIGTERM
 
 echo ""
 echo "Media Stack Health Monitor started."
@@ -33,9 +66,7 @@ echo ""
 while true
 do
 
-SERVICES=$(jq -c '.services[]' "$REGISTRY_FILE")
-
-for SERVICE in $SERVICES
+jq -c '.services[]' "$SERVICE_REGISTRY" | while read -r SERVICE
 do
 
 NAME=$(echo "$SERVICE" | jq -r '.name')

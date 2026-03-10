@@ -65,7 +65,7 @@ mkdir -p "$CONFIG_DIR/prowlarr"
 # Add container to docker-compose
 ########################################
 
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+cat <<EOF >> "$TMP_COMPOSE"
 
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
@@ -85,7 +85,7 @@ EOF
 # Health Check
 ########################################
 
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+cat <<EOF >> "$TMP_COMPOSE"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:$PORT || exit 1"]
       interval: 30s

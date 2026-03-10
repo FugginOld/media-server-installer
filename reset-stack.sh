@@ -7,11 +7,30 @@
 # installation so it can be reinstalled.
 ########################################
 
+set -e
+
+########################################
+# Determine installer directory
+########################################
+
+if [ -z "$INSTALL_DIR" ]; then
+INSTALL_DIR="$(cd "$(dirname "$0")" && pwd)"
+fi
+
 ########################################
 # Load environment
 ########################################
 
 source "$INSTALL_DIR/core/env.sh"
+
+########################################
+# Require root
+########################################
+
+if [ "$EUID" -ne 0 ]; then
+echo "Reset must be run as root."
+exit 1
+fi
 
 echo ""
 echo "================================"
@@ -36,7 +55,7 @@ fi
 
 read -rp "Create a backup before reset? (y/N): " BACKUP
 
-if [[ "$BACKUP" == "y" || "$BACKUP" == "Y" ]]; then
+if [[ "$BACKUP" =~ ^[Yy]$ ]]; then
 
 if [ -f "$INSTALL_DIR/scripts/backup.sh" ]; then
 bash "$INSTALL_DIR/scripts/backup.sh"
@@ -68,6 +87,14 @@ echo "Removing stack directory..."
 
 rm -rf "$STACK_DIR"
 
+fi
+
+########################################
+# Remove CLI command
+########################################
+
+if [ -f /usr/local/bin/media-stack ]; then
+rm -f /usr/local/bin/media-stack
 fi
 
 ########################################

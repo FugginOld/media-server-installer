@@ -53,7 +53,7 @@ mkdir -p "$CONFIG_DIR/tailscale"
 # Add container to docker-compose
 ########################################
 
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+cat <<EOF >> "$TMP_COMPOSE"
 
   tailscale:
     image: tailscale/tailscale:latest
@@ -76,7 +76,7 @@ EOF
 # Health Check
 ########################################
 
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+cat <<EOF >> "$TMP_COMPOSE"
     healthcheck:
       test: ["CMD-SHELL", "tailscale status || exit 1"]
       interval: 60s

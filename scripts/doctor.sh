@@ -7,9 +7,19 @@
 # and verifies required components.
 ########################################
 
-STACK_DIR="/opt/media-stack"
+########################################
+# Determine installer directory
+########################################
+
+if [ -z "$INSTALL_DIR" ]; then
 INSTALL_DIR="/opt/media-server-installer"
-PLUGIN_DIR="$INSTALL_DIR/plugins"
+fi
+
+########################################
+# Load environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
 
 PASS_COUNT=0
 WARN_COUNT=0
@@ -118,7 +128,7 @@ fi
 # Service registry
 ########################################
 
-if [ -f "$STACK_DIR/services.json" ]; then
+if [ -f "$SERVICE_REGISTRY" ]; then
 pass "Service registry present"
 else
 warn "services.json missing"
@@ -128,14 +138,12 @@ fi
 # Port registry
 ########################################
 
-PORT_FILE="$STACK_DIR/ports.json"
-
-if [ -f "$PORT_FILE" ]; then
+if [ -f "$PORT_REGISTRY" ]; then
 pass "Port registry present"
-PORT_REGISTRY=true
+PORT_REGISTRY_PRESENT=true
 else
 warn "Port registry missing"
-PORT_REGISTRY=false
+PORT_REGISTRY_PRESENT=false
 fi
 
 ########################################
@@ -177,9 +185,9 @@ fi
 # Port conflict check
 ########################################
 
-if [ "$PORT_REGISTRY" = true ] && command -v jq >/dev/null 2>&1; then
+if [ "$PORT_REGISTRY_PRESENT" = true ] && command -v jq >/dev/null 2>&1; then
 
-DUPLICATES=$(jq -r '.[]?.port' "$PORT_FILE" 2>/dev/null | sort | uniq -d)
+DUPLICATES=$(jq -r '.[]' "$PORT_REGISTRY" | sort | uniq -d)
 
 if [ -z "$DUPLICATES" ]; then
 pass "No duplicate ports in registry"

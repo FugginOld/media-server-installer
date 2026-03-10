@@ -47,7 +47,7 @@ echo "Installing Watchtower..."
 # Add container to docker-compose
 ########################################
 
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+cat <<EOF >> "$TMP_COMPOSE"
 
   watchtower:
     image: containrrr/watchtower:latest

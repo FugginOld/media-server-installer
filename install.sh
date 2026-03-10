@@ -1,6 +1,47 @@
 #!/usr/bin/env bash
 
+########################################
+# Media Stack Remote Installer
+#
+# Downloads or updates the installer
+# and launches the setup process.
+########################################
+
+set -e
+
 INSTALL_DIR="/opt/media-server-installer"
+
+echo ""
+echo "================================"
+echo " Media Stack Installer"
+echo "================================"
+echo ""
+
+########################################
+# Ensure running as root
+########################################
+
+if [ "$EUID" -ne 0 ]; then
+echo "Please run installer as root."
+echo "Example:"
+echo "sudo bash install.sh"
+exit 1
+fi
+
+########################################
+# Ensure git is installed
+########################################
+
+if ! command -v git >/dev/null 2>&1; then
+echo "Git not found. Installing..."
+
+apt update
+apt install -y git
+fi
+
+########################################
+# Download or update installer
+########################################
 
 echo "Downloading Media Stack Installer..."
 
@@ -18,9 +59,23 @@ git clone https://github.com/FugginOld/media-server-installer "$INSTALL_DIR"
 
 fi
 
-cd "$INSTALL_DIR"
+########################################
+# Ensure scripts are executable
+########################################
 
-chmod +x installer.sh
+chmod -R +x "$INSTALL_DIR"
+
+########################################
+# Install CLI command
+########################################
+
+ln -sf "$INSTALL_DIR/scripts/media-stack" /usr/local/bin/media-stack
+
+########################################
+# Launch installer
+########################################
+
+cd "$INSTALL_DIR"
 
 echo ""
 echo "Launching installer..."

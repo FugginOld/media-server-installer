@@ -10,11 +10,16 @@
 set -e
 
 ########################################
-# Paths
+# Determine installer directory
 ########################################
 
-STACK_DIR="/opt/media-stack"
 INSTALL_DIR="/opt/media-server-installer"
+
+########################################
+# Load environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
 
 ########################################
 # Help Menu
@@ -80,10 +85,10 @@ bash "$INSTALL_DIR/scripts/compose.sh" status
 
 services_stack() {
 
-if [ -f "$STACK_DIR/services.json" ]; then
+if [ -f "$SERVICE_REGISTRY" ]; then
 
 jq -r '.services[] | "\(.name) -> \(.url)"' \
-"$STACK_DIR/services.json"
+"$SERVICE_REGISTRY"
 
 else
 
@@ -115,28 +120,9 @@ echo " Media Stack Verification"
 echo "================================"
 echo ""
 
-########################################
-# Preflight
-########################################
-
 bash "$INSTALL_DIR/scripts/preflight.sh"
-
-########################################
-# Plugin validation
-########################################
-
 bash "$INSTALL_DIR/scripts/plugin-validator.sh"
-
-########################################
-# Doctor diagnostics
-########################################
-
 bash "$INSTALL_DIR/scripts/doctor.sh"
-
-########################################
-# Compose validation
-########################################
-
 bash "$INSTALL_DIR/scripts/compose.sh" validate
 
 echo ""
@@ -193,7 +179,7 @@ bash "$INSTALL_DIR/scripts/backup.sh"
 
 reset_stack() {
 
-bash "$INSTALL_DIR/scripts/reset-stack.sh"
+bash "$INSTALL_DIR/reset-stack.sh"
 
 }
 

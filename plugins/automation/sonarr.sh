@@ -64,7 +64,7 @@ mkdir -p "$CONFIG_DIR/sonarr"
 # Add container to docker-compose
 ########################################
 
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+cat <<EOF >> "$TMP_COMPOSE"
 
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
@@ -86,7 +86,7 @@ EOF
 # Health Check
 ########################################
 
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+cat <<EOF >> "$TMP_COMPOSE"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:$PORT || exit 1"]
       interval: 30s

@@ -88,7 +88,7 @@ EOF
 # Add container to docker-compose
 ########################################
 
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+cat <<EOF >> "$TMP_COMPOSE"
 
   prometheus:
     image: prom/prometheus:latest
@@ -104,7 +104,7 @@ EOF
 # Health Check
 ########################################
 
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+cat <<EOF >> "$TMP_COMPOSE"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:$PORT/-/healthy || exit 1"]
       interval: 30s

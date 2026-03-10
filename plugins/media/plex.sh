@@ -33,13 +33,10 @@ PLUGIN_CATEGORY="Media"
 
 PLUGIN_DEPENDS=()
 
-# Plex default port
 PLUGIN_PORTS=(32400)
 
-# Plex typically runs in host mode
 PLUGIN_HOST_NETWORK=true
 
-# Display in dashboard
 PLUGIN_DASHBOARD=true
 
 ########################################
@@ -66,7 +63,7 @@ mkdir -p "$CONFIG_DIR/plex"
 # Add container to docker-compose
 ########################################
 
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+cat <<EOF >> "$TMP_COMPOSE"
 
   plex:
     image: lscr.io/linuxserver/plex:latest
@@ -79,13 +76,13 @@ EOF
 
 if [ "$PLUGIN_HOST_NETWORK" = true ]; then
 
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+cat <<EOF >> "$TMP_COMPOSE"
     network_mode: host
 EOF
 
 else
 
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+cat <<EOF >> "$TMP_COMPOSE"
     ports:
       - "$PORT:${PLUGIN_PORTS[0]}"
 EOF
@@ -96,7 +93,7 @@ fi
 # Container configuration
 ########################################
 
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+cat <<EOF >> "$TMP_COMPOSE"
     environment:
       - PUID=\${PUID}
       - PGID=\${PGID}
@@ -115,14 +112,14 @@ EOF
 ########################################
 
 if [ "$GPU_TYPE" != "none" ]; then
-echo "$GPU_DEVICES" >> "$STACK_DIR/docker-compose.yml"
+echo "$GPU_DEVICES" >> "$TMP_COMPOSE"
 fi
 
 ########################################
 # Health check
 ########################################
 
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+cat <<EOF >> "$TMP_COMPOSE"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:32400/web || exit 1"]
       interval: 30s

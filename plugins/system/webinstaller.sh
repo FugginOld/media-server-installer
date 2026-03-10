@@ -9,6 +9,19 @@
 ########################################
 
 ########################################
+# Load Media Stack Environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
+
+########################################
+# Load helpers
+########################################
+
+source "$INSTALL_DIR/scripts/port-helper.sh"
+source "$INSTALL_DIR/scripts/service-registry.sh"
+
+########################################
 # Plugin Metadata
 ########################################
 
@@ -30,43 +43,31 @@ PLUGIN_DASHBOARD=true
 
 install_service() {
 
-########################################
-# Core paths
-########################################
-
-INSTALL_DIR="/opt/media-server-installer"
-STACK_DIR="/opt/media-stack"
-
-########################################
-# Load helpers
-########################################
-
-source "$INSTALL_DIR/scripts/port-helper.sh"
-source "$INSTALL_DIR/scripts/service-registry.sh"
+echo "Installing Web Installer..."
 
 ########################################
 # Request port mapping
 ########################################
 
-PORT=$(get_port_mapping "webinstaller" 8088 80)
+PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
 
 ########################################
 # Create configuration directory
 ########################################
 
-mkdir -p "$STACK_DIR/config/webinstaller"
+mkdir -p "$CONFIG_DIR/webinstaller"
 
 ########################################
 # Add container to docker-compose
 ########################################
 
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+cat <<EOF >> "$TMP_COMPOSE"
 
   webinstaller:
     image: nginx:alpine
     container_name: webinstaller
     ports:
-      - "$PORT"
+      - "$PORT:${PLUGIN_PORTS[0]}"
     volumes:
       - ./config/webinstaller:/usr/share/nginx/html
     restart: unless-stopped
@@ -76,9 +77,9 @@ EOF
 # Health Check
 ########################################
 
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+cat <<EOF >> "$TMP_COMPOSE"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8088 || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:$PORT || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -92,10 +93,12 @@ if [ "$PLUGIN_DASHBOARD" = true ]; then
 
 register_service \
 "Web Installer" \
-"http://localhost:8088" \
-"System" \
+"http://localhost:$PORT" \
+"$PLUGIN_CATEGORY" \
 "webinstaller.png"
 
 fi
+
+echo "Web Installer installation complete."
 
 }

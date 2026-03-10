@@ -7,6 +7,8 @@
 # plugins using the port registry.
 ########################################
 
+set -e
+
 ########################################
 # Load Media Stack Environment
 ########################################
@@ -20,7 +22,7 @@ source "$INSTALL_DIR/scripts/port-registry.sh"
 
 port_in_use_host() {
 
-PORT=$1
+local PORT=$1
 
 ss -ltn 2>/dev/null | awk '{print $4}' | grep -q ":$PORT$"
 
@@ -32,7 +34,7 @@ ss -ltn 2>/dev/null | awk '{print $4}' | grep -q ":$PORT$"
 
 find_next_available_port() {
 
-PORT=$1
+local PORT=$1
 
 while true
 do
@@ -49,6 +51,7 @@ PORT=$((PORT + 1))
 continue
 fi
 
+# Port is safe
 echo "$PORT"
 return
 
@@ -62,8 +65,8 @@ done
 
 get_port_mapping() {
 
-SERVICE=$1
-DEFAULT_PORT=$2
+local SERVICE=$1
+local DEFAULT_PORT=$2
 
 init_port_registry
 
@@ -71,6 +74,7 @@ init_port_registry
 # Check if service already assigned
 ########################################
 
+local PORT
 PORT=$(get_port "$SERVICE")
 
 if [ -n "$PORT" ]; then
@@ -79,7 +83,7 @@ return
 fi
 
 ########################################
-# Allocate port
+# Allocate next available port
 ########################################
 
 PORT=$(find_next_available_port "$DEFAULT_PORT")

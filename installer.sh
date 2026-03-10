@@ -170,7 +170,7 @@ while IFS= read -r file
 do
 plugin=$(basename "$file" .sh)
 AVAILABLE_PLUGINS+=("$plugin")
-done < <(find "$PLUGIN_DIR" -maxdepth 1 -type f -name "*.sh")
+done < <(find "$PLUGIN_DIR" -type f -name "*.sh")
 
 }
 
@@ -217,7 +217,7 @@ CHANGED=false
 for SERVICE in "${SELECTED_SERVICES[@]}"
 do
 
-PLUGIN_FILE="$PLUGIN_DIR/$SERVICE.sh"
+PLUGIN_FILE=$(find "$PLUGIN_DIR" -type f -name "$SERVICE.sh" | head -n 1)
 
 [ -f "$PLUGIN_FILE" ] || continue
 
@@ -326,7 +326,7 @@ do
 
 echo "Installing $SERVICE"
 
-PLUGIN_FILE="$PLUGIN_DIR/$SERVICE.sh"
+PLUGIN_FILE=$(find "$PLUGIN_DIR" -type f -name "$SERVICE.sh" | head -n 1)
 
 if [ ! -f "$PLUGIN_FILE" ]; then
 echo "Plugin missing: $SERVICE"

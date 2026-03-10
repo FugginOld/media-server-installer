@@ -7,6 +7,16 @@
 # and refreshes Docker containers.
 ########################################
 
+set -e
+
+########################################
+# Determine installer directory
+########################################
+
+if [ -z "$INSTALL_DIR" ]; then
+INSTALL_DIR="/opt/media-server-installer"
+fi
+
 ########################################
 # Load environment
 ########################################
@@ -20,7 +30,16 @@ echo "================================"
 echo ""
 
 ########################################
-# Ensure installer directory exists
+# Ensure git exists
+########################################
+
+if ! command -v git >/dev/null 2>&1; then
+echo "Git is required for updates."
+exit 1
+fi
+
+########################################
+# Ensure installer repository exists
 ########################################
 
 if [ ! -d "$INSTALL_DIR/.git" ]; then
@@ -28,7 +47,7 @@ echo "Installer repository not found: $INSTALL_DIR"
 exit 1
 fi
 
-cd "$INSTALL_DIR" || exit 1
+cd "$INSTALL_DIR"
 
 ########################################
 # Update installer repository
@@ -75,7 +94,7 @@ bash "$INSTALL_DIR/scripts/compose.sh" pull
 echo ""
 echo "Restarting containers..."
 
-bash "$INSTALL_DIR/scripts/compose.sh" up
+bash "$INSTALL_DIR/scripts/compose.sh" restart
 
 echo ""
 echo "Media Stack update complete."

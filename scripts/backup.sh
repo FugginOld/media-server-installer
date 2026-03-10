@@ -8,6 +8,16 @@
 # registry files.
 ########################################
 
+set -e
+
+########################################
+# Determine installer directory
+########################################
+
+if [ -z "$INSTALL_DIR" ]; then
+INSTALL_DIR="/opt/media-server-installer"
+fi
+
 ########################################
 # Load environment
 ########################################
@@ -48,16 +58,25 @@ echo "Destination: $BACKUP_FILE"
 echo ""
 
 ########################################
-# Files to include in backup
+# Files to include
 ########################################
 
-FILES=(
-config
-docker-compose.yml
-stack.env
-services.json
-ports.json
-)
+FILES=()
+
+[ -d "$STACK_DIR/config" ] && FILES+=("config")
+[ -f "$STACK_DIR/docker-compose.yml" ] && FILES+=("docker-compose.yml")
+[ -f "$STACK_DIR/stack.env" ] && FILES+=("stack.env")
+[ -f "$STACK_DIR/services.json" ] && FILES+=("services.json")
+[ -f "$STACK_DIR/ports.json" ] && FILES+=("ports.json")
+
+########################################
+# Ensure something to backup
+########################################
+
+if [ ${#FILES[@]} -eq 0 ]; then
+echo "Nothing to backup."
+exit 1
+fi
 
 ########################################
 # Create backup
@@ -65,7 +84,7 @@ ports.json
 
 tar -czf "$BACKUP_FILE" \
 -C "$STACK_DIR" \
-"${FILES[@]}" 2>/dev/null
+"${FILES[@]}"
 
 ########################################
 # Verify backup
@@ -92,8 +111,11 @@ fi
 # Cleanup old backups (keep last 10)
 ########################################
 
-ls -1t "$BACKUP_DIR"/media-stack-*.tar.gz 2>/dev/null \
-| tail -n +11 \
-| xargs -r rm
+cd "$BACKUP_DIR"
+
+ls -1t media-stack-*.tar.gz 2>/dev/null | tail -n +11 | while read -r old
+do
+rm -f "$old"
+done
 
 echo ""

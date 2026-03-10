@@ -7,6 +7,8 @@
 # installer executes them.
 ########################################
 
+set -e
+
 ########################################
 # Load environment
 ########################################
@@ -32,11 +34,32 @@ exit 1
 fi
 
 ########################################
+# Helper: check required field
+########################################
+
+check_field() {
+
+local FIELD=$1
+local FILE=$2
+
+if ! grep -q "$FIELD=" "$FILE"; then
+echo "  Missing $FIELD"
+FAIL=1
+fi
+
+}
+
+########################################
 # Validate plugins
 ########################################
 
 while IFS= read -r FILE
 do
+
+# Skip template plugins
+if [[ "$FILE" == *"/_template/"* ]]; then
+continue
+fi
 
 COUNT=$((COUNT+1))
 
@@ -57,26 +80,13 @@ fi
 # Required metadata fields
 ########################################
 
-check_field() {
-
-FIELD=$1
-
-if ! grep -q "$FIELD=" "$FILE"; then
-echo "  Missing $FIELD"
-FAIL=1
-fi
-
-}
-
-check_field "PLUGIN_NAME"
-check_field "PLUGIN_DESCRIPTION"
-check_field "PLUGIN_CATEGORY"
-check_field "PLUGIN_VERSION"
-check_field "PLUGIN_IMAGE"
-check_field "PLUGIN_DEPENDS"
-check_field "PLUGIN_PORTS"
-check_field "PLUGIN_HOST_NETWORK"
-check_field "PLUGIN_DASHBOARD"
+check_field "PLUGIN_NAME" "$FILE"
+check_field "PLUGIN_DESCRIPTION" "$FILE"
+check_field "PLUGIN_CATEGORY" "$FILE"
+check_field "PLUGIN_DEPENDS" "$FILE"
+check_field "PLUGIN_PORTS" "$FILE"
+check_field "PLUGIN_HOST_NETWORK" "$FILE"
+check_field "PLUGIN_DASHBOARD" "$FILE"
 
 ########################################
 # Validate install function
@@ -89,7 +99,7 @@ fi
 
 echo ""
 
-done < <(find "$PLUGIN_DIR" -maxdepth 1 -type f -name "*.sh")
+done < <(find "$PLUGIN_DIR" -type f -name "*.sh")
 
 ########################################
 # Ensure plugins exist
