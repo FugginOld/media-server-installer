@@ -6,12 +6,14 @@ set -e
 # Media Stack Installer
 ########################################
 
+
 ########################################
 # Determine installer directory
 ########################################
 
 INSTALL_DIR="$(cd "$(dirname "$0")" && pwd)"
 export INSTALL_DIR
+
 
 ########################################
 # Load environment
@@ -24,11 +26,13 @@ PLUGIN_DIR="$INSTALL_DIR/plugins"
 SELECTED_SERVICES=()
 AVAILABLE_PLUGINS=()
 
+
 ########################################
 # Run preflight checks
 ########################################
 
 bash "$INSTALL_DIR/scripts/preflight.sh"
+
 
 ########################################
 # Load core modules
@@ -41,11 +45,13 @@ source "$INSTALL_DIR/core/docker.sh"
 source "$INSTALL_DIR/core/config-wizard.sh"
 source "$INSTALL_DIR/core/permissions.sh"
 
+
 ########################################
 # Detect platform
 ########################################
 
 detect_platform
+
 
 ########################################
 # Ensure Docker installed
@@ -53,11 +59,13 @@ detect_platform
 
 ensure_docker
 
+
 ########################################
 # Create stack directory
 ########################################
 
 mkdir -p "$STACK_DIR"
+
 
 ########################################
 # Select installer interface
@@ -70,6 +78,7 @@ INTERFACE=$(whiptail \
 cli "CLI Installer" \
 web "Web Installer" \
 3>&1 1>&2 2>&3)
+
 
 ########################################
 # WEB INSTALLER
@@ -93,6 +102,7 @@ services:
     volumes:
       - ./config/webinstaller:/usr/share/nginx/html
     restart: unless-stopped
+
 EOF
 
 cd "$STACK_DIR"
@@ -109,19 +119,22 @@ exit 0
 
 fi
 
+
 ########################################
 # CLI INSTALLER
 ########################################
 
 echo ""
-echo "Starting CLI installer..."
+echo "Starting Media Stack Custom Installer..."
 echo ""
+
 
 ########################################
 # Configuration wizard
 ########################################
 
 run_configuration_wizard
+
 
 ########################################
 # Load saved configuration
@@ -131,11 +144,13 @@ if [ -f "$STACK_DIR/stack.env" ]; then
 source "$STACK_DIR/stack.env"
 fi
 
+
 ########################################
 # Setup permissions
 ########################################
 
 setup_permissions
+
 
 ########################################
 # GPU detection
@@ -143,6 +158,7 @@ setup_permissions
 
 detect_gpu
 configure_gpu_devices
+
 
 ########################################
 # Initialize registries
@@ -154,11 +170,13 @@ init_registry
 source "$INSTALL_DIR/scripts/port-registry.sh"
 init_port_registry
 
+
 ########################################
 # Validate plugins
 ########################################
 
-bash "$INSTALL_DIR/scripts/plugin-validator.sh"
+source "$INSTALL_DIR/scripts/plugin-validator.sh"
+
 
 ########################################
 # Discover plugins
@@ -170,9 +188,10 @@ while IFS= read -r file
 do
 plugin=$(basename "$file" .sh)
 AVAILABLE_PLUGINS+=("$plugin")
-done < <(find "$PLUGIN_DIR" -type f -name "*.sh")
+done < <(find "$PLUGIN_DIR" -type f -name "*.sh" ! -path "*/_template/*")
 
 }
+
 
 ########################################
 # Service selection menu
@@ -184,7 +203,7 @@ OPTIONS=()
 
 for plugin in "${AVAILABLE_PLUGINS[@]}"
 do
-OPTIONS+=("$plugin" "")
+OPTIONS+=("$plugin" "" OFF)
 done
 
 CHOICES=$(whiptail \
@@ -200,6 +219,7 @@ SELECTED_SERVICES+=("${service//\"/}")
 done
 
 }
+
 
 ########################################
 # Dependency resolver
@@ -240,50 +260,26 @@ done
 
 }
 
-########################################
-# Installation mode
-########################################
-
-MODE=$(whiptail \
---title "Media Stack Installer" \
---menu "Select installation mode" \
-15 60 2 \
-quick "Recommended stack" \
-custom "Choose services manually" \
-3>&1 1>&2 2>&3)
 
 ########################################
-# Quick preset
+# Plugin discovery
 ########################################
 
-if [ "$MODE" = "quick" ]; then
-
-SELECTED_SERVICES=(
-plex
-radarr
-sonarr
-prowlarr
-bazarr
-overseerr
-sabnzbd
-unpackerr
-homepage
-watchtower
-tailscale
-prometheus
-nodeexporter
-grafana
-tautulli
-plex-exporter
-glances
-)
-
-else
-
+AVAILABLE_PLUGINS=()
 discover_plugins
+
+if [ ${#AVAILABLE_PLUGINS[@]} -eq 0 ]; then
+echo "No plugins discovered."
+exit 1
+fi
+
+
+########################################
+# Service selection
+########################################
+
 select_services
 
-fi
 
 ########################################
 # Resolve dependencies
@@ -291,11 +287,13 @@ fi
 
 resolve_dependencies
 
+
 ########################################
 # Remove duplicates
 ########################################
 
 SELECTED_SERVICES=($(printf "%s\n" "${SELECTED_SERVICES[@]}" | sort -u))
+
 
 ########################################
 # Generate docker compose
@@ -312,6 +310,7 @@ networks:
 services:
 
 EOF
+
 
 ########################################
 # Install services
@@ -339,13 +338,16 @@ install_service
 
 done
 
+
 mv "$TMP_COMPOSE" "$COMPOSE_FILE"
+
 
 ########################################
 # Start containers
 ########################################
 
 bash "$INSTALL_DIR/scripts/compose.sh" up
+
 
 ########################################
 # Post install
@@ -354,6 +356,7 @@ bash "$INSTALL_DIR/scripts/compose.sh" up
 if [ -f "$INSTALL_DIR/scripts/post-install.sh" ]; then
 bash "$INSTALL_DIR/scripts/post-install.sh"
 fi
+
 
 ########################################
 # Completion message
