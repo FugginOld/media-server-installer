@@ -51,7 +51,14 @@
 # must not create duplicate services.
 #
 ########################################
+#!/usr/bin/env bash
 
+########################################
+# Example Plugin Template
+#
+# Use this file as the base for creating
+# new Media Stack plugins.
+########################################
 
 ########################################
 # Load Media Stack Environment
@@ -59,14 +66,12 @@
 
 source "$INSTALL_DIR/core/env.sh"
 
-
 ########################################
 # Load Helpers
 ########################################
 
 source "$INSTALL_DIR/scripts/port-helper.sh"
 source "$INSTALL_DIR/scripts/service-registry.sh"
-
 
 ########################################
 # Plugin Metadata
@@ -96,8 +101,7 @@ PLUGIN_PORTS=(1234)
 # Whether the container requires host networking
 PLUGIN_HOST_NETWORK=false
 
-# Whether the service should appear
-# in dashboard systems
+# Whether the service should appear in dashboards
 PLUGIN_DASHBOARD=true
 
 
@@ -113,7 +117,7 @@ echo "Installing $PLUGIN_NAME..."
 # Prevent duplicate installs
 ########################################
 
-if grep -q "container_name: $PLUGIN_NAME" "$STACK_DIR/docker-compose.yml" 2>/dev/null; then
+if grep -q "^\s*$PLUGIN_NAME:" "$TMP_COMPOSE" 2>/dev/null; then
 echo "$PLUGIN_NAME already installed. Skipping."
 return
 fi
@@ -142,7 +146,7 @@ mkdir -p "$CONFIG_DIR/$PLUGIN_NAME"
 # Add container to docker-compose
 ########################################
 
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+cat <<EOF >> "$TMP_COMPOSE"
 
   $PLUGIN_NAME:
     image: $PLUGIN_IMAGE
@@ -156,77 +160,37 @@ EOF
 
 if [ "$PLUGIN_HOST_NETWORK" = true ]; then
 
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+cat <<EOF >> "$TMP_COMPOSE"
     network_mode: host
 EOF
 
 else
 
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+cat <<EOF >> "$TMP_COMPOSE"
     ports:
       - "$PORT:${PLUGIN_PORTS[0]}"
-    networks:
-      - media-network
 EOF
 
 fi
 
 
 ########################################
-# Environment variables
+# Container configuration
 ########################################
 
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
+cat <<EOF >> "$TMP_COMPOSE"
     environment:
       - PUID=\${PUID}
       - PGID=\${PGID}
       - TZ=\${TIMEZONE}
-EOF
-
-
-########################################
-# Volumes
-########################################
-
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
     volumes:
       - ./config/$PLUGIN_NAME:/config
-EOF
-
-
-########################################
-# GPU Support (if detected)
-########################################
-
-if [ "$GPU_TYPE" != "none" ]; then
-echo "$GPU_DEVICES" >> "$STACK_DIR/docker-compose.yml"
-fi
-
-
-########################################
-# Health check
-########################################
-
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:$PORT || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-EOF
-
-
-########################################
-# Restart policy
-########################################
-
-cat <<EOF >> "$STACK_DIR/docker-compose.yml"
     restart: unless-stopped
 EOF
 
 
 ########################################
-# Register service for dashboards
+# Register service in dashboard
 ########################################
 
 if [ "$PLUGIN_DASHBOARD" = true ]; then

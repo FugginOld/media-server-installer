@@ -5,10 +5,11 @@
 #
 # Exposes Plex metrics for Prometheus.
 #
-# Metrics include:
-# - active streams
-# - bandwidth usage
-# - transcoding activity
+# NOTE:
+# Plex token is optional. Metrics that
+# require authentication will not be
+# available until a token is added
+# to stack.env.
 ########################################
 
 ########################################
@@ -67,21 +68,16 @@ cat <<EOF >> "$TMP_COMPOSE"
     environment:
       - TZ=\${TIMEZONE}
       - PLEX_SERVER=http://plex:32400
+      - PLEX_TOKEN=\${PLEX_TOKEN}
     restart: unless-stopped
+
 EOF
 
 ########################################
-# Health Check
+# User notice
 ########################################
 
-cat <<EOF >> "$TMP_COMPOSE"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:$PORT/metrics || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-EOF
-
-echo "Plex Exporter installation complete."
+echo "Plex Exporter installed."
+echo "Optional: add PLEX_TOKEN to stack.env for authenticated metrics."
 
 }

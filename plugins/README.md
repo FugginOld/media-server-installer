@@ -189,7 +189,7 @@ Example usage inside a plugin:
 
 ```
 if [ "$GPU_TYPE" != "none" ]; then
-echo "$GPU_DEVICES" >> "$STACK_DIR/docker-compose.yml"
+echo "$GPU_DEVICES" >> "$TMP_COMPOSE"
 fi
 ```
 

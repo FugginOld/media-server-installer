@@ -72,6 +72,7 @@ cat <<EOF >> "$TMP_COMPOSE"
       - "$PORT:${PLUGIN_PORTS[0]}"
     environment:
       - TZ=\${TIMEZONE}
+      - HOMEPAGE_ALLOWED_HOSTS=*
     volumes:
       - ./config/homepage:/app/config
       - /var/run/docker.sock:/var/run/docker.sock
