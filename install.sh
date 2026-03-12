@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+########################################
+#Load media-stack runtime
+########################################
+
+source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
+
+set -euo pipefail
+
 INSTALL_DIR="/opt/media-server-installer"
 
 echo "================================"
