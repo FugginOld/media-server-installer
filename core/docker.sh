@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 
 ########################################
-# Media Stack Docker Installation Module
+# Load media-stack runtime environment
 ########################################
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/core/runtime.sh"
 
 ########################################
 # Load environment

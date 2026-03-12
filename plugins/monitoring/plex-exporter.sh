@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 ########################################
-# Plex Exporter Plugin
-#
-# Exposes Plex metrics for Prometheus.
-#
-# NOTE:
-# Plex token is optional. Metrics that
-# require authentication will not be
-# available until a token is added
-# to stack.env.
+# Load media-stack runtime environment
 ########################################
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/core/runtime.sh"
+
 ########################################
-# Load Media Stack Environment
+# Load environment
 ########################################
 
 source "$INSTALL_DIR/core/env.sh"
@@ -40,6 +38,7 @@ PLUGIN_HOST_NETWORK=false
 
 PLUGIN_DASHBOARD=false
 
+
 ########################################
 # Install Service
 ########################################
@@ -49,10 +48,25 @@ install_service() {
 echo "Installing Plex Exporter..."
 
 ########################################
+# Prevent duplicate installs
+########################################
+
+if grep -q "^\s*$PLUGIN_NAME:" "$TMP_COMPOSE" 2>/dev/null; then
+echo "$PLUGIN_NAME already installed. Skipping."
+return
+fi
+
+########################################
 # Request port mapping
 ########################################
 
 PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
+
+########################################
+# Create configuration directory
+########################################
+
+mkdir -p "$CONFIG_DIR/$PLUGIN_NAME"
 
 ########################################
 # Add container to docker-compose
@@ -60,7 +74,7 @@ PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
 
 cat <<EOF >> "$TMP_COMPOSE"
 
-  plex-exporter:
+  $PLUGIN_NAME:
     image: ghcr.io/jsclayton/prometheus-plex-exporter
     container_name: plex-exporter
     ports:
@@ -68,16 +82,21 @@ cat <<EOF >> "$TMP_COMPOSE"
     environment:
       - TZ=\${TIMEZONE}
       - PLEX_SERVER=http://plex:32400
-      - PLEX_TOKEN=\${PLEX_TOKEN}
     restart: unless-stopped
-
 EOF
 
 ########################################
-# User notice
+# Health Check
 ########################################
 
-echo "Plex Exporter installed."
-echo "Optional: add PLEX_TOKEN to stack.env for authenticated metrics."
+cat <<EOF >> "$TMP_COMPOSE"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:${PLUGIN_PORTS[0]}/metrics || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+EOF
+
+echo "Plex Exporter installation complete."
 
 }

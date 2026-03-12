@@ -1,98 +1,110 @@
 #!/usr/bin/env bash
+set -euo pipefail
+
+########################################
+# Load media-stack runtime environment
+########################################
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/core/runtime.sh"
 
 ########################################
 # Media Stack Port Helper
 #
-# Provides safe port allocation for
-# plugins using the port registry.
+# Allocates and registers ports
+# for plugins to prevent conflicts.
 ########################################
 
-set -e
+PORT_REGISTRY="$STACK_DIR/ports.json"
 
 ########################################
-# Load Media Stack Environment
+# Ensure jq exists
 ########################################
 
-source "$INSTALL_DIR/core/env.sh"
-source "$INSTALL_DIR/scripts/port-registry.sh"
+if ! command -v jq >/dev/null 2>&1; then
+echo "jq is required for port management."
+exit 1
+fi
 
 ########################################
-# Check if port currently in use on host
+# Initialize port registry if missing
 ########################################
 
-port_in_use_host() {
+init_port_registry() {
 
-local PORT=$1
-
-ss -ltn 2>/dev/null | awk '{print $4}' | grep -q ":$PORT$"
+if [ ! -f "$PORT_REGISTRY" ]; then
+echo "{}" > "$PORT_REGISTRY"
+fi
 
 }
 
 ########################################
-# Find next available port
+# Check if port already used
 ########################################
 
-find_next_available_port() {
+port_in_use() {
 
-local PORT=$1
+PORT="$1"
 
-while true
-do
-
-# Check if port already registered
-if port_registered "$PORT"; then
-PORT=$((PORT + 1))
-continue
-fi
-
-# Check if port used by host process
-if port_in_use_host "$PORT"; then
-PORT=$((PORT + 1))
-continue
-fi
-
-# Port is safe
-echo "$PORT"
-return
-
-done
+jq -e --arg port "$PORT" '
+to_entries[]
+| select(.value.port == ($port|tonumber))
+' "$PORT_REGISTRY" >/dev/null 2>&1
 
 }
 
 ########################################
-# Get port mapping for service
+# Register port
+########################################
+
+register_port() {
+
+SERVICE="$1"
+PORT="$2"
+
+TMP_FILE=$(mktemp)
+
+jq \
+--arg service "$SERVICE" \
+--argjson port "$PORT" \
+'.[$service] = {port:$port}' \
+"$PORT_REGISTRY" > "$TMP_FILE"
+
+mv "$TMP_FILE" "$PORT_REGISTRY"
+
+}
+
+########################################
+# Get port mapping
 ########################################
 
 get_port_mapping() {
 
-local SERVICE=$1
-local DEFAULT_PORT=$2
+SERVICE="$1"
+DEFAULT_PORT="$2"
 
-init_port_registry
-
-########################################
-# Check if service already assigned
-########################################
-
-local PORT
-PORT=$(get_port "$SERVICE")
-
-if [ -n "$PORT" ]; then
-echo "$PORT"
-return
-fi
+PORT="$DEFAULT_PORT"
 
 ########################################
-# Allocate next available port
+# Increment until free
 ########################################
 
-PORT=$(find_next_available_port "$DEFAULT_PORT")
+while port_in_use "$PORT"
+do
+PORT=$((PORT + 1))
+done
 
 ########################################
 # Register port
 ########################################
 
 register_port "$SERVICE" "$PORT"
+
+########################################
+# Return port only
+########################################
 
 echo "$PORT"
 

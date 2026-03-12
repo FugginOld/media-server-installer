@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 
 ########################################
-# Media Stack Directory Management
-#
-# Handles filesystem layout for media,
-# downloads, and configuration.
-#
-# Supports:
-#  - Default layout
-#  - TRaSH Guides layout
+# Load media-stack runtime environment
 ########################################
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/core/runtime.sh"
 
 ########################################
 # Load environment

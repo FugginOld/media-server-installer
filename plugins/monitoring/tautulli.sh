@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 ########################################
-# Tautulli Plugin
-#
-# Provides advanced Plex analytics and
-# monitoring including:
-# - user playback history
-# - bandwidth usage
-# - active streams
+# Load media-stack runtime environment
 ########################################
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/core/runtime.sh"
+
 ########################################
-# Load Media Stack Environment
+# Load Environment
 ########################################
 
 source "$INSTALL_DIR/core/env.sh"

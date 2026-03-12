@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/core/runtime.sh"
 
 ########################################
 # Media Stack CLI
@@ -13,11 +17,6 @@ set -e
 # Determine installer directory
 ########################################
 
-INSTALL_DIR="/opt/media-server-installer"
-
-########################################
-# Load environment
-########################################
 
 source "$INSTALL_DIR/core/env.sh"
 

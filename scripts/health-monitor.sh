@@ -1,21 +1,14 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 ########################################
-# Media Stack Health Monitor
-#
-# Continuously checks registered
-# services to ensure they are reachable.
+# Load media-stack runtime environment
 ########################################
 
-set -e
-
-########################################
-# Determine installer directory
-########################################
-
-if [ -z "$INSTALL_DIR" ]; then
-INSTALL_DIR="/opt/media-server-installer"
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/core/runtime.sh"
 
 ########################################
 # Load environment

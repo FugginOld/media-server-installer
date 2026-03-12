@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 ########################################
-# Plex Plugin
-#
-# Provides the main media streaming
-# server for the Media Stack.
-#
-# Supports hardware transcoding using
-# Intel, AMD, or NVIDIA GPUs.
+# Load media-stack runtime environment
 ########################################
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/core/runtime.sh"
+
 ########################################
-# Load Media Stack Environment
+# Load environment
 ########################################
 
 source "$INSTALL_DIR/core/env.sh"

@@ -1,4 +1,14 @@
 #!/usr/bin/env bash
+set -euo pipefail
+
+########################################
+# Load media-stack runtime environment
+########################################
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/core/runtime.sh"
 
 ########################################
 # Media Stack Port Registry

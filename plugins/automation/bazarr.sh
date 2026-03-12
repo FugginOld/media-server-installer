@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 ########################################
-# Bazarr Plugin
-#
-# Provides automatic subtitle downloads
-# for movies and TV series managed by
-# Radarr and Sonarr.
+# Load media-stack runtime environment
 ########################################
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/core/runtime.sh"
+
 ########################################
-# Load Media Stack Environment
+# Load environment
 ########################################
 
 source "$INSTALL_DIR/core/env.sh"

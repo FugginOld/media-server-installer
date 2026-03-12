@@ -1,19 +1,14 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 ########################################
-# Media Stack Doctor
-#
-# Diagnoses installation problems
-# and verifies required components.
+# Load media-stack runtime environment
 ########################################
 
-########################################
-# Determine installer directory
-########################################
-
-if [ -z "$INSTALL_DIR" ]; then
-INSTALL_DIR="/opt/media-server-installer"
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/core/runtime.sh"
 
 ########################################
 # Load environment

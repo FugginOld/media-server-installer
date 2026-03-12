@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 
 ########################################
-# Media Stack Hardware Detection
-#
-# Detects GPU hardware and prepares
-# Docker configuration for hardware
-# acceleration in containers.
+# Load media-stack runtime environment
 ########################################
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/core/runtime.sh"
 
 ########################################
 # Load environment

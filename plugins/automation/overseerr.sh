@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 ########################################
-# Overseerr Plugin
-#
-# Provides a request management system
-# for Plex users to request movies and
-# TV shows.
-#
-# Integrates with:
-# - Radarr
-# - Sonarr
+# Load media-stack runtime environment
 ########################################
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/core/runtime.sh"
+
 ########################################
-# Load Media Stack Environment
+# Load environment
 ########################################
 
 source "$INSTALL_DIR/core/env.sh"

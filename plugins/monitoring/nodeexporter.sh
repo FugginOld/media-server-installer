@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 ########################################
-# Node Exporter Plugin
-#
-# Provides system metrics for Prometheus.
-#
-# Metrics include:
-# - CPU usage
-# - Memory usage
-# - Disk I/O
-# - Network activity
+# Load media-stack runtime environment
 ########################################
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/core/runtime.sh"
+
 ########################################
-# Load Media Stack Environment
+# Load environment
 ########################################
 
 source "$INSTALL_DIR/core/env.sh"

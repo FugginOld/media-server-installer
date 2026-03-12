@@ -1,21 +1,20 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 ########################################
-# Media Stack Service Registry
-#
-# Maintains the services.json file used
-# by dashboards and CLI commands.
+# Load media-stack runtime environment
 ########################################
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/core/runtime.sh"
+
 ########################################
-# Load Media Stack Environment
+# Service Registry
 ########################################
 
-source "$INSTALL_DIR/core/env.sh"
-
-########################################
-# Initialize registry
-########################################
+SERVICE_REGISTRY="$STACK_DIR/services.json"
 
 init_registry() {
 
@@ -27,127 +26,47 @@ fi
 
 }
 
-########################################
-# Check if service exists
-########################################
-
-service_exists() {
-
-NAME=$1
-
-jq -e --arg name "$NAME" \
-'.services[] | select(.name==$name)' \
-"$SERVICE_REGISTRY" >/dev/null 2>&1
-
-}
-
-########################################
-# Register service
-########################################
-
 register_service() {
 
-NAME=$1
-URL=$2
-CATEGORY=$3
-ICON=$4
-
-init_registry
+NAME="$1"
+URL="$2"
+CATEGORY="$3"
+ICON="$4"
 
 TMP_FILE=$(mktemp)
 
 ########################################
-# Remove existing entry first
+# Remove existing service
 ########################################
 
-jq --arg name "$NAME" \
-' .services |= map(select(.name != $name)) ' \
-"$SERVICE_REGISTRY" > "$TMP_FILE"
-
-mv "$TMP_FILE" "$SERVICE_REGISTRY"
-
-TMP_FILE=$(mktemp)
-
-########################################
-# Add updated service entry
-########################################
-
-jq --arg name "$NAME" \
-   --arg url "$URL" \
-   --arg category "$CATEGORY" \
-   --arg icon "$ICON" \
-'.services += [{
-  name: $name,
-  url: $url,
-  category: $category,
-  icon: $icon
-}]' "$SERVICE_REGISTRY" > "$TMP_FILE"
-
-mv "$TMP_FILE" "$SERVICE_REGISTRY"
-
-echo "Registered service: $NAME"
-
-}
-
-########################################
-# Remove service
-########################################
-
-remove_service() {
-
-NAME=$1
-
-init_registry
-
-TMP_FILE=$(mktemp)
-
-jq --arg name "$NAME" \
+jq \
+--arg name "$NAME" \
 '.services |= map(select(.name != $name))' \
 "$SERVICE_REGISTRY" > "$TMP_FILE"
 
 mv "$TMP_FILE" "$SERVICE_REGISTRY"
 
-echo "Removed service: $NAME"
-
-}
-
 ########################################
-# Get service URL
+# Add service entry
 ########################################
 
-get_service_url() {
+TMP_FILE=$(mktemp)
 
-NAME=$1
+jq \
+--arg name "$NAME" \
+--arg url "$URL" \
+--arg category "$CATEGORY" \
+--arg icon "$ICON" \
+'.services += [{
+name:$name,
+url:$url,
+category:$category,
+icon:$icon
+}]' \
+"$SERVICE_REGISTRY" > "$TMP_FILE"
 
-init_registry
+mv "$TMP_FILE" "$SERVICE_REGISTRY"
 
-jq -r --arg name "$NAME" \
-'.services[] | select(.name==$name) | .url' \
-"$SERVICE_REGISTRY"
-
-}
-
-########################################
-# List services
-########################################
-
-list_services() {
-
-init_registry
-
-jq .
-
-}
-
-########################################
-# Pretty print services
-########################################
-
-pretty_services() {
-
-init_registry
-
-jq -r '.services[] |
-"\(.name) -> \(.url)"' "$SERVICE_REGISTRY"
+echo "Registered service: $NAME"
 
 }

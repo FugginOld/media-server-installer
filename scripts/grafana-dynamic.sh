@@ -1,46 +1,28 @@
 #!/usr/bin/env bash
+set -euo pipefail
+
+########################################
+# Load media-stack runtime environment
+########################################
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/core/runtime.sh"
 
 ########################################
 # Grafana Dynamic Configuration
-#
-# Automatically configures Grafana
-# after installation.
 ########################################
 
-set -e
-
-########################################
-# Determine installer directory
-########################################
-
-if [ -z "$INSTALL_DIR" ]; then
-INSTALL_DIR="/opt/media-server-installer"
-fi
-
-########################################
-# Load environment
-########################################
-
-source "$INSTALL_DIR/core/env.sh"
-
-CONFIG_DIR="$CONFIG_DIR/grafana"
-
+STACK_DIR="/opt/media-stack"
 GRAFANA_URL="http://localhost:3000"
+
 GRAFANA_USER="admin"
 GRAFANA_PASS="admin"
 
-########################################
-# Ensure dependencies
-########################################
+INSTALL_DIR="${INSTALL_DIR:-/opt/media-server-installer}"
 
-if ! command -v curl >/dev/null 2>&1; then
-echo "curl is required for Grafana configuration."
-exit 1
-fi
-
-########################################
-# Wait for Grafana
-########################################
+source "$INSTALL_DIR/scripts/wait-for-container.sh"
 
 echo ""
 echo "================================"
@@ -48,39 +30,34 @@ echo " Configuring Grafana"
 echo "================================"
 echo ""
 
-echo "Waiting for Grafana service..."
+########################################
+# Wait for Grafana container
+########################################
 
-MAX_RETRIES=24
-COUNT=0
+wait_for_container grafana 120 || exit 0
 
-until curl -s "$GRAFANA_URL/api/health" >/dev/null 2>&1
+########################################
+# Wait for API
+########################################
+
+echo "Waiting for Grafana API..."
+
+for i in {1..30}
 do
 
-sleep 5
-COUNT=$((COUNT+1))
-
-if [ "$COUNT" -ge "$MAX_RETRIES" ]; then
-echo "Grafana did not start within expected time."
-exit 1
+if curl -sf "$GRAFANA_URL/api/health" >/dev/null 2>&1; then
+echo "Grafana API ready"
+break
 fi
+
+sleep 2
 
 done
 
-echo "Grafana is online."
-
 ########################################
-# Check if datasource already exists
+# Create Prometheus datasource
 ########################################
 
-if curl -s -u "$GRAFANA_USER:$GRAFANA_PASS" \
-"$GRAFANA_URL/api/datasources" | jq -e '.[] | select(.name=="Prometheus")' >/dev/null 2>&1
-then
-
-echo "Prometheus datasource already exists."
-
-else
-
-echo ""
 echo "Creating Prometheus datasource..."
 
 curl -s -X POST "$GRAFANA_URL/api/datasources" \
@@ -94,40 +71,7 @@ curl -s -X POST "$GRAFANA_URL/api/datasources" \
 "isDefault":true
 }' >/dev/null
 
-echo "Datasource created."
-
-fi
-
-########################################
-# Import dashboards
-########################################
-
-DASHBOARD_DIR="$CONFIG_DIR/dashboards"
-
-if [ -d "$DASHBOARD_DIR" ]; then
-
-FILES=$(find "$DASHBOARD_DIR" -name "*.json")
-
-if [ -n "$FILES" ]; then
-
-echo ""
-echo "Importing dashboards..."
-
-for DASHBOARD in $FILES
-do
-
-curl -s -X POST "$GRAFANA_URL/api/dashboards/db" \
--H "Content-Type: application/json" \
--u "$GRAFANA_USER:$GRAFANA_PASS" \
--d @"$DASHBOARD" >/dev/null
-
-echo "Imported $(basename "$DASHBOARD")"
-
-done
-
-fi
-
-fi
+echo "Datasource created"
 
 echo ""
 echo "Grafana configuration complete."

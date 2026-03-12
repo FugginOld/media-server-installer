@@ -1,22 +1,14 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 ########################################
-# Media Stack Backup System
-#
-# Creates a compressed backup of
-# Media Stack configuration and
-# registry files.
+# Load media-stack runtime environment
 ########################################
 
-set -e
-
-########################################
-# Determine installer directory
-########################################
-
-if [ -z "$INSTALL_DIR" ]; then
-INSTALL_DIR="/opt/media-server-installer"
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/core/runtime.sh"
 
 ########################################
 # Load environment

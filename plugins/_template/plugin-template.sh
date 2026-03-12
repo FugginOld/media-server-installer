@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 ########################################
 # Media Stack Plugin Template
@@ -51,14 +52,15 @@
 # must not create duplicate services.
 #
 ########################################
-#!/usr/bin/env bash
 
 ########################################
-# Example Plugin Template
-#
-# Use this file as the base for creating
-# new Media Stack plugins.
+# Load media-stack runtime environment
 ########################################
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/core/runtime.sh"
 
 ########################################
 # Load Media Stack Environment

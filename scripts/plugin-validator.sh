@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 ########################################
-# Media Stack Plugin Validator
-#
-# Validates plugin scripts before the
-# installer executes them.
+# Load media-stack runtime environment
 ########################################
 
-set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/core/runtime.sh"
 
 ########################################
 # Load environment

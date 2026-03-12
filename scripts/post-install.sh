@@ -1,21 +1,14 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 ########################################
-# Media Stack Post Install Automation
-#
-# Runs after containers start to
-# configure dashboards and monitoring.
+# Load media-stack runtime environment
 ########################################
 
-set -e
-
-########################################
-# Determine installer directory
-########################################
-
-if [ -z "$INSTALL_DIR" ]; then
-INSTALL_DIR="/opt/media-server-installer"
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/core/runtime.sh"
 
 ########################################
 # Load environment
@@ -30,17 +23,11 @@ echo "================================"
 echo ""
 
 ########################################
-# Ensure log directory exists
-########################################
-
-mkdir -p "$LOG_DIR"
-
-########################################
-# Wait for containers to initialize
+# Allow containers time to initialize
 ########################################
 
 echo "Waiting for containers to initialize..."
-sleep 20
+sleep 10
 
 ########################################
 # Configure Grafana dashboards
@@ -72,7 +59,7 @@ echo ""
 fi
 
 ########################################
-# Start health monitoring
+# Start health monitoring if available
 ########################################
 
 if [ -f "$INSTALL_DIR/scripts/health-monitor.sh" ]; then
@@ -81,21 +68,7 @@ echo ""
 echo "Starting service health monitor..."
 
 bash "$INSTALL_DIR/scripts/health-monitor.sh" \
->> "$LOG_DIR/health-monitor.log" 2>&1 &
-
-fi
-
-########################################
-# Display container status
-########################################
-
-if command -v docker >/dev/null 2>&1; then
-
-echo ""
-echo "Container status:"
-echo ""
-
-bash "$INSTALL_DIR/scripts/compose.sh" status
+>> "$STACK_DIR/logs/health-monitor.log" 2>&1 &
 
 fi
 

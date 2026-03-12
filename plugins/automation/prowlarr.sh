@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 ########################################
-# Prowlarr Plugin
-#
-# Manages indexers for the Media Stack
-# automation ecosystem.
-#
-# Integrates with:
-# - Radarr
-# - Sonarr
-# - Bazarr
+# Load media-stack runtime environment
 ########################################
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/core/runtime.sh"
+
 ########################################
-# Load Media Stack Environment
+# Load environment
 ########################################
 
 source "$INSTALL_DIR/core/env.sh"

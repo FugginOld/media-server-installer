@@ -1,7 +1,16 @@
 #!/usr/bin/env bash
 
 ########################################
-# Media Stack Environment Loader
+# Load media-stack runtime environment
+########################################
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
+source "$SCRIPT_DIR/core/runtime.sh"
+
+########################################
+# Load environment
 ########################################
 
 # Prevent double-loading
@@ -9,14 +18,6 @@ if [ -n "$MEDIA_STACK_ENV_LOADED" ]; then
 return
 fi
 export MEDIA_STACK_ENV_LOADED=1
-
-########################################
-# Determine installer directory
-########################################
-
-if [ -z "$INSTALL_DIR" ]; then
-INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-fi
 
 ########################################
 # Stack directory
