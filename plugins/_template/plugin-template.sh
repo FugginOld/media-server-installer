@@ -7,8 +7,6 @@ set -euo pipefail
 
 source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
 
-set -euo pipefail
-
 ########################################
 # Media Stack Plugin Template
 #
@@ -62,15 +60,9 @@ set -euo pipefail
 ########################################
 
 ########################################
-# Load media-stack runtime environment
-########################################
-
-
-########################################
 # Load Media Stack Environment
 ########################################
 
-source "$INSTALL_DIR/core/env.sh"
 
 ########################################
 # Load Helpers

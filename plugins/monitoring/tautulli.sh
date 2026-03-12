@@ -7,28 +7,15 @@ set -euo pipefail
 
 source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
 
-set -euo pipefail
-
 ########################################
-# Load media-stack runtime environment
-########################################
-
-
-########################################
-# Load Environment
-########################################
-
-source "$INSTALL_DIR/core/env.sh"
-
-########################################
-# Load helpers
+#Load installer libraries
 ########################################
 
 source "$INSTALL_DIR/scripts/port-helper.sh"
 source "$INSTALL_DIR/scripts/service-registry.sh"
 
 ########################################
-# Plugin Metadata
+#Plugin Metadata
 ########################################
 
 PLUGIN_NAME="tautulli"

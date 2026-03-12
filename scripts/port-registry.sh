@@ -1,24 +1,6 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
 ########################################
-#Load media-stack runtime
+#Port Registry
 ########################################
-
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
-
-set -euo pipefail
-
-########################################
-#Load media-stack runtime environment
-########################################
-
-
-########################################
-#Load Media Stack Environment
-########################################
-
-source "$INSTALL_DIR/core/env.sh"
 
 ########################################
 #Initialize port registry

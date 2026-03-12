@@ -7,24 +7,17 @@ set -euo pipefail
 
 source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
 
-set -euo pipefail
-
 ########################################
-# Load media-stack runtime environment
-########################################
-
-
-########################################
-# Media Stack Port Helper
+#Media Stack Port Helper
 #
-# Allocates and registers ports
-# for plugins to prevent conflicts.
+#Allocates and registers ports
+#for plugins to prevent conflicts.
 ########################################
 
 PORT_REGISTRY="$STACK_DIR/ports.json"
 
 ########################################
-# Ensure jq exists
+#Ensure jq exists
 ########################################
 
 if ! command -v jq >/dev/null 2>&1; then
@@ -33,10 +26,12 @@ exit 1
 fi
 
 ########################################
-# Initialize port registry if missing
+#Initialize port registry if missing
 ########################################
 
 init_port_registry() {
+
+mkdir -p "$(dirname "$PORT_REGISTRY")"
 
 if [ ! -f "$PORT_REGISTRY" ]; then
 echo "{}" > "$PORT_REGISTRY"
@@ -45,12 +40,14 @@ fi
 }
 
 ########################################
-# Check if port already used
+#Check if port already used
 ########################################
 
 port_in_use() {
 
-PORT="$1"
+local PORT="$1"
+
+init_port_registry
 
 jq -e --arg port "$PORT" '
 to_entries[]
@@ -60,15 +57,17 @@ to_entries[]
 }
 
 ########################################
-# Register port
+#Register port
 ########################################
 
 register_port() {
 
-SERVICE="$1"
-PORT="$2"
+local SERVICE="$1"
+local PORT="$2"
 
-TMP_FILE=$(mktemp)
+init_port_registry
+
+TMP_FILE="$(mktemp)"
 
 jq \
 --arg service "$SERVICE" \
@@ -81,18 +80,18 @@ mv "$TMP_FILE" "$PORT_REGISTRY"
 }
 
 ########################################
-# Get port mapping
+#Get port mapping
 ########################################
 
 get_port_mapping() {
 
-SERVICE="$1"
-DEFAULT_PORT="$2"
+local SERVICE="$1"
+local DEFAULT_PORT="$2"
 
-PORT="$DEFAULT_PORT"
+local PORT="$DEFAULT_PORT"
 
 ########################################
-# Increment until free
+#Increment until free
 ########################################
 
 while port_in_use "$PORT"
@@ -101,13 +100,13 @@ PORT=$((PORT + 1))
 done
 
 ########################################
-# Register port
+#Register port
 ########################################
 
 register_port "$SERVICE" "$PORT"
 
 ########################################
-# Return port only
+#Return port only
 ########################################
 
 echo "$PORT"

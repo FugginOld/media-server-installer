@@ -1,34 +1,18 @@
-#!/usr/bin/env bash
-
 ########################################
-#Load media-stack runtime
+#Permissions Management
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
-
-
 ########################################
-# Load media-stack runtime environment
-########################################
-
-
-########################################
-# Load environment
-########################################
-
-source "$INSTALL_DIR/core/env.sh"
-
-########################################
-# Determine PUID / PGID
+#Determine PUID / PGID
 ########################################
 
 detect_user_ids() {
 
-if [ -z "$PUID" ]; then
+if [ -z "${PUID:-}" ]; then
 PUID=$(id -u)
 fi
 
-if [ -z "$PGID" ]; then
+if [ -z "${PGID:-}" ]; then
 PGID=$(id -g)
 fi
 
@@ -38,7 +22,7 @@ echo "Using PGID=$PGID"
 }
 
 ########################################
-# Fix directory permissions
+#Fix directory permissions
 ########################################
 
 fix_media_permissions() {
@@ -55,19 +39,17 @@ DIRS=(
 
 for DIR in "${DIRS[@]}"
 do
-
 if [ -n "$DIR" ] && [ -d "$DIR" ]; then
 echo "Fixing permissions: $DIR"
 chown -R "$PUID:$PGID" "$DIR"
 chmod -R 775 "$DIR"
 fi
-
 done
 
 }
 
 ########################################
-# NAS specific adjustments
+#NAS specific adjustments
 ########################################
 
 apply_nas_permissions() {
@@ -119,17 +101,19 @@ esac
 }
 
 ########################################
-# Main permission setup
+#Main permission setup
 ########################################
 
 setup_permissions() {
 
 detect_user_ids
-
 fix_media_permissions
-
 apply_nas_permissions
 
 }
+
+########################################
+#Export function
+########################################
 
 export -f setup_permissions

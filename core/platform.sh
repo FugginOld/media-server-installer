@@ -1,22 +1,6 @@
-#!/usr/bin/env bash
-
 ########################################
-#Load media-stack runtime
+#Platform Detection
 ########################################
-
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
-
-
-########################################
-# Load media-stack runtime environment
-########################################
-
-
-########################################
-# Load environment
-########################################
-
-source "$INSTALL_DIR/core/env.sh"
 
 PLATFORM_ID=""
 PLATFORM_FAMILY=""
@@ -24,7 +8,7 @@ PACKAGE_MANAGER=""
 NAS_PLATFORM="none"
 
 ########################################
-# Detect Linux Distribution
+#Detect Linux Distribution
 ########################################
 
 detect_platform() {
@@ -39,7 +23,7 @@ PLATFORM_ID="unknown"
 fi
 
 ########################################
-# Detect NAS platforms
+#Detect NAS platforms
 ########################################
 
 if [ -f /etc/unraid-version ]; then
@@ -59,7 +43,7 @@ NAS_PLATFORM="casaos"
 esac
 
 ########################################
-# Determine platform family
+#Determine platform family
 ########################################
 
 case "$PLATFORM_ID" in
@@ -116,7 +100,7 @@ fi
 }
 
 ########################################
-# Package Manager Abstraction
+#Package Manager Abstraction
 ########################################
 
 pkg_update() {
@@ -194,7 +178,7 @@ esac
 }
 
 ########################################
-# Export variables
+#Export functions
 ########################################
 
 export PLATFORM_ID

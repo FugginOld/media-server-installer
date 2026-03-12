@@ -7,27 +7,20 @@ set -euo pipefail
 
 source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
 
-set -euo pipefail
-
 ########################################
-# Load media-stack runtime environment
-########################################
-
-
-########################################
-# Wait For Container Health
+#Wait For Container Health
 #
-# Usage:
-# wait_for_container <container> [timeout]
+#Usage:
+#wait-for-container.sh <container> [timeout]
 ########################################
+
+if [ $# -lt 1 ]; then
+echo "Usage: wait-for-container.sh <container> [timeout]"
+exit 1
+fi
 
 CONTAINER="$1"
 TIMEOUT="${2:-120}"
-
-if [ -z "$CONTAINER" ]; then
-echo "Usage: wait_for_container <container> [timeout]"
-exit 1
-fi
 
 echo "Waiting for container: $CONTAINER"
 
@@ -36,26 +29,38 @@ ELAPSED=0
 while true
 do
 
-STATUS=$(docker inspect \
+STATUS="$(docker inspect \
 --format='{{.State.Health.Status}}' \
-"$CONTAINER" 2>/dev/null)
+"$CONTAINER" 2>/dev/null || true)"
+
+########################################
+#Healthy container
+########################################
 
 if [ "$STATUS" = "healthy" ]; then
 echo "$CONTAINER is healthy"
-return 0
+exit 0
 fi
+
+########################################
+#Running but no healthcheck
+########################################
 
 if [ "$STATUS" = "running" ]; then
 echo "$CONTAINER running (no healthcheck)"
-return 0
+exit 0
 fi
 
 sleep 2
-ELAPSED=$((ELAPSED+2))
+ELAPSED=$((ELAPSED + 2))
+
+########################################
+#Timeout check
+########################################
 
 if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
 echo "Timeout waiting for $CONTAINER"
-return 1
+exit 1
 fi
 
 done

@@ -1,28 +1,12 @@
-#!/usr/bin/env bash
-
 ########################################
-#Load media-stack runtime
+#Hardware Detection
 ########################################
-
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
-
-
-########################################
-# Load media-stack runtime environment
-########################################
-
-
-########################################
-# Load environment
-########################################
-
-source "$INSTALL_DIR/core/env.sh"
 
 GPU_TYPE="none"
 GPU_DEVICES=""
 
 ########################################
-# Detect GPU hardware
+#Detect GPU hardware
 ########################################
 
 detect_gpu() {
@@ -32,7 +16,7 @@ echo "Detecting GPU hardware..."
 echo ""
 
 ########################################
-# Ensure lspci exists
+#Ensure lspci exists
 ########################################
 
 if ! command -v lspci >/dev/null 2>&1; then
@@ -42,28 +26,28 @@ return
 fi
 
 ########################################
-# NVIDIA detection
+#NVIDIA detection
 ########################################
 
 if lspci | grep -qi nvidia; then
 GPU_TYPE="nvidia"
 
 ########################################
-# Intel detection
+#Intel detection
 ########################################
 
 elif lspci | grep -Ei "vga|3d|display" | grep -qi intel; then
 GPU_TYPE="intel"
 
 ########################################
-# AMD detection
+#AMD detection
 ########################################
 
 elif lspci | grep -Ei "vga|3d|display" | grep -qi amd; then
 GPU_TYPE="amd"
 
 ########################################
-# No GPU detected
+#No GPU detected
 ########################################
 
 else
@@ -75,7 +59,7 @@ echo "Detected GPU type: $GPU_TYPE"
 }
 
 ########################################
-# Configure Docker GPU devices
+#Configure Docker GPU devices
 ########################################
 
 configure_gpu_devices() {
@@ -83,7 +67,7 @@ configure_gpu_devices() {
 case "$GPU_TYPE" in
 
 ########################################
-# Intel / AMD (VAAPI)
+#Intel / AMD (VAAPI)
 ########################################
 
 intel|amd)
@@ -96,7 +80,7 @@ GPU_DEVICES="
 ;;
 
 ########################################
-# NVIDIA GPU
+#NVIDIA GPU
 ########################################
 
 nvidia)
@@ -112,7 +96,7 @@ install_nvidia_runtime
 ;;
 
 ########################################
-# No GPU
+#No GPU
 ########################################
 
 *)
@@ -126,7 +110,7 @@ esac
 }
 
 ########################################
-# Install NVIDIA container runtime
+#Install NVIDIA container runtime
 ########################################
 
 install_nvidia_runtime() {
@@ -140,7 +124,7 @@ echo "Installing NVIDIA container toolkit..."
 echo ""
 
 ########################################
-# Debian / Ubuntu systems
+#Debian / Ubuntu systems
 ########################################
 
 if command -v apt >/dev/null 2>&1; then
@@ -149,7 +133,7 @@ apt update
 apt install -y nvidia-container-toolkit
 
 ########################################
-# Restart Docker
+#Restart Docker
 ########################################
 
 if command -v systemctl >/dev/null 2>&1; then
@@ -163,7 +147,7 @@ fi
 }
 
 ########################################
-# Export functions
+#Export functions
 ########################################
 
 export -f detect_gpu

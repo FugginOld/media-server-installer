@@ -7,18 +7,9 @@ set -euo pipefail
 
 source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
 
-set -euo pipefail
-
 ########################################
-#Load media-stack runtime environment
+#Compose controller
 ########################################
-
-
-########################################
-#Load environment
-########################################
-
-source "$INSTALL_DIR/core/env.sh"
 
 COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
 
@@ -45,7 +36,7 @@ fi
 #Change to stack directory
 ########################################
 
-cd "$STACK_DIR"
+cd "$STACK_DIR" || exit 1
 
 ########################################
 #Command handler

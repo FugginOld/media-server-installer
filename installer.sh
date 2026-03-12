@@ -7,44 +7,16 @@ set -euo pipefail
 
 source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
 
-set -euo pipefail
-
-########################################
-
-# Load media-stack runtime environment
-
-########################################
-
-
 cd "$INSTALL_DIR"
 
 ########################################
-
-# Load environment
-
-########################################
-
-source "$INSTALL_DIR/core/env.sh"
-
-PLUGIN_DIR="$INSTALL_DIR/plugins"
-
-SELECTED_SERVICES=()
-AVAILABLE_PLUGINS=()
-
-declare -A PLUGIN_PATHS
-
-########################################
-
-# Run preflight checks
-
+#Run preflight checks
 ########################################
 
 bash "$INSTALL_DIR/scripts/preflight.sh"
 
 ########################################
-
-# Load core modules
-
+#Load core modules
 ########################################
 
 source "$INSTALL_DIR/core/platform.sh"
@@ -55,47 +27,37 @@ source "$INSTALL_DIR/core/config-wizard.sh"
 source "$INSTALL_DIR/core/permissions.sh"
 
 ########################################
-
-# Detect platform
-
+#Detect platform
 ########################################
 
 detect_platform
 
 ########################################
-
-# Ensure Docker installed
-
+#Ensure Docker installed
 ########################################
 
 ensure_docker
 
 ########################################
-
-# Create stack directory
-
+#Create stack directory
 ########################################
 
 mkdir -p "$STACK_DIR"
 
 ########################################
-
-# Select installer interface
-
+#Select installer interface
 ########################################
 
-INTERFACE=$(whiptail 
---title "Media Stack Installer" 
---menu "Select installation interface" 
-15 60 2 
-cli "CLI Installer" 
-web "Web Installer" 
+INTERFACE=$(whiptail \
+--title "Media Stack Installer" \
+--menu "Select installation interface" \
+15 60 2 \
+cli "CLI Installer" \
+web "Web Installer" \
 3>&1 1>&2 2>&3)
 
 ########################################
-
-# WEB INSTALLER
-
+#Web installer
 ########################################
 
 if [ "$INTERFACE" = "web" ]; then
@@ -105,18 +67,15 @@ echo "Launching Web Installer..."
 mkdir -p "$CONFIG_DIR/webinstaller"
 
 cat <<EOF > "$STACK_DIR/docker-compose.yml"
-
 services:
-
-webinstaller:
-image: nginx:alpine
-container_name: webinstaller
-ports:
-- "8088:80"
-volumes:
-- ./config/webinstaller:/usr/share/nginx/html
-restart: unless-stopped
-
+  webinstaller:
+    image: nginx:alpine
+    container_name: webinstaller
+    ports:
+      - "8088:80"
+    volumes:
+      - ./config/webinstaller:/usr/share/nginx/html
+    restart: unless-stopped
 EOF
 
 cd "$STACK_DIR"
@@ -134,9 +93,7 @@ exit 0
 fi
 
 ########################################
-
-# CLI INSTALLER
-
+#CLI installer
 ########################################
 
 echo ""
@@ -144,17 +101,13 @@ echo "Starting Media Stack Custom Installer..."
 echo ""
 
 ########################################
-
-# Configuration wizard
-
+#Configuration wizard
 ########################################
 
 run_configuration_wizard
 
 ########################################
-
-# Load saved configuration
-
+#Load saved configuration
 ########################################
 
 if [ -f "$STACK_DIR/stack.env" ]; then
@@ -162,26 +115,20 @@ source "$STACK_DIR/stack.env"
 fi
 
 ########################################
-
-# Setup permissions
-
+#Setup permissions
 ########################################
 
 setup_permissions
 
 ########################################
-
-# GPU detection
-
+#GPU detection
 ########################################
 
 detect_gpu
 configure_gpu_devices
 
 ########################################
-
-# Initialize registries
-
+#Initialize registries
 ########################################
 
 source "$INSTALL_DIR/scripts/service-registry.sh"
@@ -191,18 +138,20 @@ source "$INSTALL_DIR/scripts/port-registry.sh"
 init_port_registry
 
 ########################################
-
-# Validate plugins
-
+#Validate plugins
 ########################################
 
 source "$INSTALL_DIR/scripts/plugin-validator.sh"
 
 ########################################
-
-# Discover plugins
-
+#Discover plugins
 ########################################
+
+PLUGIN_DIR="$INSTALL_DIR/plugins"
+
+SELECTED_SERVICES=()
+AVAILABLE_PLUGINS=()
+declare -A PLUGIN_PATHS
 
 discover_plugins() {
 
@@ -215,17 +164,15 @@ AVAILABLE_PLUGINS+=("$plugin")
 PLUGIN_PATHS["$plugin"]="$file"
 
 done < <(
-find "$PLUGIN_DIR" -type f -name "*.sh" 
-! -path "*/_template/*" 
+find "$PLUGIN_DIR" -type f -name "*.sh" \
+! -path "*/_template/*" \
 ! -name "webinstaller.sh" | sort
 )
 
 }
 
 ########################################
-
-# Service selection
-
+#Service selection
 ########################################
 
 select_services() {
@@ -244,17 +191,17 @@ OPTIONS+=("$plugin" "$PLUGIN_CATEGORY" OFF)
 
 done
 
-CHOICES=$(whiptail 
---title "Media Stack Services" 
---checklist "Select services to install" 
-22 70 15 
-"${OPTIONS[@]}" 
+CHOICES=$(whiptail \
+--title "Media Stack Services" \
+--checklist "Select services to install" \
+22 70 15 \
+"${OPTIONS[@]}" \
 3>&1 1>&2 2>&3)
 
 for service in $CHOICES
 do
 
-service="${service//"/}"
+service="${service//\"/}"
 
 if [ "$service" = "ALL" ]; then
 SELECTED_SERVICES=("${AVAILABLE_PLUGINS[@]}")
@@ -268,9 +215,7 @@ done
 }
 
 ########################################
-
-# Dependency resolver
-
+#Dependency resolver
 ########################################
 
 resolve_dependencies() {
@@ -286,7 +231,6 @@ for SERVICE in "${SELECTED_SERVICES[@]}"
 do
 
 PLUGIN_FILE="${PLUGIN_PATHS[$SERVICE]}"
-
 [ -f "$PLUGIN_FILE" ] || continue
 
 source "$PLUGIN_FILE"
@@ -309,9 +253,7 @@ done
 }
 
 ########################################
-
-# Plugin discovery
-
+#Plugin discovery
 ########################################
 
 discover_plugins
@@ -322,17 +264,13 @@ exit 1
 fi
 
 ########################################
-
-# Service selection
-
+#Service selection
 ########################################
 
 select_services
 
 ########################################
-
-# Resolve dependencies
-
+#Resolve dependencies
 ########################################
 
 resolve_dependencies
@@ -345,27 +283,21 @@ printf " - %s\n" "${SELECTED_SERVICES[@]}"
 echo ""
 
 ########################################
-
-# Generate docker compose
-
+#Generate docker compose
 ########################################
 
 TMP_COMPOSE="$STACK_DIR/docker-compose.tmp"
 COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
 
 cat <<EOF > "$TMP_COMPOSE"
-
 networks:
-media-network:
+  media-network:
 
 services:
-
 EOF
 
 ########################################
-
-# Install services
-
+#Install services
 ########################################
 
 echo ""
@@ -393,36 +325,29 @@ done
 mv "$TMP_COMPOSE" "$COMPOSE_FILE"
 
 ########################################
-
-# Start containers
-
+#Start containers
 ########################################
 
 bash "$INSTALL_DIR/scripts/compose.sh" up
 
 ########################################
-
-# Run post-install in background
-
+#Run post-install in background
 ########################################
 
 mkdir -p "$STACK_DIR/logs"
 
 bash "$INSTALL_DIR/scripts/post-install.sh" \
-
-> > "$STACK_DIR/logs/post-install.log" 2>&1 &
+>> "$STACK_DIR/logs/post-install.log" 2>&1 &
 
 ########################################
-
-# Completion message
-
+#Completion message
 ########################################
 
 IP=$(hostname -I | awk '{print $1}')
 
 echo ""
 echo "================================"
-echo " Installation Complete"
+echo "Installation Complete"
 echo "================================"
 echo ""
 

@@ -7,25 +7,16 @@ set -euo pipefail
 
 source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
 
-set -euo pipefail
-
 ########################################
-# Load media-stack runtime environment
+#Media Stack Doctor
 ########################################
-
-
-########################################
-# Load environment
-########################################
-
-source "$INSTALL_DIR/core/env.sh"
 
 PASS_COUNT=0
 WARN_COUNT=0
 FAIL_COUNT=0
 
 ########################################
-# Output helpers
+#Output helpers
 ########################################
 
 pass() {
@@ -45,12 +36,12 @@ echo "FAIL  $1"
 
 echo ""
 echo "================================"
-echo " Media Stack Doctor"
+echo "Media Stack Doctor"
 echo "================================"
 echo ""
 
 ########################################
-# Installer directory
+#Installer directory
 ########################################
 
 if [ -d "$INSTALL_DIR" ]; then
@@ -60,7 +51,7 @@ fail "Installer directory missing ($INSTALL_DIR)"
 fi
 
 ########################################
-# Stack directory
+#Stack directory
 ########################################
 
 if [ -d "$STACK_DIR" ]; then
@@ -70,19 +61,20 @@ fail "Stack directory missing ($STACK_DIR)"
 fi
 
 ########################################
-# Docker binary
+#Docker binary
 ########################################
+
+DOCKER_PRESENT=false
 
 if command -v docker >/dev/null 2>&1; then
 pass "Docker installed"
 DOCKER_PRESENT=true
 else
 fail "Docker NOT installed"
-DOCKER_PRESENT=false
 fi
 
 ########################################
-# Docker daemon
+#Docker daemon
 ########################################
 
 if [ "$DOCKER_PRESENT" = true ]; then
@@ -98,7 +90,7 @@ warn "Skipping daemon check (docker missing)"
 fi
 
 ########################################
-# Docker compose
+#Docker compose
 ########################################
 
 if [ "$DOCKER_PRESENT" = true ]; then
@@ -114,7 +106,7 @@ warn "Skipping compose check"
 fi
 
 ########################################
-# docker-compose.yml
+#docker-compose.yml
 ########################################
 
 if [ -f "$STACK_DIR/docker-compose.yml" ]; then
@@ -124,7 +116,7 @@ fail "docker-compose.yml missing"
 fi
 
 ########################################
-# Service registry
+#Service registry
 ########################################
 
 if [ -f "$SERVICE_REGISTRY" ]; then
@@ -134,19 +126,20 @@ warn "services.json missing"
 fi
 
 ########################################
-# Port registry
+#Port registry
 ########################################
+
+PORT_REGISTRY_PRESENT=false
 
 if [ -f "$PORT_REGISTRY" ]; then
 pass "Port registry present"
 PORT_REGISTRY_PRESENT=true
 else
 warn "Port registry missing"
-PORT_REGISTRY_PRESENT=false
 fi
 
 ########################################
-# Plugin directory
+#Plugin directory
 ########################################
 
 if [ -d "$PLUGIN_DIR" ]; then
@@ -164,29 +157,25 @@ warn "Plugin directory missing"
 fi
 
 ########################################
-# Running containers
+#Running containers
 ########################################
 
 echo ""
 echo "Container Status"
 
 if [ "$DOCKER_PRESENT" = true ]; then
-
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-
 else
-
 echo "Docker unavailable"
-
 fi
 
 ########################################
-# Port conflict check
+#Port conflict check
 ########################################
 
 if [ "$PORT_REGISTRY_PRESENT" = true ] && command -v jq >/dev/null 2>&1; then
 
-DUPLICATES=$(jq -r '.[]' "$PORT_REGISTRY" | sort | uniq -d)
+DUPLICATES=$(jq -r '.[]' "$PORT_REGISTRY" | sort | uniq -d || true)
 
 if [ -z "$DUPLICATES" ]; then
 pass "No duplicate ports in registry"
@@ -199,12 +188,12 @@ warn "Skipping port conflict check"
 fi
 
 ########################################
-# Summary
+#Summary
 ########################################
 
 echo ""
 echo "================================"
-echo " Doctor Summary"
+echo "Doctor Summary"
 echo "================================"
 
 echo "PASS: $PASS_COUNT"

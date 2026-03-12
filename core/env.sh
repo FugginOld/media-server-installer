@@ -1,12 +1,3 @@
-#!/usr/bin/env bash
-
-########################################
-#Load media-stack runtime
-########################################
-
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
-
-
 ########################################
 #Load environment
 ########################################

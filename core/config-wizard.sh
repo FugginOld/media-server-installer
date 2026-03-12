@@ -1,47 +1,32 @@
-#!/usr/bin/env bash
-
 ########################################
-#Load media-stack runtime
+#Configuration Wizard
 ########################################
-
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
-
-
-########################################
-# Load media-stack runtime environment
-########################################
-
-
-########################################
-# Load environment
-########################################
-
-source "$INSTALL_DIR/core/env.sh"
 
 CONFIG_FILE="$STACK_DIR/stack.env"
 
 ########################################
-# Ensure stack directory exists
+#Ensure stack directory exists
 ########################################
 
 mkdir -p "$STACK_DIR"
 
 ########################################
-# Load existing configuration
+#Load existing configuration
 ########################################
 
 if [ -f "$CONFIG_FILE" ]; then
+# shellcheck disable=SC1090
 source "$CONFIG_FILE"
 fi
 
 ########################################
-# Run configuration wizard
+#Run configuration wizard
 ########################################
 
 run_configuration_wizard() {
 
 ########################################
-# Detect defaults
+#Detect defaults
 ########################################
 
 DEFAULT_TZ=${TIMEZONE:-$(timedatectl show --property=Timezone --value 2>/dev/null)}
@@ -52,7 +37,7 @@ DEFAULT_GID=${PGID:-$(id -g)}
 DEFAULT_NET=${DOCKER_NETWORK:-media-network}
 
 ########################################
-# Timezone prompt
+#Timezone prompt
 ########################################
 
 TIMEZONE=$(whiptail \
@@ -62,7 +47,7 @@ TIMEZONE=$(whiptail \
 3>&1 1>&2 2>&3)
 
 ########################################
-# PUID prompt
+#PUID prompt
 ########################################
 
 PUID=$(whiptail \
@@ -72,7 +57,7 @@ PUID=$(whiptail \
 3>&1 1>&2 2>&3)
 
 ########################################
-# PGID prompt
+#PGID prompt
 ########################################
 
 PGID=$(whiptail \
@@ -82,7 +67,7 @@ PGID=$(whiptail \
 3>&1 1>&2 2>&3)
 
 ########################################
-# Docker network prompt
+#Docker network prompt
 ########################################
 
 DOCKER_NETWORK=$(whiptail \
@@ -92,7 +77,7 @@ DOCKER_NETWORK=$(whiptail \
 3>&1 1>&2 2>&3)
 
 ########################################
-# Save configuration
+#Save configuration
 ########################################
 
 cat <<EOF > "$CONFIG_FILE"
@@ -108,3 +93,9 @@ echo "$CONFIG_FILE"
 echo ""
 
 }
+
+########################################
+#Export function
+########################################
+
+export -f run_configuration_wizard

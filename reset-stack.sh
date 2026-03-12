@@ -7,21 +7,8 @@ set -euo pipefail
 
 source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
 
-set -euo pipefail
-
 ########################################
-# Load media-stack runtime environment
-########################################
-
-
-########################################
-# Load environment
-########################################
-
-source "$INSTALL_DIR/core/env.sh"
-
-########################################
-# Require root
+#Require root
 ########################################
 
 if [ "$EUID" -ne 0 ]; then
@@ -31,12 +18,12 @@ fi
 
 echo ""
 echo "================================"
-echo " Media Stack Reset"
+echo "Media Stack Reset"
 echo "================================"
 echo ""
 
 ########################################
-# Confirm reset
+#Confirm reset
 ########################################
 
 read -rp "This will remove the entire Media Stack. Continue? (y/N): " CONFIRM
@@ -47,7 +34,7 @@ exit 0
 fi
 
 ########################################
-# Offer backup before reset
+#Offer backup before reset
 ########################################
 
 read -rp "Create a backup before reset? (y/N): " BACKUP
@@ -61,7 +48,7 @@ fi
 fi
 
 ########################################
-# Stop containers
+#Stop containers
 ########################################
 
 if [ -f "$STACK_DIR/docker-compose.yml" ]; then
@@ -74,7 +61,7 @@ bash "$INSTALL_DIR/scripts/compose.sh" down
 fi
 
 ########################################
-# Remove stack directory
+#Remove stack directory
 ########################################
 
 if [ -d "$STACK_DIR" ]; then
@@ -87,7 +74,7 @@ rm -rf "$STACK_DIR"
 fi
 
 ########################################
-# Remove CLI command
+#Remove CLI command
 ########################################
 
 if [ -f /usr/local/bin/media-stack ]; then
@@ -95,13 +82,13 @@ rm -f /usr/local/bin/media-stack
 fi
 
 ########################################
-# Optional Docker cleanup
+#Optional Docker cleanup
 ########################################
 
 if command -v docker >/dev/null 2>&1; then
 
 ########################################
-# Remove containers
+#Remove containers
 ########################################
 
 read -rp "Remove unused Docker containers? (y/N): " REMOVE_CONTAINERS
@@ -111,7 +98,7 @@ docker container prune -f
 fi
 
 ########################################
-# Remove images
+#Remove images
 ########################################
 
 read -rp "Remove unused Docker images? (y/N): " REMOVE_IMAGES
@@ -121,7 +108,7 @@ docker image prune -f
 fi
 
 ########################################
-# Remove volumes
+#Remove volumes
 ########################################
 
 read -rp "Remove unused Docker volumes? (y/N): " REMOVE_VOLUMES
@@ -137,7 +124,7 @@ echo "Docker not installed — skipping container cleanup."
 fi
 
 ########################################
-# Done
+#Done
 ########################################
 
 echo ""

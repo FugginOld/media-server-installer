@@ -1,27 +1,11 @@
-#!/usr/bin/env bash
-
 ########################################
-#Load media-stack runtime
+#Directory Management
 ########################################
-
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
-
-
-########################################
-# Load media-stack runtime environment
-########################################
-
-
-########################################
-# Load environment
-########################################
-
-source "$INSTALL_DIR/core/env.sh"
 
 CONFIG_FILE="$STACK_DIR/stack.env"
 
 ########################################
-# Setup directory structure
+#Setup directory structure
 ########################################
 
 setup_directories() {
@@ -33,7 +17,7 @@ echo "================================"
 echo ""
 
 ########################################
-# Choose layout
+#Choose layout
 ########################################
 
 echo "Choose directory layout:"
@@ -46,7 +30,7 @@ read -rp "Selection [1]: " LAYOUT
 LAYOUT=${LAYOUT:-1}
 
 ########################################
-# Base storage path
+#Base storage path
 ########################################
 
 DEFAULT_BASE="/data"
@@ -55,7 +39,7 @@ read -rp "Enter base storage path [$DEFAULT_BASE]: " BASE_PATH
 BASE_PATH=${BASE_PATH:-$DEFAULT_BASE}
 
 ########################################
-# Default layout
+#Default layout
 ########################################
 
 if [ "$LAYOUT" = "1" ]; then
@@ -66,7 +50,7 @@ TV_PATH="$MEDIA_PATH/tv"
 DOWNLOADS_PATH="$BASE_PATH/downloads"
 
 ########################################
-# TRaSH layout
+#TRaSH layout
 ########################################
 
 else
@@ -82,7 +66,7 @@ INCOMPLETE_PATH="$DOWNLOADS_PATH/incomplete"
 fi
 
 ########################################
-# Create directories
+#Create directories
 ########################################
 
 mkdir -p "$MEDIA_PATH"
@@ -97,7 +81,7 @@ mkdir -p "$INCOMPLETE_PATH"
 fi
 
 ########################################
-# Persist paths to stack.env
+#Persist paths to stack.env
 ########################################
 
 cat >> "$CONFIG_FILE" <<EOF
@@ -109,7 +93,7 @@ DOWNLOADS_PATH=$DOWNLOADS_PATH
 EOF
 
 ########################################
-# Display results
+#Display results
 ########################################
 
 echo ""
@@ -130,3 +114,9 @@ fi
 echo ""
 
 }
+
+########################################
+#Export function
+########################################
+
+export -f setup_directories

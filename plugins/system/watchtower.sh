@@ -7,27 +7,15 @@ set -euo pipefail
 
 source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
 
-set -euo pipefail
-
 ########################################
-# Load media-stack runtime environment
+#Load installer libraries
 ########################################
 
-
-########################################
-# Load environment
-########################################
-
-source "$INSTALL_DIR/core/env.sh"
-
-########################################
-# Load helpers
-########################################
-
+source "$INSTALL_DIR/scripts/port-helper.sh"
 source "$INSTALL_DIR/scripts/service-registry.sh"
 
 ########################################
-# Plugin Metadata
+#Plugin Metadata
 ########################################
 
 PLUGIN_NAME="watchtower"

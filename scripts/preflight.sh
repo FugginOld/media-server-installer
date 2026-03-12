@@ -7,21 +7,6 @@ set -euo pipefail
 
 source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
 
-set -euo pipefail
-
-########################################
-#Load media-stack runtime environment
-########################################
-
-
-########################################
-#Load environment (if available)
-########################################
-
-if [ -n "${INSTALL_DIR:-}" ] && [ -f "$INSTALL_DIR/core/env.sh" ]; then
-source "$INSTALL_DIR/core/env.sh"
-fi
-
 ########################################
 #Media Stack Preflight Checks
 ########################################
@@ -68,7 +53,7 @@ esac
 #CPU architecture
 ########################################
 
-ARCH=$(uname -m)
+ARCH="$(uname -m)"
 
 case "$ARCH" in
 x86_64|amd64|aarch64|arm64)
@@ -108,14 +93,12 @@ MISSING=()
 
 for CMD in "${REQUIRED_CMDS[@]}"
 do
-
 if command -v "$CMD" >/dev/null 2>&1; then
 echo "$CMD installed"
 else
 echo "$CMD missing"
 MISSING+=("$CMD")
 fi
-
 done
 
 ########################################
@@ -158,7 +141,7 @@ fi
 #Disk space check
 ########################################
 
-FREE_KB=$(df / | awk 'NR==2 {print $4}')
+FREE_KB="$(df / | awk 'NR==2 {print $4}')"
 FREE_GB=$((FREE_KB / 1024 / 1024))
 
 if [ "$FREE_KB" -lt 1048576 ]; then

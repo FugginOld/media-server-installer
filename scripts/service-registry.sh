@@ -1,19 +1,3 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-########################################
-#Load media-stack runtime
-########################################
-
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
-
-set -euo pipefail
-
-########################################
-#Load media-stack runtime environment
-########################################
-
-
 ########################################
 #Service Registry
 ########################################
@@ -44,6 +28,8 @@ local NAME="$1"
 local URL="$2"
 local CATEGORY="$3"
 local ICON="$4"
+
+init_registry
 
 TMP_FILE="$(mktemp)"
 

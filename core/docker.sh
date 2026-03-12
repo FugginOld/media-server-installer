@@ -1,25 +1,9 @@
-#!/usr/bin/env bash
-
 ########################################
-#Load media-stack runtime
+#Docker Management
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
-
-
 ########################################
-# Load media-stack runtime environment
-########################################
-
-
-########################################
-# Load environment
-########################################
-
-source "$INSTALL_DIR/core/env.sh"
-
-########################################
-# Check if Docker exists
+#Check if Docker exists
 ########################################
 
 docker_installed() {
@@ -29,7 +13,7 @@ command -v docker >/dev/null 2>&1
 }
 
 ########################################
-# Install Docker
+#Install Docker
 ########################################
 
 install_docker() {
@@ -39,7 +23,7 @@ echo "Installing Docker..."
 case "$PLATFORM_FAMILY" in
 
 ########################################
-# Debian / Ubuntu / Devuan
+#Debian / Ubuntu / Devuan
 ########################################
 
 debian)
@@ -77,7 +61,7 @@ docker-compose-plugin
 ;;
 
 ########################################
-# RedHat / Fedora
+#RedHat / Fedora
 ########################################
 
 redhat)
@@ -99,7 +83,7 @@ docker-compose-plugin
 ;;
 
 ########################################
-# Arch Linux
+#Arch Linux
 ########################################
 
 arch)
@@ -113,7 +97,7 @@ docker-compose
 ;;
 
 ########################################
-# openSUSE
+#openSUSE
 ########################################
 
 suse)
@@ -127,7 +111,7 @@ docker-compose
 ;;
 
 ########################################
-# Alpine
+#Alpine
 ########################################
 
 alpine)
@@ -141,14 +125,13 @@ docker-cli-compose
 ;;
 
 ########################################
-# Unsupported platform
+#Unsupported platform
 ########################################
 
 *)
 
 echo "Unsupported Linux platform for automatic Docker installation."
 echo "Please install Docker manually."
-
 exit 1
 
 ;;
@@ -158,7 +141,7 @@ esac
 }
 
 ########################################
-# Enable Docker Service
+#Enable Docker Service
 ########################################
 
 enable_docker_service() {
@@ -179,7 +162,7 @@ fi
 }
 
 ########################################
-# Configure docker group permissions
+#Configure docker group permissions
 ########################################
 
 configure_docker_permissions() {
@@ -188,7 +171,7 @@ if ! getent group docker >/dev/null; then
 groupadd docker
 fi
 
-if [ -n "$SUDO_USER" ]; then
+if [ -n "${SUDO_USER:-}" ]; then
 
 usermod -aG docker "$SUDO_USER"
 
@@ -201,7 +184,7 @@ fi
 }
 
 ########################################
-# Verify Docker installation
+#Verify Docker installation
 ########################################
 
 verify_docker() {
@@ -216,19 +199,15 @@ fi
 }
 
 ########################################
-# Ensure Docker installed
+#Ensure Docker installed
 ########################################
 
 ensure_docker() {
 
 if docker_installed; then
-
 echo "Docker already installed."
-
 else
-
 install_docker
-
 fi
 
 enable_docker_service
@@ -238,7 +217,7 @@ verify_docker
 }
 
 ########################################
-# Export function
+#Export function
 ########################################
 
 export -f ensure_docker
