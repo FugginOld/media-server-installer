@@ -1,15 +1,43 @@
 #!/usr/bin/env bash
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
-source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
-source "$SCRIPT_DIR/core/runtime.sh"
 
-# Detect project root
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INSTALL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+########################################
+#Prevent double loading
+########################################
+
+if [ -n "${MEDIA_STACK_RUNTIME_LOADED:-}" ]; then
+return
+fi
+export MEDIA_STACK_RUNTIME_LOADED=1
+
+########################################
+#Resolve installer directory
+########################################
+
+if [ -n "${INSTALL_DIR:-}" ] && [ -d "$INSTALL_DIR" ]; then
+:
+else
+
+# Try common install location
+if [ -d "/opt/media-server-installer" ]; then
+INSTALL_DIR="/opt/media-server-installer"
+
+# Otherwise resolve relative to runtime.sh
+else
+INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+fi
+
+fi
 
 export INSTALL_DIR
-export SCRIPTS_DIR="$INSTALL_DIR/scripts"
-export PLUGINS_DIR="$INSTALL_DIR/plugins"
-export CORE_DIR="$INSTALL_DIR/core"
-export TEMPLATES_DIR="$INSTALL_DIR/templates"
+
+########################################
+#Load environment
+########################################
+
+if [ -f "$INSTALL_DIR/core/env.sh" ]; then
+# shellcheck disable=SC1090
+source "$INSTALL_DIR/core/env.sh"
+else
+echo "Environment file missing: $INSTALL_DIR/core/env.sh" >&2
+exit 1
+fi

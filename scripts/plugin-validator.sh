@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ########################################
-# Load media-stack runtime environment
+#Load media-stack runtime environment
 ########################################
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -11,14 +11,14 @@ source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
 source "$SCRIPT_DIR/core/runtime.sh"
 
 ########################################
-# Load environment
+#Load environment
 ########################################
 
 source "$INSTALL_DIR/core/env.sh"
 
 echo ""
 echo "================================"
-echo " Plugin Validation"
+echo "Plugin Validation"
 echo "================================"
 echo ""
 
@@ -26,7 +26,7 @@ FAIL=0
 COUNT=0
 
 ########################################
-# Ensure plugin directory exists
+#Ensure plugin directory exists
 ########################################
 
 if [ ! -d "$PLUGIN_DIR" ]; then
@@ -35,15 +35,15 @@ exit 1
 fi
 
 ########################################
-# Helper: check required field
+#Helper: check required field
 ########################################
 
 check_field() {
 
-local FIELD=$1
-local FILE=$2
+local FIELD="$1"
+local FILE="$2"
 
-if ! grep -q "$FIELD=" "$FILE"; then
+if ! grep -q "^$FIELD=" "$FILE"; then
 echo "  Missing $FIELD"
 FAIL=1
 fi
@@ -51,25 +51,20 @@ fi
 }
 
 ########################################
-# Validate plugins
+#Validate plugins
 ########################################
 
 while IFS= read -r FILE
 do
 
-# Skip template plugins
-if [[ "$FILE" == *"/_template/"* ]]; then
-continue
-fi
-
 COUNT=$((COUNT+1))
 
-PLUGIN=$(basename "$FILE")
+PLUGIN=$(basename "$FILE" .sh)
 
 echo "Checking plugin: $PLUGIN"
 
 ########################################
-# Syntax check
+#Syntax check
 ########################################
 
 if ! bash -n "$FILE"; then
@@ -78,7 +73,7 @@ FAIL=1
 fi
 
 ########################################
-# Required metadata fields
+#Required metadata fields
 ########################################
 
 check_field "PLUGIN_NAME" "$FILE"
@@ -90,7 +85,7 @@ check_field "PLUGIN_HOST_NETWORK" "$FILE"
 check_field "PLUGIN_DASHBOARD" "$FILE"
 
 ########################################
-# Validate install function
+#Validate install function
 ########################################
 
 if ! grep -q "install_service()" "$FILE"; then
@@ -100,10 +95,13 @@ fi
 
 echo ""
 
-done < <(find "$PLUGIN_DIR" -type f -name "*.sh")
+done < <(
+find "$PLUGIN_DIR" -type f -name "*.sh" \
+! -path "*/_template/*"
+)
 
 ########################################
-# Ensure plugins exist
+#Ensure plugins exist
 ########################################
 
 if [ "$COUNT" -eq 0 ]; then
@@ -112,7 +110,7 @@ exit 1
 fi
 
 ########################################
-# Final result
+#Final result
 ########################################
 
 if [ "$FAIL" -eq 1 ]; then

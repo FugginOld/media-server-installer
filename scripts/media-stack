@@ -1,27 +1,25 @@
 #!/usr/bin/env bash
+set -euo pipefail
+
+########################################
+#Load media-stack runtime environment
+########################################
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
 source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
 source "$SCRIPT_DIR/core/runtime.sh"
 
 ########################################
-# Media Stack CLI
-#
-# Command line interface for managing
-# the Media Stack installation.
+#Load environment
 ########################################
-
-set -e
-
-########################################
-# Determine installer directory
-########################################
-
 
 source "$INSTALL_DIR/core/env.sh"
 
+COMMAND="${1:-help}"
+
 ########################################
-# Help Menu
+#Help Menu
 ########################################
 
 show_help() {
@@ -38,7 +36,7 @@ echo "media-stack services"
 echo "media-stack doctor"
 echo "media-stack verify"
 echo "media-stack restart"
-echo "media-stack logs"
+echo "media-stack logs [service]"
 echo "media-stack maintenance"
 echo "media-stack backup"
 echo "media-stack reset"
@@ -48,7 +46,7 @@ echo ""
 }
 
 ########################################
-# Install Stack
+#Install Stack
 ########################################
 
 install_stack() {
@@ -59,7 +57,7 @@ bash installer.sh
 }
 
 ########################################
-# Update Stack
+#Update Stack
 ########################################
 
 update_stack() {
@@ -69,7 +67,7 @@ bash "$INSTALL_DIR/scripts/updates.sh"
 }
 
 ########################################
-# Stack Status
+#Stack Status
 ########################################
 
 status_stack() {
@@ -79,15 +77,19 @@ bash "$INSTALL_DIR/scripts/compose.sh" status
 }
 
 ########################################
-# List Services
+#List Services
 ########################################
 
 services_stack() {
 
+command -v jq >/dev/null || {
+echo "jq required. Install with: apt install jq"
+exit 1
+}
+
 if [ -f "$SERVICE_REGISTRY" ]; then
 
-jq -r '.services[] | "\(.name) -> \(.url)"' \
-"$SERVICE_REGISTRY"
+jq -r '.services[] | "\(.name) -> \(.url)"' "$SERVICE_REGISTRY"
 
 else
 
@@ -98,7 +100,7 @@ fi
 }
 
 ########################################
-# Doctor
+#Doctor
 ########################################
 
 doctor_stack() {
@@ -108,14 +110,14 @@ bash "$INSTALL_DIR/scripts/doctor.sh"
 }
 
 ########################################
-# Verify System
+#Verify System
 ########################################
 
 verify_stack() {
 
 echo ""
 echo "================================"
-echo " Media Stack Verification"
+echo "Media Stack Verification"
 echo "================================"
 echo ""
 
@@ -131,7 +133,7 @@ echo ""
 }
 
 ########################################
-# Restart Containers
+#Restart Containers
 ########################################
 
 restart_stack() {
@@ -141,17 +143,17 @@ bash "$INSTALL_DIR/scripts/compose.sh" restart
 }
 
 ########################################
-# Logs
+#Logs
 ########################################
 
 logs_stack() {
 
-bash "$INSTALL_DIR/scripts/compose.sh" logs "$2"
+bash "$INSTALL_DIR/scripts/compose.sh" logs "${2:-}"
 
 }
 
 ########################################
-# Maintenance
+#Maintenance
 ########################################
 
 maintenance_stack() {
@@ -163,7 +165,7 @@ docker volume prune -f
 }
 
 ########################################
-# Backup
+#Backup
 ########################################
 
 backup_stack() {
@@ -173,7 +175,7 @@ bash "$INSTALL_DIR/scripts/backup.sh"
 }
 
 ########################################
-# Reset
+#Reset
 ########################################
 
 reset_stack() {
@@ -183,13 +185,13 @@ bash "$INSTALL_DIR/reset-stack.sh"
 }
 
 ########################################
-# Version
+#Version
 ########################################
 
 version_stack() {
 
-if [ -f "$STACK_DIR/version" ]; then
-echo "Media Stack version: $(cat $STACK_DIR/version)"
+if [ -f "$INSTALL_DIR/VERSION" ]; then
+echo "Media Stack version: $(cat "$INSTALL_DIR/VERSION")"
 else
 echo "Media Stack version unknown"
 fi
@@ -197,10 +199,10 @@ fi
 }
 
 ########################################
-# Command Router
+#Command Router
 ########################################
 
-case "$1" in
+case "$COMMAND" in
 
 install)
 install_stack

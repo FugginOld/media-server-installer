@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ########################################
-# Load media-stack runtime environment
+#Load media-stack runtime environment
 ########################################
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -11,19 +11,19 @@ source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
 source "$SCRIPT_DIR/core/runtime.sh"
 
 ########################################
-# Load environment
+#Load environment
 ########################################
 
 source "$INSTALL_DIR/core/env.sh"
 
 echo ""
 echo "================================"
-echo " Updating Media Stack"
+echo "Updating Media Stack"
 echo "================================"
 echo ""
 
 ########################################
-# Ensure git exists
+#Ensure git exists
 ########################################
 
 if ! command -v git >/dev/null 2>&1; then
@@ -32,7 +32,7 @@ exit 1
 fi
 
 ########################################
-# Ensure installer repository exists
+#Ensure installer repository exists
 ########################################
 
 if [ ! -d "$INSTALL_DIR/.git" ]; then
@@ -43,7 +43,7 @@ fi
 cd "$INSTALL_DIR"
 
 ########################################
-# Update installer repository
+#Update installer repository
 ########################################
 
 echo "Pulling latest installer updates..."
@@ -54,7 +54,15 @@ exit 1
 fi
 
 ########################################
-# Validate plugins after update
+#Show recent changes
+########################################
+
+echo ""
+echo "Recent changes:"
+git --no-pager log --oneline -5 || true
+
+########################################
+#Validate plugins after update
 ########################################
 
 echo ""
@@ -63,7 +71,7 @@ echo "Validating plugins..."
 bash "$INSTALL_DIR/scripts/plugin-validator.sh"
 
 ########################################
-# Validate docker compose configuration
+#Validate docker compose configuration
 ########################################
 
 echo ""
@@ -72,7 +80,7 @@ echo "Validating compose configuration..."
 bash "$INSTALL_DIR/scripts/compose.sh" validate
 
 ########################################
-# Pull container updates
+#Pull container updates
 ########################################
 
 echo ""
@@ -81,7 +89,7 @@ echo "Updating container images..."
 bash "$INSTALL_DIR/scripts/compose.sh" pull
 
 ########################################
-# Restart containers
+#Restart containers
 ########################################
 
 echo ""

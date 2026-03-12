@@ -1,40 +1,35 @@
 #!/usr/bin/env bash
+set -euo pipefail
+
+########################################
+#Load media-stack runtime environment
+########################################
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
 source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
 source "$SCRIPT_DIR/core/runtime.sh"
-########################################
-# Determine installer directory
-########################################
-
-if [ -z "$INSTALL_DIR" ]; then
-INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-fi
-
 
 ########################################
-# Media Stack Preflight Checks
-#
-# Verifies system readiness before
-# running the Media Stack installer.
+#Load environment (if available)
 ########################################
 
-########################################
-# Load environment (if available)
-########################################
-
-if [ -n "$INSTALL_DIR" ] && [ -f "$INSTALL_DIR/core/env.sh" ]; then
+if [ -n "${INSTALL_DIR:-}" ] && [ -f "$INSTALL_DIR/core/env.sh" ]; then
 source "$INSTALL_DIR/core/env.sh"
 fi
 
+########################################
+#Media Stack Preflight Checks
+########################################
+
 echo ""
 echo "================================"
-echo " Media Stack Preflight Checks"
+echo "Media Stack Preflight Checks"
 echo "================================"
 echo ""
 
 ########################################
-# Ensure running as root
+#Ensure running as root
 ########################################
 
 if [ "$EUID" -ne 0 ]; then
@@ -45,7 +40,7 @@ fi
 echo "Running as root: OK"
 
 ########################################
-# Detect operating system
+#Detect operating system
 ########################################
 
 if [ -f /etc/os-release ]; then
@@ -66,7 +61,7 @@ exit 1
 esac
 
 ########################################
-# CPU architecture
+#CPU architecture
 ########################################
 
 ARCH=$(uname -m)
@@ -82,7 +77,7 @@ exit 1
 esac
 
 ########################################
-# Internet connectivity
+#Internet connectivity
 ########################################
 
 echo "Checking internet connectivity..."
@@ -95,7 +90,7 @@ exit 1
 fi
 
 ########################################
-# Required commands
+#Required commands
 ########################################
 
 REQUIRED_CMDS=(
@@ -120,7 +115,7 @@ fi
 done
 
 ########################################
-# Install missing dependencies
+#Install missing dependencies
 ########################################
 
 if [ "${#MISSING[@]}" -gt 0 ]; then
@@ -139,7 +134,7 @@ done
 fi
 
 ########################################
-# Docker check
+#Docker check
 ########################################
 
 if command -v docker >/dev/null 2>&1; then
@@ -156,7 +151,7 @@ echo "Docker not installed (will be installed later)"
 fi
 
 ########################################
-# Disk space check
+#Disk space check
 ########################################
 
 FREE_KB=$(df / | awk 'NR==2 {print $4}')

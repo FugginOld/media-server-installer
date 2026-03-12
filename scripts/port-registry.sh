@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ########################################
-# Load media-stack runtime environment
+#Load media-stack runtime environment
 ########################################
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -11,25 +11,18 @@ source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
 source "$SCRIPT_DIR/core/runtime.sh"
 
 ########################################
-# Media Stack Port Registry
-#
-# Manages service port assignments
-# and prevents conflicts.
-########################################
-
-########################################
-# Load Media Stack Environment
+#Load Media Stack Environment
 ########################################
 
 source "$INSTALL_DIR/core/env.sh"
 
 ########################################
-# Initialize port registry
+#Initialize port registry
 ########################################
 
 init_port_registry() {
 
-mkdir -p "$STACK_DIR"
+mkdir -p "$(dirname "$PORT_REGISTRY")"
 
 if [ ! -f "$PORT_REGISTRY" ]; then
 echo "{}" > "$PORT_REGISTRY"
@@ -38,12 +31,12 @@ fi
 }
 
 ########################################
-# Validate port
+#Validate port
 ########################################
 
 validate_port() {
 
-PORT=$1
+local PORT="$1"
 
 if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
 echo "Invalid port: $PORT" >&2
@@ -58,12 +51,12 @@ fi
 }
 
 ########################################
-# Check if port already registered
+#Check if port already registered
 ########################################
 
 port_registered() {
 
-PORT=$1
+local PORT="$1"
 
 jq -e --argjson port "$PORT" \
 'to_entries[] | select(.value == $port)' \
@@ -72,12 +65,12 @@ jq -e --argjson port "$PORT" \
 }
 
 ########################################
-# Check if service already registered
+#Check if service already registered
 ########################################
 
 service_registered() {
 
-SERVICE=$1
+local SERVICE="$1"
 
 jq -e --arg svc "$SERVICE" \
 'has($svc)' \
@@ -86,25 +79,25 @@ jq -e --arg svc "$SERVICE" \
 }
 
 ########################################
-# Check if port is used on host
+#Check if port is used on host
 ########################################
 
 port_in_use() {
 
-PORT=$1
+local PORT="$1"
 
 ss -ltn 2>/dev/null | awk '{print $4}' | grep -q ":$PORT$"
 
 }
 
 ########################################
-# Register port
+#Register port
 ########################################
 
 register_port() {
 
-SERVICE=$1
-PORT=$2
+local SERVICE="$1"
+local PORT="$2"
 
 init_port_registry
 validate_port "$PORT"
@@ -124,7 +117,7 @@ echo "Port already in use on host: $PORT" >&2
 exit 1
 fi
 
-TMP_FILE=$(mktemp)
+TMP_FILE="$(mktemp)"
 
 jq --arg svc "$SERVICE" --argjson port "$PORT" \
 '. + {($svc): $port}' \
@@ -137,16 +130,16 @@ echo "Registered port $PORT for $SERVICE"
 }
 
 ########################################
-# Remove port
+#Remove port
 ########################################
 
 remove_port() {
 
-SERVICE=$1
+local SERVICE="$1"
 
 init_port_registry
 
-TMP_FILE=$(mktemp)
+TMP_FILE="$(mktemp)"
 
 jq --arg svc "$SERVICE" \
 'del(.[$svc])' \
@@ -159,12 +152,12 @@ echo "Removed port assignment for $SERVICE"
 }
 
 ########################################
-# Get port for service
+#Get port for service
 ########################################
 
 get_port() {
 
-SERVICE=$1
+local SERVICE="$1"
 
 init_port_registry
 
@@ -175,12 +168,12 @@ jq -r --arg svc "$SERVICE" \
 }
 
 ########################################
-# Get service by port
+#Get service by port
 ########################################
 
 get_service_by_port() {
 
-PORT=$1
+local PORT="$1"
 
 init_port_registry
 
@@ -191,19 +184,19 @@ jq -r --argjson port "$PORT" \
 }
 
 ########################################
-# List ports
+#List ports
 ########################################
 
 list_ports() {
 
 init_port_registry
 
-jq .
+jq . "$PORT_REGISTRY"
 
 }
 
 ########################################
-# Pretty list
+#Pretty list
 ########################################
 
 pretty_ports() {

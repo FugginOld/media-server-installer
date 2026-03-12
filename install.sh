@@ -1,21 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-########################################
-# Load media-stack runtime environment
-########################################
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/../core/runtime.sh" 2>/dev/null || \
-source "$SCRIPT_DIR/../../core/runtime.sh" 2>/dev/null || \
-source "$SCRIPT_DIR/core/runtime.sh"
-
-########################################
-# Media Stack Remote Installer
-#
-# Downloads or updates the installer
-# and launches the setup process.
-########################################
+INSTALL_DIR="/opt/media-server-installer"
 
 echo "================================"
 echo ""
@@ -25,10 +11,10 @@ echo ""
 ########################################
 
 if [ "$EUID" -ne 0 ]; then
-echo "Please run installer as root."
-echo "Example:"
-echo "sudo bash install.sh"
-exit 1
+    echo "Please run installer as root."
+    echo "Example:"
+    echo "sudo bash install.sh"
+    exit 1
 fi
 
 ########################################
@@ -36,10 +22,10 @@ fi
 ########################################
 
 if ! command -v git >/dev/null 2>&1; then
-echo "Git not found. Installing..."
+    echo "Git not found. Installing..."
 
-apt update
-apt install -y git
+    apt update
+    apt install -y git
 fi
 
 ########################################
@@ -48,17 +34,17 @@ fi
 
 echo "Downloading Media Stack Installer..."
 
-if [ -d "$INSTALL_DIR" ]; then
+if [ -d "$INSTALL_DIR/.git" ]; then
 
-echo "Existing installation detected."
-echo "Updating installer..."
+    echo "Existing installation detected."
+    echo "Updating installer..."
 
-cd "$INSTALL_DIR"
-git pull
+    cd "$INSTALL_DIR"
+    git pull
 
 else
 
-git clone https://github.com/FugginOld/media-server-installer "$INSTALL_DIR"
+    git clone https://github.com/FugginOld/media-server-installer "$INSTALL_DIR"
 
 fi
 
