@@ -1,5 +1,7 @@
+#!/usr/bin/env bash
+
 ########################################
-#Platform Detection
+# Platform Detection
 ########################################
 
 PLATFORM_ID=""
@@ -8,7 +10,20 @@ PACKAGE_MANAGER=""
 NAS_PLATFORM="none"
 
 ########################################
-#Detect Linux Distribution
+# Require Root
+########################################
+
+require_root() {
+
+if [ "$EUID" -ne 0 ]; then
+echo "This installer must be run as root."
+exit 1
+fi
+
+}
+
+########################################
+# Detect Linux Distribution
 ########################################
 
 detect_platform() {
@@ -17,41 +32,53 @@ echo "Detecting operating system..."
 
 if [ -f /etc/os-release ]; then
 . /etc/os-release
-PLATFORM_ID="$ID"
+PLATFORM_ID="${ID,,}"
 else
 PLATFORM_ID="unknown"
 fi
 
 ########################################
-#Detect NAS platforms
+# Detect NAS platforms
 ########################################
 
 if [ -f /etc/unraid-version ]; then
 NAS_PLATFORM="unraid"
 fi
 
-case "$ID" in
+case "$PLATFORM_ID" in
+
 truenas*)
 NAS_PLATFORM="truenas"
 ;;
+
 openmediavault)
 NAS_PLATFORM="openmediavault"
 ;;
+
 casaos)
 NAS_PLATFORM="casaos"
 ;;
+
 esac
 
 ########################################
-#Determine platform family
+# Determine platform family
 ########################################
 
 case "$PLATFORM_ID" in
 
-debian|ubuntu|devuan|linuxmint|pop)
+########################################
+# Debian family
+########################################
+
+debian|ubuntu|devuan|linuxmint|pop|elementary)
 PLATFORM_FAMILY="debian"
 PACKAGE_MANAGER="apt"
 ;;
+
+########################################
+# RedHat family
+########################################
 
 fedora|rhel|centos|rocky|almalinux)
 PLATFORM_FAMILY="redhat"
@@ -63,20 +90,36 @@ PACKAGE_MANAGER="yum"
 fi
 ;;
 
+########################################
+# Arch family
+########################################
+
 arch|manjaro|endeavouros)
 PLATFORM_FAMILY="arch"
 PACKAGE_MANAGER="pacman"
 ;;
+
+########################################
+# SUSE family
+########################################
 
 opensuse*|sles)
 PLATFORM_FAMILY="suse"
 PACKAGE_MANAGER="zypper"
 ;;
 
+########################################
+# Alpine
+########################################
+
 alpine)
 PLATFORM_FAMILY="alpine"
 PACKAGE_MANAGER="apk"
 ;;
+
+########################################
+# Unknown
+########################################
 
 *)
 PLATFORM_FAMILY="unknown"
@@ -85,12 +128,21 @@ PACKAGE_MANAGER="unknown"
 
 esac
 
+########################################
+# Output detected platform
+########################################
+
 echo "Detected OS: $PLATFORM_ID"
 echo "Platform family: $PLATFORM_FAMILY"
+echo "Package manager: $PACKAGE_MANAGER"
 
 if [ "$NAS_PLATFORM" != "none" ]; then
 echo "Detected NAS platform: $NAS_PLATFORM"
 fi
+
+########################################
+# Validate platform
+########################################
 
 if [ "$PACKAGE_MANAGER" = "unknown" ]; then
 echo "Unsupported Linux distribution."
@@ -100,7 +152,7 @@ fi
 }
 
 ########################################
-#Package Manager Abstraction
+# Package Manager Abstraction
 ########################################
 
 pkg_update() {
@@ -120,7 +172,7 @@ yum makecache
 ;;
 
 pacman)
-pacman -Syu --noconfirm
+pacman -Sy
 ;;
 
 zypper)
@@ -178,13 +230,15 @@ esac
 }
 
 ########################################
-#Export functions
+# Export environment
 ########################################
 
 export PLATFORM_ID
 export PLATFORM_FAMILY
 export PACKAGE_MANAGER
 export NAS_PLATFORM
+
+export -f require_root
 export -f detect_platform
 export -f pkg_update
 export -f pkg_install

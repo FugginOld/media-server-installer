@@ -1,9 +1,11 @@
+#!/usr/bin/env bash
+
 ########################################
-#Docker Management
+# Docker Management
 ########################################
 
 ########################################
-#Check if Docker exists
+# Check if Docker exists
 ########################################
 
 docker_installed() {
@@ -13,7 +15,7 @@ command -v docker >/dev/null 2>&1
 }
 
 ########################################
-#Install Docker
+# Install Docker
 ########################################
 
 install_docker() {
@@ -23,7 +25,7 @@ echo "Installing Docker..."
 case "$PLATFORM_FAMILY" in
 
 ########################################
-#Debian / Ubuntu / Devuan
+# Debian family
 ########################################
 
 debian)
@@ -61,17 +63,22 @@ docker-compose-plugin
 ;;
 
 ########################################
-#RedHat / Fedora
+# RedHat family
 ########################################
 
 redhat)
 
 pkg_update
 
-pkg_install dnf-plugins-core
+pkg_install dnf-plugins-core || true
 
+if command -v dnf >/dev/null 2>&1; then
 dnf config-manager \
 --add-repo https://download.docker.com/linux/$PLATFORM_ID/docker-ce.repo
+else
+yum-config-manager \
+--add-repo https://download.docker.com/linux/$PLATFORM_ID/docker-ce.repo
+fi
 
 pkg_install \
 docker-ce \
@@ -83,7 +90,7 @@ docker-compose-plugin
 ;;
 
 ########################################
-#Arch Linux
+# Arch Linux
 ########################################
 
 arch)
@@ -97,7 +104,7 @@ docker-compose
 ;;
 
 ########################################
-#openSUSE
+# SUSE
 ########################################
 
 suse)
@@ -111,7 +118,7 @@ docker-compose
 ;;
 
 ########################################
-#Alpine
+# Alpine
 ########################################
 
 alpine)
@@ -125,7 +132,7 @@ docker-cli-compose
 ;;
 
 ########################################
-#Unsupported platform
+# Unsupported platform
 ########################################
 
 *)
@@ -141,7 +148,7 @@ esac
 }
 
 ########################################
-#Enable Docker Service
+# Enable Docker Service
 ########################################
 
 enable_docker_service() {
@@ -162,12 +169,12 @@ fi
 }
 
 ########################################
-#Configure docker group permissions
+# Configure docker group permissions
 ########################################
 
 configure_docker_permissions() {
 
-if ! getent group docker >/dev/null; then
+if ! getent group docker >/dev/null 2>&1; then
 groupadd docker
 fi
 
@@ -184,10 +191,12 @@ fi
 }
 
 ########################################
-#Verify Docker installation
+# Verify Docker installation
 ########################################
 
 verify_docker() {
+
+echo "Verifying Docker installation..."
 
 if docker info >/dev/null 2>&1; then
 echo "Docker installation verified."
@@ -199,7 +208,7 @@ fi
 }
 
 ########################################
-#Ensure Docker installed
+# Ensure Docker installed
 ########################################
 
 ensure_docker() {
@@ -217,7 +226,7 @@ verify_docker
 }
 
 ########################################
-#Export function
+# Export functions
 ########################################
 
 export -f ensure_docker

@@ -1,153 +1,155 @@
-########################################
-#Hardware Detection
-########################################
-
-GPU_TYPE="none"
-GPU_DEVICES=""
+#!/usr/bin/env bash
 
 ########################################
-#Detect GPU hardware
+# Hardware Detection
+########################################
+
+GPU_DEVICE="none"
+
+########################################
+# Detect GPU
 ########################################
 
 detect_gpu() {
 
 echo ""
-echo "Detecting GPU hardware..."
+echo "================================"
+echo "Hardware Detection"
+echo "================================"
 echo ""
 
-########################################
-#Ensure lspci exists
-########################################
+echo "Checking GPU availability..."
 
-if ! command -v lspci >/dev/null 2>&1; then
-echo "pciutils not installed, skipping GPU detection."
-GPU_TYPE="none"
-return
-fi
+case "${CAP_GPU:-none}" in
 
 ########################################
-#NVIDIA detection
-########################################
-
-if lspci | grep -qi nvidia; then
-GPU_TYPE="nvidia"
-
-########################################
-#Intel detection
-########################################
-
-elif lspci | grep -Ei "vga|3d|display" | grep -qi intel; then
-GPU_TYPE="intel"
-
-########################################
-#AMD detection
-########################################
-
-elif lspci | grep -Ei "vga|3d|display" | grep -qi amd; then
-GPU_TYPE="amd"
-
-########################################
-#No GPU detected
-########################################
-
-else
-GPU_TYPE="none"
-fi
-
-echo "Detected GPU type: $GPU_TYPE"
-
-}
-
-########################################
-#Configure Docker GPU devices
-########################################
-
-configure_gpu_devices() {
-
-case "$GPU_TYPE" in
-
-########################################
-#Intel / AMD (VAAPI)
-########################################
-
-intel|amd)
-
-GPU_DEVICES="
-    devices:
-      - /dev/dri:/dev/dri
-"
-
-;;
-
-########################################
-#NVIDIA GPU
+# NVIDIA GPU
 ########################################
 
 nvidia)
 
-GPU_DEVICES="
-    runtime: nvidia
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
-"
+echo "NVIDIA GPU detected."
 
-install_nvidia_runtime
+if command -v nvidia-smi >/dev/null 2>&1; then
+echo "nvidia-smi detected."
+else
+echo "Warning: NVIDIA GPU present but nvidia-smi not found."
+fi
+
 ;;
 
 ########################################
-#No GPU
+# Intel GPU
+########################################
+
+intel)
+
+echo "Intel integrated GPU detected."
+
+if [ -d /dev/dri ]; then
+echo "Intel GPU device directory found: /dev/dri"
+else
+echo "Warning: Intel GPU detected but /dev/dri not available."
+fi
+
+;;
+
+########################################
+# AMD GPU
+########################################
+
+amd)
+
+echo "AMD GPU detected."
+
+if [ -d /dev/dri ]; then
+echo "AMD GPU device directory found: /dev/dri"
+fi
+
+;;
+
+########################################
+# No GPU
 ########################################
 
 *)
 
-GPU_DEVICES=""
+echo "No compatible GPU detected."
 
 ;;
 
 esac
 
+echo ""
+
 }
 
 ########################################
-#Install NVIDIA container runtime
+# Configure GPU devices for containers
 ########################################
 
-install_nvidia_runtime() {
+configure_gpu_devices() {
 
-if [ "$GPU_TYPE" != "nvidia" ]; then
-return
-fi
-
-echo ""
-echo "Installing NVIDIA container toolkit..."
-echo ""
+case "${CAP_GPU:-none}" in
 
 ########################################
-#Debian / Ubuntu systems
+# Intel GPU
 ########################################
 
-if command -v apt >/dev/null 2>&1; then
+intel)
 
-apt update
-apt install -y nvidia-container-toolkit
-
-########################################
-#Restart Docker
-########################################
-
-if command -v systemctl >/dev/null 2>&1; then
-systemctl restart docker
+if [ -d /dev/dri ]; then
+GPU_DEVICE="/dev/dri"
 else
-service docker restart
+GPU_DEVICE="none"
 fi
 
+;;
+
+########################################
+# NVIDIA GPU
+########################################
+
+nvidia)
+
+GPU_DEVICE="nvidia"
+
+;;
+
+########################################
+# AMD GPU
+########################################
+
+amd)
+
+if [ -d /dev/dri ]; then
+GPU_DEVICE="/dev/dri"
+else
+GPU_DEVICE="none"
 fi
+
+;;
+
+########################################
+# No GPU
+########################################
+
+*)
+
+GPU_DEVICE="none"
+
+;;
+
+esac
+
+export GPU_DEVICE
+
+echo "GPU device configuration: $GPU_DEVICE"
 
 }
 
 ########################################
-#Export functions
+# Export functions
 ########################################
 
 export -f detect_gpu

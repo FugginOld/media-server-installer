@@ -5,7 +5,7 @@ set -euo pipefail
 #Media Stack Remote Installer
 ########################################
 
-INSTALL_DIR="/opt/media-server-installer"
+INSTALL_DIR="${INSTALL_DIR:-/opt/media-server-installer}"
 
 echo "================================"
 echo ""

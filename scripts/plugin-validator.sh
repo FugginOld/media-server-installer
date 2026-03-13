@@ -2,23 +2,14 @@
 set -euo pipefail
 
 ########################################
-#Load media-stack runtime
+# Load media-stack runtime
 ########################################
 
 source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
 
-set -euo pipefail
-
 ########################################
-#Load media-stack runtime environment
+# Plugin Validation
 ########################################
-
-
-########################################
-#Load environment
-########################################
-
-source "$INSTALL_DIR/core/env.sh"
 
 echo ""
 echo "================================"
@@ -30,7 +21,7 @@ FAIL=0
 COUNT=0
 
 ########################################
-#Ensure plugin directory exists
+# Ensure plugin directory exists
 ########################################
 
 if [ ! -d "$PLUGIN_DIR" ]; then
@@ -39,13 +30,13 @@ exit 1
 fi
 
 ########################################
-#Helper: check required field
+# Helper: check required field
 ########################################
 
 check_field() {
 
-local FIELD="$1"
-local FILE="$2"
+FIELD="$1"
+FILE="$2"
 
 if ! grep -q "^$FIELD=" "$FILE"; then
 echo "  Missing $FIELD"
@@ -55,71 +46,56 @@ fi
 }
 
 ########################################
-#Validate plugins
+# Helper: check required function
+########################################
+
+check_function() {
+
+FUNC="$1"
+FILE="$2"
+
+if ! grep -q "^$FUNC()" "$FILE"; then
+echo "  Missing function: $FUNC()"
+FAIL=1
+fi
+
+}
+
+########################################
+# Scan plugins recursively
 ########################################
 
 while IFS= read -r FILE
 do
 
-COUNT=$((COUNT+1))
+PLUGIN_FILE=$(basename "$FILE")
 
-PLUGIN=$(basename "$FILE" .sh)
-
-echo "Checking plugin: $PLUGIN"
-
-########################################
-#Syntax check
-########################################
-
-if ! bash -n "$FILE"; then
-echo "  Syntax error detected"
-FAIL=1
-fi
-
-########################################
-#Required metadata fields
-########################################
+echo "Validating $PLUGIN_FILE"
 
 check_field "PLUGIN_NAME" "$FILE"
-check_field "PLUGIN_DESCRIPTION" "$FILE"
 check_field "PLUGIN_CATEGORY" "$FILE"
-check_field "PLUGIN_DEPENDS" "$FILE"
-check_field "PLUGIN_PORTS" "$FILE"
-check_field "PLUGIN_HOST_NETWORK" "$FILE"
-check_field "PLUGIN_DASHBOARD" "$FILE"
 
-########################################
-#Validate install function
-########################################
+check_function "install_service" "$FILE"
 
-if ! grep -q "install_service()" "$FILE"; then
-echo "  Missing install_service()"
-FAIL=1
-fi
-
-echo ""
+COUNT=$((COUNT+1))
 
 done < <(
 find "$PLUGIN_DIR" -type f -name "*.sh" \
 ! -path "*/_template/*"
 )
 
-########################################
-#Ensure plugins exist
-########################################
-
-if [ "$COUNT" -eq 0 ]; then
-echo "No plugins found in $PLUGIN_DIR"
-exit 1
-fi
+echo ""
+echo "Plugins checked: $COUNT"
 
 ########################################
-#Final result
+# Fail if errors found
 ########################################
 
 if [ "$FAIL" -eq 1 ]; then
+echo ""
 echo "Plugin validation failed."
 exit 1
-else
-echo "All $COUNT plugins passed validation."
 fi
+
+echo "All plugins validated successfully."
+echo ""

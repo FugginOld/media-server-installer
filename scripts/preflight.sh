@@ -2,13 +2,19 @@
 set -euo pipefail
 
 ########################################
-#Load media-stack runtime
+# Load media-stack runtime
 ########################################
 
 source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
 
 ########################################
-#Media Stack Preflight Checks
+# Load platform module
+########################################
+
+source "$CORE_DIR/platform.sh"
+
+########################################
+# Media Stack Preflight Checks
 ########################################
 
 echo ""
@@ -18,39 +24,20 @@ echo "================================"
 echo ""
 
 ########################################
-#Ensure running as root
+# Ensure running as root
 ########################################
 
-if [ "$EUID" -ne 0 ]; then
-echo "Installer must be run as root."
-exit 1
-fi
-
+require_root
 echo "Running as root: OK"
 
 ########################################
-#Detect operating system
+# Detect operating system
 ########################################
 
-if [ -f /etc/os-release ]; then
-. /etc/os-release
-else
-echo "Cannot detect operating system."
-exit 1
-fi
-
-case "$ID" in
-debian|devuan|ubuntu)
-echo "Supported OS detected: $ID"
-;;
-*)
-echo "Unsupported OS: $ID"
-exit 1
-;;
-esac
+detect_platform
 
 ########################################
-#CPU architecture
+# CPU architecture
 ########################################
 
 ARCH="$(uname -m)"
@@ -66,7 +53,7 @@ exit 1
 esac
 
 ########################################
-#Internet connectivity
+# Internet connectivity
 ########################################
 
 echo "Checking internet connectivity..."
@@ -79,30 +66,32 @@ exit 1
 fi
 
 ########################################
-#Required commands
+# Required commands
 ########################################
 
 REQUIRED_CMDS=(
 curl
 git
 jq
-pciutils
+lspci
 )
 
 MISSING=()
 
 for CMD in "${REQUIRED_CMDS[@]}"
 do
+
 if command -v "$CMD" >/dev/null 2>&1; then
 echo "$CMD installed"
 else
 echo "$CMD missing"
 MISSING+=("$CMD")
 fi
+
 done
 
 ########################################
-#Install missing dependencies
+# Install missing dependencies
 ########################################
 
 if [ "${#MISSING[@]}" -gt 0 ]; then
@@ -111,20 +100,21 @@ echo ""
 echo "Installing missing dependencies..."
 echo ""
 
-apt update
+pkg_update
 
 for PKG in "${MISSING[@]}"
 do
-apt install -y "$PKG"
+pkg_install "$PKG"
 done
 
 fi
 
 ########################################
-#Docker check
+# Docker check
 ########################################
 
 if command -v docker >/dev/null 2>&1; then
+
 echo "Docker detected"
 
 if docker compose version >/dev/null 2>&1; then
@@ -134,11 +124,13 @@ echo "Docker Compose missing (will be installed later)"
 fi
 
 else
+
 echo "Docker not installed (will be installed later)"
+
 fi
 
 ########################################
-#Disk space check
+# Disk space check
 ########################################
 
 FREE_KB="$(df / | awk 'NR==2 {print $4}')"
