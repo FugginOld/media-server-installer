@@ -1,9 +1,11 @@
+#!/usr/bin/env bash
+
 ########################################
-#Permissions Management
+# Permissions Management
 ########################################
 
 ########################################
-#Determine PUID / PGID
+# Determine PUID / PGID
 ########################################
 
 detect_user_ids() {
@@ -22,7 +24,20 @@ echo "Using PGID=$PGID"
 }
 
 ########################################
-#Fix directory permissions
+# Resolve directory variables
+########################################
+
+resolve_directories() {
+
+MEDIA_ROOT="${MEDIA_DIR:-$MEDIA_PATH}"
+MOVIES_ROOT="${MOVIES_DIR:-$MOVIES_PATH}"
+TV_ROOT="${TV_DIR:-$TV_PATH}"
+DOWNLOADS_ROOT="${DOWNLOADS_DIR:-$DOWNLOADS_PATH}"
+
+}
+
+########################################
+# Fix directory permissions
 ########################################
 
 fix_media_permissions() {
@@ -30,26 +45,35 @@ fix_media_permissions() {
 echo "Fixing directory permissions..."
 
 DIRS=(
-"$MEDIA_PATH"
-"$MOVIES_PATH"
-"$TV_PATH"
-"$DOWNLOADS_PATH"
+"$MEDIA_ROOT"
+"$MOVIES_ROOT"
+"$TV_ROOT"
+"$DOWNLOADS_ROOT"
 "$CONFIG_DIR"
 )
 
 for DIR in "${DIRS[@]}"
 do
-if [ -n "$DIR" ] && [ -d "$DIR" ]; then
-echo "Fixing permissions: $DIR"
-chown -R "$PUID:$PGID" "$DIR"
-chmod -R 775 "$DIR"
+
+if [ -z "$DIR" ]; then
+continue
 fi
+
+if [ ! -d "$DIR" ]; then
+mkdir -p "$DIR"
+fi
+
+echo "Fixing permissions: $DIR"
+
+chown -R "$PUID:$PGID" "$DIR" 2>/dev/null || true
+chmod -R 775 "$DIR" 2>/dev/null || true
+
 done
 
 }
 
 ########################################
-#NAS specific adjustments
+# NAS specific adjustments
 ########################################
 
 apply_nas_permissions() {
@@ -60,8 +84,8 @@ unraid)
 
 echo "Applying Unraid permission fixes..."
 
-chmod -R 777 "$MEDIA_PATH"
-chmod -R 777 "$DOWNLOADS_PATH"
+chmod -R 777 "$MEDIA_ROOT" 2>/dev/null || true
+chmod -R 777 "$DOWNLOADS_ROOT" 2>/dev/null || true
 
 ;;
 
@@ -69,8 +93,8 @@ truenas)
 
 echo "Applying TrueNAS container permissions..."
 
-chmod -R 775 "$MEDIA_PATH"
-chmod -R 775 "$DOWNLOADS_PATH"
+chmod -R 775 "$MEDIA_ROOT" 2>/dev/null || true
+chmod -R 775 "$DOWNLOADS_ROOT" 2>/dev/null || true
 
 ;;
 
@@ -78,7 +102,7 @@ openmediavault)
 
 echo "Applying OMV docker permissions..."
 
-chown -R "$PUID:$PGID" "$MEDIA_PATH"
+chown -R "$PUID:$PGID" "$MEDIA_ROOT" 2>/dev/null || true
 
 ;;
 
@@ -86,7 +110,7 @@ casaos)
 
 echo "Applying CasaOS docker permissions..."
 
-chmod -R 775 "$MEDIA_PATH"
+chmod -R 775 "$MEDIA_ROOT" 2>/dev/null || true
 
 ;;
 
@@ -101,19 +125,20 @@ esac
 }
 
 ########################################
-#Main permission setup
+# Main permission setup
 ########################################
 
 setup_permissions() {
 
 detect_user_ids
+resolve_directories
 fix_media_permissions
 apply_nas_permissions
 
 }
 
 ########################################
-#Export function
+# Export function
 ########################################
 
 export -f setup_permissions

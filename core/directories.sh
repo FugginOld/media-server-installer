@@ -1,122 +1,147 @@
-########################################
-#Directory Management
-########################################
-
-CONFIG_FILE="$STACK_DIR/stack.env"
+#!/usr/bin/env bash
 
 ########################################
-#Setup directory structure
+# Directory Mode
 ########################################
 
-setup_directories() {
+# Options expected from config wizard
+# default → OS/NAS native layout
+# trash   → Trash Guides layout
+
+DIR_MODE="${DIR_MODE:-default}"
+
+########################################
+# Base stack directory
+########################################
+
+STACK_DIR="${STACK_DIR:-/opt/media-stack}"
+
+CONFIG_DIR="$STACK_DIR/config"
+LOG_DIR="$STACK_DIR/logs"
+BACKUP_DIR="$STACK_DIR/backups"
+
+########################################
+# Apply Directory Layout
+########################################
+
+apply_directory_layout() {
 
 echo ""
-echo "================================"
-echo " Media Stack Directory Setup"
-echo "================================"
-echo ""
+echo "Configuring directory layout..."
+
+case "$DIR_MODE" in
 
 ########################################
-#Choose layout
+# OS / NAS Default Layout
 ########################################
 
-echo "Choose directory layout:"
-echo ""
-echo "1) Default layout"
-echo "2) TRaSH Guides layout"
-echo ""
+default)
 
-read -rp "Selection [1]: " LAYOUT
-LAYOUT=${LAYOUT:-1}
+MEDIA_DIR="${MEDIA_PATH:-/media}"
+MOVIES_DIR="${MOVIES_PATH:-$MEDIA_DIR/movies}"
+TV_DIR="${TV_PATH:-$MEDIA_DIR/tv}"
+DOWNLOADS_DIR="${DOWNLOADS_PATH:-/downloads}"
 
-########################################
-#Base storage path
-########################################
+echo "Using OS/NAS default directory structure."
 
-DEFAULT_BASE="/data"
-
-read -rp "Enter base storage path [$DEFAULT_BASE]: " BASE_PATH
-BASE_PATH=${BASE_PATH:-$DEFAULT_BASE}
+;;
 
 ########################################
-#Default layout
+# Trash Guides Layout
 ########################################
 
-if [ "$LAYOUT" = "1" ]; then
+trash)
 
-MEDIA_PATH="$BASE_PATH/media"
-MOVIES_PATH="$MEDIA_PATH/movies"
-TV_PATH="$MEDIA_PATH/tv"
-DOWNLOADS_PATH="$BASE_PATH/downloads"
+MEDIA_DIR="/data/media"
+DOWNLOADS_DIR="/data/downloads"
 
-########################################
-#TRaSH layout
-########################################
+MOVIES_DIR="$MEDIA_DIR/movies"
+TV_DIR="$MEDIA_DIR/tv"
 
-else
+echo "Using Trash Guides directory structure."
 
-MEDIA_PATH="$BASE_PATH/media"
-MOVIES_PATH="$MEDIA_PATH/movies"
-TV_PATH="$MEDIA_PATH/tv"
-
-DOWNLOADS_PATH="$BASE_PATH/downloads"
-COMPLETE_PATH="$DOWNLOADS_PATH/complete"
-INCOMPLETE_PATH="$DOWNLOADS_PATH/incomplete"
-
-fi
+;;
 
 ########################################
-#Create directories
+# Fallback
 ########################################
 
-mkdir -p "$MEDIA_PATH"
-mkdir -p "$MOVIES_PATH"
-mkdir -p "$TV_PATH"
-mkdir -p "$DOWNLOADS_PATH"
+*)
+
+echo "Unknown directory mode: $DIR_MODE"
+echo "Falling back to default layout."
+
+MEDIA_DIR="/media"
+MOVIES_DIR="/media/movies"
+TV_DIR="/media/tv"
+DOWNLOADS_DIR="/downloads"
+
+;;
+
+esac
+
+}
+
+########################################
+# Create directories
+########################################
+
+create_directories() {
+
+mkdir -p "$STACK_DIR"
 mkdir -p "$CONFIG_DIR"
+mkdir -p "$LOG_DIR"
+mkdir -p "$BACKUP_DIR"
 
-if [ "$LAYOUT" = "2" ]; then
-mkdir -p "$COMPLETE_PATH"
-mkdir -p "$INCOMPLETE_PATH"
-fi
+mkdir -p "$MEDIA_DIR"
+mkdir -p "$MOVIES_DIR"
+mkdir -p "$TV_DIR"
+mkdir -p "$DOWNLOADS_DIR"
 
-########################################
-#Persist paths to stack.env
-########################################
-
-cat >> "$CONFIG_FILE" <<EOF
-
-MEDIA_PATH=$MEDIA_PATH
-MOVIES_PATH=$MOVIES_PATH
-TV_PATH=$TV_PATH
-DOWNLOADS_PATH=$DOWNLOADS_PATH
-EOF
+}
 
 ########################################
-#Display results
+# Display directory layout
 ########################################
+
+show_directories() {
 
 echo ""
-echo "Directory structure created:"
+echo "Directory Layout"
+echo "----------------"
+echo "Mode:        $DIR_MODE"
 echo ""
-
-echo "Media: $MEDIA_PATH"
-echo "Movies: $MOVIES_PATH"
-echo "TV: $TV_PATH"
-echo "Downloads: $DOWNLOADS_PATH"
-echo "Config: $CONFIG_DIR"
-
-if [ "$LAYOUT" = "2" ]; then
-echo "Downloads Complete: $COMPLETE_PATH"
-echo "Downloads Incomplete: $INCOMPLETE_PATH"
-fi
-
+echo "Stack:       $STACK_DIR"
+echo "Config:      $CONFIG_DIR"
+echo "Logs:        $LOG_DIR"
+echo "Backups:     $BACKUP_DIR"
+echo ""
+echo "Media Root:  $MEDIA_DIR"
+echo "Movies:      $MOVIES_DIR"
+echo "TV:          $TV_DIR"
+echo "Downloads:   $DOWNLOADS_DIR"
 echo ""
 
 }
 
 ########################################
-#Export function
+# Export variables
 ########################################
 
-export -f setup_directories
+export STACK_DIR
+export CONFIG_DIR
+export LOG_DIR
+export BACKUP_DIR
+
+export MEDIA_DIR
+export MOVIES_DIR
+export TV_DIR
+export DOWNLOADS_DIR
+
+########################################
+# Export functions
+########################################
+
+export -f apply_directory_layout
+export -f create_directories
+export -f show_directories

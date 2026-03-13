@@ -4,7 +4,7 @@
 
 # Prevent double-loading
 if [ -n "${MEDIA_STACK_ENV_LOADED:-}" ]; then
-return
+    return
 fi
 export MEDIA_STACK_ENV_LOADED=1
 
@@ -49,8 +49,8 @@ DOWNLOADS_PATH="${DOWNLOADS_PATH:-/downloads}"
 ########################################
 
 if [ -f "$STACK_DIR/stack.env" ]; then
-# shellcheck disable=SC1090
-source "$STACK_DIR/stack.env"
+    # shellcheck disable=SC1090
+    source "$STACK_DIR/stack.env"
 fi
 
 ########################################
@@ -64,50 +64,41 @@ mkdir -p "$STACK_DIR" "$CONFIG_DIR" "$LOG_DIR" "$BACKUP_DIR"
 ########################################
 
 if [ ! -f "$SERVICE_REGISTRY" ]; then
-echo '{"services":[]}' > "$SERVICE_REGISTRY"
+    echo '{"services":[]}' > "$SERVICE_REGISTRY"
 fi
 
 if [ ! -f "$PORT_REGISTRY" ]; then
-echo '{}' > "$PORT_REGISTRY"
+    echo '{}' > "$PORT_REGISTRY"
 fi
 
 ########################################
-# Detect container user
+# Detect container user (PUID / PGID)
 ########################################
 
 if [ -n "${PUID:-}" ]; then
-# user explicitly defined
-PUID="$PUID"
-PGID="${PGID:-$PUID}"
+
+    # Already provided via stack.env or environment
+    PUID="$PUID"
+    PGID="${PGID:-$PUID}"
 
 else
 
-if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
+    if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
+        USER_NAME="$SUDO_USER"
 
-USER_NAME="$SUDO_USER"
+    elif [ "$(id -u)" -ne 0 ]; then
+        USER_NAME="$(whoami)"
 
-elif [ "$(id -u)" -ne 0 ]; then
+    else
+        if getent passwd 1000 >/dev/null; then
+            USER_NAME="$(getent passwd 1000 | cut -d: -f1)"
+        else
+            USER_NAME="root"
+        fi
+    fi
 
-USER_NAME="$(whoami)"
-
-else
-
-# fallback to UID 1000 if root and no sudo user
-USER_NAME="$(getent passwd 1000 | cut -d: -f1 || true)"
-
-fi
-
-if [ -n "${USER_NAME:-}" ]; then
-
-PUID="$(id -u "$USER_NAME" 2>/dev/null || echo 1000)"
-PGID="$(id -g "$USER_NAME" 2>/dev/null || echo 1000)"
-
-else
-
-PUID=1000
-PGID=1000
-
-fi
+    PUID="$(id -u "$USER_NAME" 2>/dev/null || echo 1000)"
+    PGID="$(id -g "$USER_NAME" 2>/dev/null || echo 1000)"
 
 fi
 

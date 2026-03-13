@@ -25,7 +25,7 @@ echo "Installing Docker..."
 case "$PLATFORM_FAMILY" in
 
 ########################################
-# Debian family
+# Debian / Ubuntu
 ########################################
 
 debian)
@@ -63,22 +63,17 @@ docker-compose-plugin
 ;;
 
 ########################################
-# RedHat family
+# RedHat / Fedora
 ########################################
 
 redhat)
 
 pkg_update
 
-pkg_install dnf-plugins-core || true
+pkg_install dnf-plugins-core
 
-if command -v dnf >/dev/null 2>&1; then
 dnf config-manager \
 --add-repo https://download.docker.com/linux/$PLATFORM_ID/docker-ce.repo
-else
-yum-config-manager \
---add-repo https://download.docker.com/linux/$PLATFORM_ID/docker-ce.repo
-fi
 
 pkg_install \
 docker-ce \
@@ -104,7 +99,7 @@ docker-compose
 ;;
 
 ########################################
-# SUSE
+# openSUSE
 ########################################
 
 suse)
@@ -174,7 +169,7 @@ fi
 
 configure_docker_permissions() {
 
-if ! getent group docker >/dev/null 2>&1; then
+if ! getent group docker >/dev/null; then
 groupadd docker
 fi
 
@@ -226,7 +221,7 @@ verify_docker
 }
 
 ########################################
-# Export functions
+# Export function
 ########################################
 
 export -f ensure_docker

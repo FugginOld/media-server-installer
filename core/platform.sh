@@ -172,7 +172,7 @@ yum makecache
 ;;
 
 pacman)
-pacman -Sy
+pacman -Syu --noconfirm
 ;;
 
 zypper)

@@ -5,55 +5,59 @@
 ########################################
 
 if [ -n "${MEDIA_STACK_RUNTIME_LOADED:-}" ]; then
-return
+    return
 fi
 export MEDIA_STACK_RUNTIME_LOADED=1
 
 ########################################
-# Resolve installer directory
+# Resolve INSTALL_DIR
 ########################################
 
-# If INSTALL_DIR already set and valid
 if [ -n "${INSTALL_DIR:-}" ] && [ -d "$INSTALL_DIR" ]; then
-:
-
-# Standard system install location
-elif [ -d "/opt/media-server-installer" ]; then
-INSTALL_DIR="/opt/media-server-installer"
-
-# Fallback to script location
+    :
 else
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INSTALL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+    SCRIPT_PATH="${BASH_SOURCE[0]}"
+    SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+    INSTALL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 fi
 
 export INSTALL_DIR
 
 ########################################
-# Verify installer directory
+# Standard project directories
 ########################################
 
-if [ ! -d "$INSTALL_DIR" ]; then
-echo "Failed to resolve installer directory."
-exit 1
+CORE_DIR="$INSTALL_DIR/core"
+SCRIPT_DIR="$INSTALL_DIR/scripts"
+PLUGIN_DIR="$INSTALL_DIR/plugins"
+TEMPLATE_DIR="$INSTALL_DIR/templates"
+
+export CORE_DIR
+export SCRIPT_DIR
+export PLUGIN_DIR
+export TEMPLATE_DIR
+
+########################################
+# Verify directories exist
+########################################
+
+if [ ! -d "$CORE_DIR" ]; then
+    echo "Runtime error: core directory missing"
+    exit 1
+fi
+
+if [ ! -d "$SCRIPT_DIR" ]; then
+    echo "Runtime error: scripts directory missing"
+    exit 1
+fi
+
+if [ ! -d "$PLUGIN_DIR" ]; then
+    echo "Runtime error: plugins directory missing"
+    exit 1
 fi
 
 ########################################
-# Define common runtime paths
+# Load environment
 ########################################
 
-export CORE_DIR="$INSTALL_DIR/core"
-export SCRIPT_DIR="$INSTALL_DIR/scripts"
-export PLUGIN_DIR="$INSTALL_DIR/plugins"
-
-########################################
-# Load environment configuration
-########################################
-
-ENV_FILE="$INSTALL_DIR/core/env.sh"
-
-if [ -f "$ENV_FILE" ]; then
-source "$ENV_FILE"
-else
-echo "Warning: env.sh not found at $ENV_FILE"
-fi
+source "$CORE_DIR/env.sh"

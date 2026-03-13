@@ -8,6 +8,12 @@ set -euo pipefail
 source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
 
 ########################################
+# Load environment
+########################################
+
+source "$INSTALL_DIR/core/env.sh"
+
+########################################
 # Plugin Validation
 ########################################
 
@@ -38,7 +44,7 @@ check_field() {
 FIELD="$1"
 FILE="$2"
 
-if ! grep -q "^$FIELD=" "$FILE"; then
+if ! grep -qE "^${FIELD}=" "$FILE"; then
 echo "  Missing $FIELD"
 FAIL=1
 fi
@@ -54,7 +60,7 @@ check_function() {
 FUNC="$1"
 FILE="$2"
 
-if ! grep -q "^$FUNC()" "$FILE"; then
+if ! grep -qE "(^${FUNC}\(\)|^function ${FUNC})" "$FILE"; then
 echo "  Missing function: $FUNC()"
 FAIL=1
 fi
@@ -83,6 +89,15 @@ done < <(
 find "$PLUGIN_DIR" -type f -name "*.sh" \
 ! -path "*/_template/*"
 )
+
+########################################
+# Ensure plugins were found
+########################################
+
+if [ "$COUNT" -eq 0 ]; then
+echo "No plugins discovered."
+exit 1
+fi
 
 echo ""
 echo "Plugins checked: $COUNT"

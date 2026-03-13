@@ -8,12 +8,6 @@ set -euo pipefail
 source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
 
 ########################################
-# Load platform module
-########################################
-
-source "$CORE_DIR/platform.sh"
-
-########################################
 # Media Stack Preflight Checks
 ########################################
 
@@ -27,7 +21,11 @@ echo ""
 # Ensure running as root
 ########################################
 
-require_root
+if [ "$EUID" -ne 0 ]; then
+    echo "Installer must be run as root."
+    exit 1
+fi
+
 echo "Running as root: OK"
 
 ########################################
@@ -43,13 +41,13 @@ detect_platform
 ARCH="$(uname -m)"
 
 case "$ARCH" in
-x86_64|amd64|aarch64|arm64)
-echo "Supported architecture: $ARCH"
-;;
-*)
-echo "Unsupported architecture: $ARCH"
-exit 1
-;;
+    x86_64|amd64|aarch64|arm64)
+        echo "Supported architecture: $ARCH"
+        ;;
+    *)
+        echo "Unsupported architecture: $ARCH"
+        exit 1
+        ;;
 esac
 
 ########################################
@@ -59,10 +57,10 @@ esac
 echo "Checking internet connectivity..."
 
 if curl -fsSL https://github.com >/dev/null 2>&1; then
-echo "Internet connectivity: OK"
+    echo "Internet connectivity: OK"
 else
-echo "Internet connection failed."
-exit 1
+    echo "Internet connection failed."
+    exit 1
 fi
 
 ########################################
@@ -70,24 +68,22 @@ fi
 ########################################
 
 REQUIRED_CMDS=(
-curl
-git
-jq
-lspci
+    curl
+    git
+    jq
+    lspci
 )
 
 MISSING=()
 
 for CMD in "${REQUIRED_CMDS[@]}"
 do
-
-if command -v "$CMD" >/dev/null 2>&1; then
-echo "$CMD installed"
-else
-echo "$CMD missing"
-MISSING+=("$CMD")
-fi
-
+    if command -v "$CMD" >/dev/null 2>&1; then
+        echo "$CMD installed"
+    else
+        echo "$CMD missing"
+        MISSING+=("$CMD")
+    fi
 done
 
 ########################################
@@ -96,16 +92,16 @@ done
 
 if [ "${#MISSING[@]}" -gt 0 ]; then
 
-echo ""
-echo "Installing missing dependencies..."
-echo ""
+    echo ""
+    echo "Installing missing dependencies..."
+    echo ""
 
-pkg_update
+    pkg_update
 
-for PKG in "${MISSING[@]}"
-do
-pkg_install "$PKG"
-done
+    for PKG in "${MISSING[@]}"
+    do
+        pkg_install "$PKG"
+    done
 
 fi
 
@@ -114,19 +110,16 @@ fi
 ########################################
 
 if command -v docker >/dev/null 2>&1; then
+    echo "Docker detected"
 
-echo "Docker detected"
+    if docker compose version >/dev/null 2>&1; then
+        echo "Docker Compose detected"
+    else
+        echo "Docker Compose missing (will be installed later)"
+    fi
 
-if docker compose version >/dev/null 2>&1; then
-echo "Docker Compose detected"
 else
-echo "Docker Compose missing (will be installed later)"
-fi
-
-else
-
-echo "Docker not installed (will be installed later)"
-
+    echo "Docker not installed (will be installed later)"
 fi
 
 ########################################
@@ -137,8 +130,8 @@ FREE_KB="$(df / | awk 'NR==2 {print $4}')"
 FREE_GB=$((FREE_KB / 1024 / 1024))
 
 if [ "$FREE_KB" -lt 1048576 ]; then
-echo "Less than 1GB free disk space."
-exit 1
+    echo "Less than 1GB free disk space."
+    exit 1
 fi
 
 echo "Disk space available: ${FREE_GB}GB"

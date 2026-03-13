@@ -2,44 +2,44 @@
 set -euo pipefail
 
 ########################################
-#Load media-stack runtime
+# Load media-stack runtime
 ########################################
 
 source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
 
 ########################################
-#Compose controller
+# Compose controller
 ########################################
 
 COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
 
 ########################################
-#Validate environment
+# Validate environment
 ########################################
 
 if [ ! -d "$STACK_DIR" ]; then
-echo "Media Stack directory not found: $STACK_DIR"
-exit 1
+    echo "Media Stack directory not found: $STACK_DIR"
+    exit 1
 fi
 
 if [ ! -f "$COMPOSE_FILE" ]; then
-echo "docker-compose.yml missing in $STACK_DIR"
-exit 1
+    echo "docker-compose.yml missing in $STACK_DIR"
+    exit 1
 fi
 
 if ! command -v docker >/dev/null 2>&1; then
-echo "Docker is not installed."
-exit 1
+    echo "Docker is not installed."
+    exit 1
 fi
 
 ########################################
-#Change to stack directory
+# Change to stack directory
 ########################################
 
 cd "$STACK_DIR" || exit 1
 
 ########################################
-#Command handler
+# Command handler
 ########################################
 
 COMMAND="${1:-help}"
@@ -47,7 +47,7 @@ COMMAND="${1:-help}"
 case "$COMMAND" in
 
 ########################################
-#Start containers
+# Start containers
 ########################################
 
 up)
@@ -57,7 +57,7 @@ docker compose up -d
 ;;
 
 ########################################
-#Stop containers
+# Stop containers
 ########################################
 
 down)
@@ -67,7 +67,7 @@ docker compose down
 ;;
 
 ########################################
-#Restart containers
+# Restart containers
 ########################################
 
 restart)
@@ -77,7 +77,7 @@ docker compose restart
 ;;
 
 ########################################
-#Pull container updates
+# Pull container updates
 ########################################
 
 pull)
@@ -87,20 +87,20 @@ docker compose pull
 ;;
 
 ########################################
-#Logs
+# Logs
 ########################################
 
 logs)
 
 if [ -n "${2:-}" ]; then
-docker compose logs -f "$2"
+    docker compose logs -f "$2"
 else
-docker compose logs -f
+    docker compose logs -f
 fi
 ;;
 
 ########################################
-#Container status
+# Container status
 ########################################
 
 status)
@@ -109,7 +109,7 @@ docker compose ps
 ;;
 
 ########################################
-#Validate compose config
+# Validate compose config
 ########################################
 
 validate)
@@ -118,7 +118,7 @@ docker compose config >/dev/null && echo "Compose file valid."
 ;;
 
 ########################################
-#Invalid usage
+# Invalid usage
 ########################################
 
 *)

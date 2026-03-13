@@ -1,17 +1,17 @@
 ########################################
-#Configuration Wizard
+# Configuration Wizard
 ########################################
 
 CONFIG_FILE="$STACK_DIR/stack.env"
 
 ########################################
-#Ensure stack directory exists
+# Ensure stack directory exists
 ########################################
 
 mkdir -p "$STACK_DIR"
 
 ########################################
-#Load existing configuration
+# Load existing configuration
 ########################################
 
 if [ -f "$CONFIG_FILE" ]; then
@@ -20,13 +20,13 @@ source "$CONFIG_FILE"
 fi
 
 ########################################
-#Run configuration wizard
+# Run configuration wizard
 ########################################
 
 run_configuration_wizard() {
 
 ########################################
-#Detect defaults
+# Detect defaults
 ########################################
 
 DEFAULT_TZ=${TIMEZONE:-$(timedatectl show --property=Timezone --value 2>/dev/null)}
@@ -35,9 +35,10 @@ DEFAULT_TZ=${DEFAULT_TZ:-UTC}
 DEFAULT_UID=${PUID:-$(id -u)}
 DEFAULT_GID=${PGID:-$(id -g)}
 DEFAULT_NET=${DOCKER_NETWORK:-media-network}
+DEFAULT_DIR_MODE=${DIR_MODE:-default}
 
 ########################################
-#Timezone prompt
+# Timezone prompt
 ########################################
 
 TIMEZONE=$(whiptail \
@@ -47,7 +48,7 @@ TIMEZONE=$(whiptail \
 3>&1 1>&2 2>&3)
 
 ########################################
-#PUID prompt
+# PUID prompt
 ########################################
 
 PUID=$(whiptail \
@@ -57,7 +58,7 @@ PUID=$(whiptail \
 3>&1 1>&2 2>&3)
 
 ########################################
-#PGID prompt
+# PGID prompt
 ########################################
 
 PGID=$(whiptail \
@@ -67,7 +68,7 @@ PGID=$(whiptail \
 3>&1 1>&2 2>&3)
 
 ########################################
-#Docker network prompt
+# Docker network prompt
 ########################################
 
 DOCKER_NETWORK=$(whiptail \
@@ -77,7 +78,19 @@ DOCKER_NETWORK=$(whiptail \
 3>&1 1>&2 2>&3)
 
 ########################################
-#Save configuration
+# Directory layout selection
+########################################
+
+DIR_MODE=$(whiptail \
+--title "Directory Layout" \
+--menu "Select directory structure:" \
+15 70 2 \
+default "Follow OS/NAS default layout" \
+trash "Use Trash Guides directory structure" \
+3>&1 1>&2 2>&3)
+
+########################################
+# Save configuration
 ########################################
 
 cat <<EOF > "$CONFIG_FILE"
@@ -85,6 +98,7 @@ TIMEZONE=$TIMEZONE
 PUID=$PUID
 PGID=$PGID
 DOCKER_NETWORK=$DOCKER_NETWORK
+DIR_MODE=$DIR_MODE
 EOF
 
 echo ""
@@ -95,7 +109,7 @@ echo ""
 }
 
 ########################################
-#Export function
+# Export function
 ########################################
 
 export -f run_configuration_wizard

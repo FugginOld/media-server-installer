@@ -2,24 +2,25 @@
 set -euo pipefail
 
 ########################################
-# Load media-stack runtime
+# Resolve installer directory
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
+SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export INSTALL_DIR="$SCRIPT_ROOT"
 
-cd "$INSTALL_DIR"
+source "$INSTALL_DIR/core/runtime.sh"
 
 ########################################
 # Installer mode
 ########################################
 
-INSTALL_MODE="install"
+MODE="install"
 NONINTERACTIVE=0
 
-if [ "${1:-}" = "--validate" ]; then
-INSTALL_MODE="validate"
-NONINTERACTIVE=1
-echo "Running installer in validation mode."
+if [[ "${1:-}" == "--validate" ]]; then
+    MODE="validate"
+    NONINTERACTIVE=1
+    echo "Running installer in validation mode."
 fi
 
 ########################################
@@ -38,29 +39,24 @@ source "$CORE_DIR/permissions.sh"
 # UI helpers
 ########################################
 
-confirm_gate() {
+review_gate() {
 
-if [ "$NONINTERACTIVE" -eq 1 ]; then
-return 0
-fi
+    if [[ "$NONINTERACTIVE" -eq 1 ]]; then
+        return 0
+    fi
 
-whiptail \
---title "$1" \
---yesno "$2" \
-12 60
-
+    whiptail \
+        --title "$1" \
+        --yesno "$2" \
+        14 60
 }
 
-progress_update() {
-
-CURRENT="$1"
-TOTAL="$2"
-MSG="$3"
-
-PERCENT=$((CURRENT * 100 / TOTAL))
-
-echo "$PERCENT" | whiptail --gauge "$MSG" 6 60 0
-
+progress_msg() {
+    echo ""
+    echo "================================"
+    echo "$1"
+    echo "================================"
+    echo ""
 }
 
 ########################################
@@ -72,31 +68,13 @@ detect_platform
 detect_capabilities
 
 ########################################
-# Run preflight
+# Preflight checks
 ########################################
 
 bash "$SCRIPT_DIR/preflight.sh"
 
 ########################################
-# System review gate
-########################################
-
-SYSTEM_SUMMARY=$(cat <<EOF
-Platform: $PLATFORM_ID
-Family: $PLATFORM_FAMILY
-Architecture: $(uname -m)
-
-Filesystem: $CAP_FILESYSTEM
-GPU: $CAP_GPU
-
-Continue with installation?
-EOF
-)
-
-confirm_gate "System Review" "$SYSTEM_SUMMARY" || exit 0
-
-########################################
-# Ensure docker
+# Ensure Docker
 ########################################
 
 ensure_docker
@@ -107,94 +85,22 @@ ensure_docker
 
 mkdir -p "$STACK_DIR"
 
-########################################
-# Installer interface selection
-########################################
-
-if [ "$NONINTERACTIVE" -eq 1 ]; then
-INTERFACE="cli"
-else
-INTERFACE=$(whiptail \
---title "Media Stack Installer" \
---menu "Select installation interface" \
-15 60 2 \
-cli "CLI Installer" \
-web "Web Installer" \
-3>&1 1>&2 2>&3)
-fi
-
-########################################
-# Web installer
-########################################
-
-if [ "$INTERFACE" = "web" ]; then
-
-echo "Launching Web Installer..."
-
-mkdir -p "$CONFIG_DIR/webinstaller"
-
-cat <<EOF > "$STACK_DIR/docker-compose.yml"
-services:
-  webinstaller:
-    image: nginx:alpine
-    container_name: webinstaller
-    ports:
-      - "8088:80"
-    volumes:
-      - ./config/webinstaller:/usr/share/nginx/html
-    restart: unless-stopped
-EOF
-
-cd "$STACK_DIR"
-docker compose up -d
-
-IP=$(hostname -I | awk '{print $1}')
-
-echo ""
-echo "Open browser:"
-echo "http://$IP:8088"
-echo ""
-
-exit 0
-
-fi
-
-########################################
-# CLI installer
-########################################
-
-echo ""
-echo "Starting Media Stack Custom Installer..."
-echo ""
+progress_msg "Starting Media Stack Installer"
 
 ########################################
 # Configuration wizard
 ########################################
 
-if [ "$NONINTERACTIVE" -eq 0 ]; then
-run_configuration_wizard
+if [[ "$NONINTERACTIVE" -eq 0 ]]; then
+    run_configuration_wizard
 fi
 
 ########################################
-# Configuration review gate
+# Load saved configuration
 ########################################
 
-CONFIG_REVIEW=$(cat <<EOF
-Stack directory: $STACK_DIR
-Config directory: $CONFIG_DIR
-
-Continue with these settings?
-EOF
-)
-
-confirm_gate "Configuration Review" "$CONFIG_REVIEW" || exit 0
-
-########################################
-# Load saved config
-########################################
-
-if [ -f "$STACK_DIR/stack.env" ]; then
-source "$STACK_DIR/stack.env"
+if [[ -f "$STACK_DIR/stack.env" ]]; then
+    source "$STACK_DIR/stack.env"
 fi
 
 ########################################
@@ -211,7 +117,7 @@ detect_gpu
 configure_gpu_devices
 
 ########################################
-# Registries
+# Initialize registries
 ########################################
 
 source "$SCRIPT_DIR/service-registry.sh"
@@ -221,13 +127,13 @@ source "$SCRIPT_DIR/port-registry.sh"
 init_port_registry
 
 ########################################
-# Plugin validation
+# Validate plugins
 ########################################
 
 bash "$SCRIPT_DIR/plugin-validator.sh"
 
 ########################################
-# Plugin discovery
+# Discover plugins
 ########################################
 
 AVAILABLE_PLUGINS=()
@@ -236,190 +142,108 @@ declare -A PLUGIN_PATHS
 
 while IFS= read -r file
 do
-
-plugin=$(basename "$file" .sh)
-
-AVAILABLE_PLUGINS+=("$plugin")
-PLUGIN_PATHS["$plugin"]="$file"
-
+    plugin=$(basename "$file" .sh)
+    AVAILABLE_PLUGINS+=("$plugin")
+    PLUGIN_PATHS["$plugin"]="$file"
 done < <(
-find "$PLUGIN_DIR" -type f -name "*.sh" \
-! -path "*/_template/*" \
-! -name "webinstaller.sh" | sort
+    find "$PLUGIN_DIR" -type f -name "*.sh" \
+    ! -path "*/_template/*" \
+    ! -name "webinstaller.sh" | sort
 )
-
-########################################
-# Plugin discovery gate
-########################################
-
-PLUGIN_LIST=$(printf "%s\n" "${AVAILABLE_PLUGINS[@]}")
-
-confirm_gate \
-"Plugin Discovery" \
-"Plugins detected:
-
-$PLUGIN_LIST
-
-Continue?" || exit 0
 
 ########################################
 # Service selection
 ########################################
-
-if [ "$NONINTERACTIVE" -eq 1 ]; then
-SELECTED_SERVICES=("${AVAILABLE_PLUGINS[@]}")
-else
 
 OPTIONS=()
 OPTIONS+=("ALL" "Install all services" OFF)
 
 for plugin in "${AVAILABLE_PLUGINS[@]}"
 do
-
-PLUGIN_FILE="${PLUGIN_PATHS[$plugin]}"
-source "$PLUGIN_FILE"
-
-OPTIONS+=("$plugin" "$PLUGIN_CATEGORY" OFF)
-
+    PLUGIN_FILE="${PLUGIN_PATHS[$plugin]}"
+    source "$PLUGIN_FILE"
+    OPTIONS+=("$plugin" "$PLUGIN_CATEGORY" OFF)
 done
 
 CHOICES=$(whiptail \
---title "Media Stack Services" \
---checklist "Select services to install" \
-22 70 15 \
-"${OPTIONS[@]}" \
-3>&1 1>&2 2>&3)
+    --title "Media Stack Services" \
+    --checklist "Select services to install" \
+    22 70 15 \
+    "${OPTIONS[@]}" \
+    3>&1 1>&2 2>&3)
 
 for service in $CHOICES
 do
+    service="${service//\"/}"
 
-service="${service//\"/}"
+    if [[ "$service" == "ALL" ]]; then
+        SELECTED_SERVICES=("${AVAILABLE_PLUGINS[@]}")
+        break
+    fi
 
-if [ "$service" = "ALL" ]; then
-SELECTED_SERVICES=("${AVAILABLE_PLUGINS[@]}")
-break
-fi
-
-SELECTED_SERVICES+=("$service")
-
+    SELECTED_SERVICES+=("$service")
 done
 
-fi
-
 ########################################
-# Dependency resolver
+# Dependency resolution
 ########################################
 
 CHANGED=true
 
-while [ "$CHANGED" = true ]
+while [[ "$CHANGED" == true ]]
 do
+    CHANGED=false
 
-CHANGED=false
+    for SERVICE in "${SELECTED_SERVICES[@]}"
+    do
+        PLUGIN_FILE="${PLUGIN_PATHS[$SERVICE]}"
+        source "$PLUGIN_FILE"
 
-for SERVICE in "${SELECTED_SERVICES[@]}"
-do
-
-PLUGIN_FILE="${PLUGIN_PATHS[$SERVICE]}"
-source "$PLUGIN_FILE"
-
-for dep in "${PLUGIN_DEPENDS[@]}"
-do
-
-if [[ ! " ${SELECTED_SERVICES[*]} " =~ " ${dep} " ]]; then
-SELECTED_SERVICES+=("$dep")
-CHANGED=true
-fi
-
-done
-
-done
-
+        for dep in "${PLUGIN_DEPENDS[@]}"
+        do
+            if [[ ! " ${SELECTED_SERVICES[*]} " =~ " ${dep} " ]]; then
+                SELECTED_SERVICES+=("$dep")
+                CHANGED=true
+            fi
+        done
+    done
 done
 
 SELECTED_SERVICES=($(printf "%s\n" "${SELECTED_SERVICES[@]}" | sort -u))
 
 ########################################
-# Validation mode exit
+# Validation mode
 ########################################
 
-if [ "$INSTALL_MODE" = "validate" ]; then
-
-echo ""
-echo "Validation mode complete."
-echo "Services that would be installed:"
-printf " - %s\n" "${SELECTED_SERVICES[@]}"
-echo ""
-exit 0
-
+if [[ "$MODE" == "validate" ]]; then
+    echo ""
+    echo "Validation mode complete."
+    printf " - %s\n" "${SELECTED_SERVICES[@]}"
+    exit 0
 fi
 
 ########################################
-# Final install gate
+# Install review gate
 ########################################
 
 SERVICE_SUMMARY=$(printf "%s\n" "${SELECTED_SERVICES[@]}")
 
-confirm_gate \
+review_gate \
 "Install Services" \
 "The following services will be installed:
 
 $SERVICE_SUMMARY
 
-Proceed?" || exit 0
+Proceed with installation?" || exit 0
 
 ########################################
-# Port conflict detection
+# Port conflict check
 ########################################
 
-source "$SCRIPT_DIR/port-check.sh"
+bash "$SCRIPT_DIR/port-check.sh"
 
 ########################################
-# Parallel image pulling
-########################################
-
-MAX_PULLS=4
-
-echo ""
-echo "Pulling container images..."
-
-IMAGES=()
-
-for SERVICE in "${SELECTED_SERVICES[@]}"
-do
-
-PLUGIN_FILE="${PLUGIN_PATHS[$SERVICE]}"
-source "$PLUGIN_FILE"
-
-IMAGES+=("$DOCKER_IMAGE")
-
-done
-
-IMAGES=($(printf "%s\n" "${IMAGES[@]}" | sort -u))
-
-PIDS=()
-COUNT=0
-
-for IMAGE in "${IMAGES[@]}"
-do
-
-docker pull "$IMAGE" &
-
-PIDS+=($!)
-COUNT=$((COUNT+1))
-
-if [ "$COUNT" -ge "$MAX_PULLS" ]; then
-wait "${PIDS[@]}"
-PIDS=()
-COUNT=0
-fi
-
-done
-
-wait
-
-########################################
-# Compose generation
+# Generate docker compose
 ########################################
 
 TMP_COMPOSE="$STACK_DIR/docker-compose.tmp"
@@ -433,31 +257,53 @@ services:
 EOF
 
 ########################################
-# Install services with progress
+# Install services
 ########################################
 
-TOTAL=${#SELECTED_SERVICES[@]}
-CURRENT=0
+progress_msg "Generating Docker Compose"
 
 for SERVICE in "${SELECTED_SERVICES[@]}"
 do
+    echo "Installing $SERVICE"
 
-CURRENT=$((CURRENT+1))
+    PLUGIN_FILE="${PLUGIN_PATHS[$SERVICE]}"
+    source "$PLUGIN_FILE"
 
-progress_update "$CURRENT" "$TOTAL" "Installing $SERVICE"
-
-PLUGIN_FILE="${PLUGIN_PATHS[$SERVICE]}"
-source "$PLUGIN_FILE"
-
-install_service
-
+    install_service
 done
 
 mv "$TMP_COMPOSE" "$COMPOSE_FILE"
 
 ########################################
+# Parallel image pull
+########################################
+
+progress_msg "Pulling container images"
+
+MAX_PULLS=4
+running=0
+
+images=$(docker compose -f "$COMPOSE_FILE" config | grep image | awk '{print $2}')
+
+for img in $images
+do
+    docker pull "$img" &
+
+    ((running++))
+
+    if [[ "$running" -ge "$MAX_PULLS" ]]; then
+        wait -n
+        ((running--))
+    fi
+done
+
+wait
+
+########################################
 # Start containers
 ########################################
+
+progress_msg "Starting containers"
 
 bash "$SCRIPT_DIR/compose.sh" up
 
@@ -465,29 +311,14 @@ bash "$SCRIPT_DIR/compose.sh" up
 # Container startup tracker
 ########################################
 
-echo "Waiting for containers to start..."
+echo ""
+echo "Waiting for containers to become healthy..."
+sleep 5
 
-MAX_WAIT=60
-WAITED=0
-
-while [ $WAITED -lt $MAX_WAIT ]
-do
-
-RUNNING=$(docker ps --format '{{.Names}}' | wc -l)
-TOTAL=$(docker compose ps --services | wc -l)
-
-if [ "$RUNNING" -ge "$TOTAL" ]; then
-echo "All containers running."
-break
-fi
-
-sleep 3
-WAITED=$((WAITED+3))
-
-done
+docker compose -f "$COMPOSE_FILE" ps
 
 ########################################
-# Run post-install tasks
+# Post install
 ########################################
 
 mkdir -p "$STACK_DIR/logs"
@@ -496,7 +327,7 @@ bash "$SCRIPT_DIR/post-install.sh" \
 >> "$STACK_DIR/logs/post-install.log" 2>&1 &
 
 ########################################
-# Completion message
+# Completion
 ########################################
 
 IP=$(hostname -I | awk '{print $1}')
@@ -515,12 +346,5 @@ echo "Grafana:"
 echo "http://$IP:3000"
 
 echo ""
-echo "Background setup running."
-echo "View progress with:"
-echo ""
+echo "Logs:"
 echo "tail -f $STACK_DIR/logs/post-install.log"
-echo ""
-
-echo "Run CLI:"
-echo "media-stack"
-echo ""

@@ -1,91 +1,109 @@
 #!/usr/bin/env bash
 
 ########################################
-# Capability Detection
+# System Capability Detection
 ########################################
 
 CAP_GPU="none"
-CAP_CONTAINER_RUNTIME="unknown"
-CAP_FILESYSTEM="unknown"
-
-detect_capabilities() {
-
-echo ""
-echo "Detecting system capabilities..."
+CAP_FS="unknown"
+CAP_CONTAINER="unknown"
 
 ########################################
-# Detect GPU
+# Detect GPU Capability
 ########################################
+
+detect_gpu_capability() {
 
 if command -v nvidia-smi >/dev/null 2>&1; then
 CAP_GPU="nvidia"
 
-elif lspci 2>/dev/null | grep -qi "intel.*vga"; then
+elif command -v lspci >/dev/null 2>&1 && lspci | grep -qi 'intel.*vga'; then
 CAP_GPU="intel"
 
-elif lspci 2>/dev/null | grep -qi "amd.*vga"; then
+elif command -v lspci >/dev/null 2>&1 && lspci | grep -qi 'amd.*vga'; then
 CAP_GPU="amd"
 
 else
 CAP_GPU="none"
 fi
 
-########################################
-# Detect container runtime
-########################################
-
-if command -v docker >/dev/null 2>&1; then
-CAP_CONTAINER_RUNTIME="docker"
-
-elif command -v podman >/dev/null 2>&1; then
-CAP_CONTAINER_RUNTIME="podman"
-
-else
-CAP_CONTAINER_RUNTIME="none"
-fi
+}
 
 ########################################
-# Detect filesystem
+# Detect Filesystem Capability
 ########################################
 
-ROOT_FS=$(df -T / 2>/dev/null | awk 'NR==2 {print $2}')
+detect_fs_capability() {
+
+ROOT_FS=$(df -T / | awk 'NR==2 {print $2}')
 
 case "$ROOT_FS" in
-ext4)
-CAP_FILESYSTEM="ext4"
+zfs)
+CAP_FS="zfs"
 ;;
 btrfs)
-CAP_FILESYSTEM="btrfs"
+CAP_FS="btrfs"
 ;;
-zfs)
-CAP_FILESYSTEM="zfs"
+ext4|ext3|ext2)
+CAP_FS="ext"
 ;;
 xfs)
-CAP_FILESYSTEM="xfs"
+CAP_FS="xfs"
 ;;
 *)
-CAP_FILESYSTEM="$ROOT_FS"
+CAP_FS="$ROOT_FS"
 ;;
 esac
 
+}
+
 ########################################
-# Output results
+# Detect Container Runtime
 ########################################
+
+detect_container_runtime() {
+
+if command -v docker >/dev/null 2>&1; then
+CAP_CONTAINER="docker"
+
+elif command -v podman >/dev/null 2>&1; then
+CAP_CONTAINER="podman"
+
+else
+CAP_CONTAINER="none"
+fi
+
+}
+
+########################################
+# Detect All Capabilities
+########################################
+
+detect_capabilities() {
+
+echo ""
+echo "Detecting system capabilities..."
+
+detect_gpu_capability
+detect_fs_capability
+detect_container_runtime
 
 echo "GPU: $CAP_GPU"
-echo "Filesystem: $CAP_FILESYSTEM"
-echo "Container runtime: $CAP_CONTAINER_RUNTIME"
-
+echo "Filesystem: $CAP_FS"
+echo "Container runtime: $CAP_CONTAINER"
 echo ""
 
 }
 
 ########################################
-# Export variables
+# Export variables and functions
 ########################################
 
 export CAP_GPU
-export CAP_CONTAINER_RUNTIME
-export CAP_FILESYSTEM
+export CAP_FS
+export CAP_CONTAINER
 
 export -f detect_capabilities
+export -f detect_gpu_capability
+export -f detect_fs_capability
+export -f detect_container_runtime
