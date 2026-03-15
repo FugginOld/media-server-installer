@@ -2,27 +2,16 @@
 set -euo pipefail
 
 ########################################
-# Resolve installer directory
+# Load media-stack runtime
 ########################################
 
-SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-export INSTALL_DIR="${INSTALL_DIR:-$SCRIPT_ROOT}"
+source "${INSTALL_DIR:-/opt/media-server-installer}/lib/runtime.sh"
 
 ########################################
-# Load runtime
+# Load core modules
 ########################################
 
-source "$INSTALL_DIR/lib/runtime.sh"
-
-########################################
-# Load required core modules
-########################################
-
-source "$CORE_DIR/platform.sh"
-source "$CORE_DIR/capabilities.sh"
-source "$CORE_DIR/hardware.sh"
-source "$CORE_DIR/docker.sh"
-source "$CORE_DIR/directories.sh"
+source "$INSTALL_DIR/core/platform.sh"
 
 ########################################
 # Media Stack Preflight Checks
@@ -38,7 +27,7 @@ echo ""
 # Ensure running as root
 ########################################
 
-if [[ "$EUID" -ne 0 ]]; then
+if [ "$EUID" -ne 0 ]; then
     echo "Installer must be run as root."
     exit 1
 fi
@@ -91,9 +80,21 @@ REQUIRED_CMDS=(
     lspci
 )
 
+########################################
+# Package mapping (command -> package)
+########################################
+
+declare -A CMD_PACKAGE_MAP
+CMD_PACKAGE_MAP[lspci]="pciutils"
+
+########################################
+# Check installed commands
+########################################
+
 MISSING=()
 
-for CMD in "${REQUIRED_CMDS[@]}"; do
+for CMD in "${REQUIRED_CMDS[@]}"
+do
     if command -v "$CMD" >/dev/null 2>&1; then
         echo "$CMD installed"
     else
@@ -106,7 +107,7 @@ done
 # Install missing dependencies
 ########################################
 
-if [[ "${#MISSING[@]}" -gt 0 ]]; then
+if [ "${#MISSING[@]}" -gt 0 ]; then
 
     echo ""
     echo "Installing missing dependencies..."
@@ -114,7 +115,12 @@ if [[ "${#MISSING[@]}" -gt 0 ]]; then
 
     pkg_update
 
-    for PKG in "${MISSING[@]}"; do
+    for CMD in "${MISSING[@]}"
+    do
+        PKG="${CMD_PACKAGE_MAP[$CMD]:-$CMD}"
+
+        echo "Installing package for $CMD -> $PKG"
+
         pkg_install "$PKG"
     done
 
@@ -125,6 +131,7 @@ fi
 ########################################
 
 if command -v docker >/dev/null 2>&1; then
+
     echo "Docker detected"
 
     if docker compose version >/dev/null 2>&1; then
@@ -134,7 +141,9 @@ if command -v docker >/dev/null 2>&1; then
     fi
 
 else
+
     echo "Docker not installed (will be installed later)"
+
 fi
 
 ########################################
@@ -144,7 +153,7 @@ fi
 FREE_KB="$(df / | awk 'NR==2 {print $4}')"
 FREE_GB=$((FREE_KB / 1024 / 1024))
 
-if [[ "$FREE_KB" -lt 1048576 ]]; then
+if [ "$FREE_KB" -lt 1048576 ]; then
     echo "Less than 1GB free disk space."
     exit 1
 fi

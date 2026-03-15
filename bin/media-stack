@@ -2,31 +2,24 @@
 set -euo pipefail
 
 ########################################
-# Resolve install directory
+# Resolve installer directory
 ########################################
 
 SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
-BIN_DIR="$(dirname "$SCRIPT_PATH")"
-INSTALL_DIR="$(cd "$BIN_DIR/.." && pwd)"
+INSTALL_DIR="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
 
 export INSTALL_DIR
 
 ########################################
-# Load runtime + libraries
+# Load runtime + environment
 ########################################
 
 source "$INSTALL_DIR/lib/runtime.sh"
-source "$LIB_DIR/compose.sh"
-source "$LIB_DIR/services.sh"
-source "$LIB_DIR/ports.sh"
+source "$INSTALL_DIR/core/env.sh"
 
 ########################################
-# Load environment
+# CLI Command
 ########################################
-
-if [[ -f "$CORE_DIR/env.sh" ]]; then
-    source "$CORE_DIR/env.sh"
-fi
 
 COMMAND="${1:-help}"
 
@@ -54,6 +47,7 @@ echo "media-stack backup"
 echo "media-stack reset"
 echo "media-stack version"
 echo ""
+
 }
 
 ########################################
@@ -73,7 +67,7 @@ bash installer.sh
 
 update_stack() {
 
-bash "$SCRIPT_DIR/updates.sh"
+bash "$INSTALL_DIR/scripts/updates.sh"
 
 }
 
@@ -83,7 +77,7 @@ bash "$SCRIPT_DIR/updates.sh"
 
 status_stack() {
 
-compose_status
+bash "$INSTALL_DIR/scripts/compose.sh" status
 
 }
 
@@ -93,12 +87,19 @@ compose_status
 
 services_stack() {
 
-require_command jq
+if ! command -v jq >/dev/null 2>&1; then
+echo "jq required. Install with: apt install jq"
+exit 1
+fi
 
-if [[ -f "$SERVICE_REGISTRY" ]]; then
-    jq -r '.services[] | "\(.name) -> \(.url)"' "$SERVICE_REGISTRY"
+if [ -f "$SERVICE_REGISTRY" ]; then
+
+jq -r '.services[] | "\(.name) -> \(.url)"' "$SERVICE_REGISTRY"
+
 else
-    echo "services.json not found"
+
+echo "services.json not found"
+
 fi
 
 }
@@ -109,7 +110,7 @@ fi
 
 doctor_stack() {
 
-bash "$SCRIPT_DIR/doctor.sh"
+bash "$INSTALL_DIR/scripts/doctor.sh"
 
 }
 
@@ -125,11 +126,10 @@ echo "Media Stack Verification"
 echo "================================"
 echo ""
 
-bash "$SCRIPT_DIR/preflight.sh"
-bash "$SCRIPT_DIR/plugin-validator.sh"
-bash "$SCRIPT_DIR/doctor.sh"
-
-compose_validate
+bash "$INSTALL_DIR/scripts/preflight.sh"
+bash "$INSTALL_DIR/scripts/plugin-validator.sh"
+bash "$INSTALL_DIR/scripts/doctor.sh"
+bash "$INSTALL_DIR/scripts/compose.sh" validate
 
 echo ""
 echo "Verification complete."
@@ -143,7 +143,7 @@ echo ""
 
 restart_stack() {
 
-compose_restart
+bash "$INSTALL_DIR/scripts/compose.sh" restart
 
 }
 
@@ -153,7 +153,7 @@ compose_restart
 
 logs_stack() {
 
-compose_logs "${2:-}"
+bash "$INSTALL_DIR/scripts/compose.sh" logs "${2:-}"
 
 }
 
@@ -175,7 +175,7 @@ docker volume prune -f
 
 backup_stack() {
 
-bash "$SCRIPT_DIR/backup.sh"
+bash "$INSTALL_DIR/scripts/backup.sh"
 
 }
 
@@ -195,10 +195,10 @@ bash "$INSTALL_DIR/reset-stack.sh"
 
 version_stack() {
 
-if [[ -f "$INSTALL_DIR/VERSION" ]]; then
-    echo "Media Stack version: $(cat "$INSTALL_DIR/VERSION")"
+if [ -f "$INSTALL_DIR/VERSION" ]; then
+echo "Media Stack version: $(cat "$INSTALL_DIR/VERSION")"
 else
-    echo "Media Stack version unknown"
+echo "Media Stack version unknown"
 fi
 
 }

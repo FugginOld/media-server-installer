@@ -5,79 +5,147 @@ set -euo pipefail
 # Load media-stack runtime
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
+source "${INSTALL_DIR:-/opt/media-server-installer}/lib/runtime.sh"
 
 ########################################
-# Running Post-Install Tasks
+# Post Install Tasks
 ########################################
 
-echo ""
-echo "================================"
-echo "Running Post-Install Tasks"
-echo "================================"
-echo ""
+LOG_DIR="$STACK_DIR/logs"
+LOG_FILE="$LOG_DIR/post-install.log"
+
+mkdir -p "$LOG_DIR"
+
+log() {
+echo "[POST-INSTALL] $1"
+}
 
 ########################################
-# Allow containers time to initialize
+# Wait for container helper
 ########################################
 
-echo "Waiting for containers to initialize..."
-sleep 10
+wait_for_container() {
+
+local NAME="$1"
+local TIMEOUT="${2:-60}"
+
+log "Waiting for container: $NAME"
+
+for ((i=0;i<TIMEOUT;i++))
+do
+
+if docker ps --format '{{.Names}}' | grep -q "^${NAME}$"; then
+log "$NAME container started"
+return 0
+fi
+
+sleep 1
+
+done
+
+log "Timeout waiting for $NAME"
+return 1
+
+}
 
 ########################################
-# Configure Grafana dashboards
+# Wait for service HTTP endpoint
 ########################################
 
-if [ -f "$SCRIPT_DIR/grafana-dynamic.sh" ]; then
+wait_for_http() {
 
-    echo ""
-    echo "Configuring Grafana dashboards..."
+local URL="$1"
+local TIMEOUT="${2:-60}"
 
-    bash "$SCRIPT_DIR/grafana-dynamic.sh"
+log "Waiting for service: $URL"
+
+for ((i=0;i<TIMEOUT;i++))
+do
+
+if curl -fs "$URL" >/dev/null 2>&1; then
+log "Service reachable: $URL"
+return 0
+fi
+
+sleep 2
+
+done
+
+log "Service not reachable: $URL"
+return 1
+
+}
+
+########################################
+# Detect services from registry
+########################################
+
+if [[ -f "$SERVICE_REGISTRY" ]]; then
+
+log "Checking registered services..."
+
+jq -r '.services[] | "\(.name)|\(.url)"' "$SERVICE_REGISTRY" | while IFS="|" read -r NAME URL
+do
+
+wait_for_http "$URL" 30 || true
+
+done
+
+else
+
+log "No services registry found"
 
 fi
 
 ########################################
-# Generate dashboard configuration
+# Configure Grafana if present
 ########################################
 
-bash "$INSTALL_DIR/scripts/dashboard-generator.sh"
+if docker ps --format '{{.Names}}' | grep -q "^grafana$"; then
 
-########################################
-# Display registered services
-########################################
+log "Running Grafana configuration"
 
-if [ -f "$SERVICE_REGISTRY" ] && command -v jq >/dev/null 2>&1; then
-
-    echo ""
-    echo "Registered services:"
-    echo ""
-
-    jq -r '.services[] | "\(.name) -> \(.url)"' "$SERVICE_REGISTRY"
-
-    echo ""
+bash "$INSTALL_DIR/scripts/configure-grafana.sh" || true
 
 fi
 
 ########################################
-# Start health monitoring if available
+# Generate Homepage dashboard
 ########################################
 
-if [ -f "$SCRIPT_DIR/health-monitor.sh" ]; then
+if [[ -f "$INSTALL_DIR/scripts/generate-homepage-config.sh" ]]; then
 
-    echo ""
-    echo "Starting service health monitor..."
+log "Generating Homepage dashboard configuration"
 
-    mkdir -p "$STACK_DIR/logs"
-
-    bash "$SCRIPT_DIR/health-monitor.sh" \
-    >> "$STACK_DIR/logs/health-monitor.log" 2>&1 &
+bash "$INSTALL_DIR/scripts/generate-homepage-config.sh" || true
 
 fi
 
 ########################################
-# Final status
+# Restart homepage container if needed
 ########################################
+
+if docker ps --format '{{.Names}}' | grep -q "^homepage$"; then
+
+log "Restarting homepage container to load new configuration"
+
+docker restart homepage >/dev/null 2>&1 || true
+
+fi
+
+########################################
+# Cleanup old Docker artifacts
+########################################
+
+log "Cleaning unused Docker images"
+
+docker image prune -f >/dev/null 2>&1 || true
+
+########################################
+# Completion
+########################################
+
+log "Post-install tasks completed"
 
 echo ""
 echo "Post-install configuration complete."

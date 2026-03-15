@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ########################################
-# Load media-stack runtime
+# Load runtime
 ########################################
 
 source "${INSTALL_DIR:-/opt/media-server-installer}/lib/runtime.sh"
@@ -21,26 +21,28 @@ CONFLICTS=()
 CHECKED_PORTS=()
 
 ########################################
+# Validate selected services
+########################################
+
+if [[ -z "${SELECTED_SERVICES+x}" ]]; then
+warn "No services defined for port checking"
+exit 0
+fi
+
+if [[ "${#SELECTED_SERVICES[@]}" -eq 0 ]]; then
+warn "No services selected"
+exit 0
+fi
+
+########################################
 # Check if port is in use
 ########################################
 
-check_port() {
+port_in_use() {
 
-PORT="$1"
+local PORT="$1"
 
-# Skip if already checked
-if [[ " ${CHECKED_PORTS[*]} " =~ " ${PORT} " ]]; then
-return
-fi
-
-if ss -tuln | grep -q ":$PORT "; then
-
-PROCESS=$(ss -tulnp 2>/dev/null | grep ":$PORT " | awk '{print $NF}' | head -n1)
-
-CONFLICTS+=("$PORT ($PROCESS)")
-else
-CHECKED_PORTS+=("$PORT")
-fi
+ss -tuln | awk '{print $5}' | grep -q ":$PORT$"
 
 }
 
@@ -48,28 +50,45 @@ fi
 # Scan selected plugins
 ########################################
 
-if [ -n "${SELECTED_SERVICES:-}" ]; then
-
 for SERVICE in "${SELECTED_SERVICES[@]}"
 do
 
-PLUGIN_FILE="${PLUGIN_PATHS[$SERVICE]}"
+[[ -z "$SERVICE" ]] && continue
 
-# Load plugin metadata
+PLUGIN_FILE="${PLUGIN_PATHS[$SERVICE]:-}"
+
+if [[ -z "$PLUGIN_FILE" ]]; then
+warn "Missing plugin path for $SERVICE"
+continue
+fi
+
 source "$PLUGIN_FILE"
 
-if [ -n "${PLUGIN_PORTS:-}" ]; then
+########################################
+# Skip plugins without ports
+########################################
+
+if [[ -z "${PLUGIN_PORTS:-}" ]]; then
+continue
+fi
 
 for PORT in "${PLUGIN_PORTS[@]}"
 do
-check_port "$PORT"
-done
+
+if port_in_use "$PORT"; then
+
+PROCESS=$(ss -tulnp 2>/dev/null | grep ":$PORT " | awk '{print $NF}' | head -n1)
+CONFLICTS+=("$PORT ($PROCESS)")
+
+else
+
+CHECKED_PORTS+=("$PORT")
 
 fi
 
 done
 
-fi
+done
 
 ########################################
 # Display results
@@ -78,10 +97,10 @@ fi
 echo ""
 echo "Ports checked:"
 
-if [ "${#CHECKED_PORTS[@]}" -gt 0 ]; then
-printf "  %s\n" "${CHECKED_PORTS[@]}"
-else
+if [[ "${#CHECKED_PORTS[@]}" -eq 0 ]]; then
 echo "  none"
+else
+printf "  %s\n" "${CHECKED_PORTS[@]}"
 fi
 
 echo ""
@@ -90,11 +109,9 @@ echo ""
 # Conflict handling
 ########################################
 
-if [ "${#CONFLICTS[@]}" -gt 0 ]; then
+if [[ "${#CONFLICTS[@]}" -gt 0 ]]; then
 
 MSG=$(printf "%s\n" "${CONFLICTS[@]}")
-
-if command -v whiptail >/dev/null 2>&1; then
 
 whiptail \
 --title "Port Conflicts Detected" \
@@ -102,17 +119,8 @@ whiptail \
 
 $MSG
 
-Please free these ports or change configuration." \
+The installer will attempt automatic reassignment." \
 15 70
-
-else
-
-echo "Port conflicts detected:"
-echo "$MSG"
-
-fi
-
-exit 1
 
 else
 

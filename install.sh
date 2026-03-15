@@ -110,7 +110,7 @@ git clone "$REPO_URL" "$INSTALL_DIR"
 fi
 
 ########################################
-# Ensure scripts executable
+# Ensure shell scripts executable
 ########################################
 
 find "$INSTALL_DIR" -type f -name "*.sh" -exec chmod +x {} \;
@@ -119,15 +119,23 @@ find "$INSTALL_DIR" -type f -name "*.sh" -exec chmod +x {} \;
 # Install CLI command
 ########################################
 
-CLI_SRC="$INSTALL_DIR/scripts/media-stack"
+CLI_SRC="$INSTALL_DIR/bin/media-stack"
 CLI_DST="/usr/local/bin/media-stack"
 
 if [ -f "$CLI_SRC" ]; then
+
 ln -sf "$CLI_SRC" "$CLI_DST"
 chmod +x "$CLI_SRC"
-echo "CLI installed: media-stack"
+
+echo ""
+echo "Media Stack CLI installed."
+echo "Command available as: media-stack"
+echo ""
+
 else
-echo "Warning: media-stack CLI not found."
+
+echo "Warning: media-stack CLI not found at $CLI_SRC"
+
 fi
 
 ########################################

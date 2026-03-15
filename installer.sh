@@ -66,6 +66,7 @@ progress_msg() {
     echo "$1"
     echo "================================"
     echo ""
+
 }
 
 ########################################
@@ -139,21 +140,22 @@ init_port_registry
 bash "$SCRIPT_DIR/plugin-validator.sh"
 
 ########################################
+# Load plugins once (NEW)
+########################################
+
+load_plugins
+
+########################################
 # Discover plugins
 ########################################
 
 AVAILABLE_PLUGINS=()
 SELECTED_SERVICES=()
-declare -A PLUGIN_PATHS
 
-while IFS= read -r file
+for plugin in "${!PLUGIN_PATHS[@]}"
 do
-    plugin=$(basename "$file" .sh)
     AVAILABLE_PLUGINS+=("$plugin")
-    PLUGIN_PATHS["$plugin"]="$file"
-done < <(
-    discover_plugins | grep -v webinstaller.sh
-)
+done
 
 ########################################
 # Service selection
@@ -164,9 +166,8 @@ OPTIONS+=("ALL" "Install all services" OFF)
 
 for plugin in "${AVAILABLE_PLUGINS[@]}"
 do
-    PLUGIN_FILE="${PLUGIN_PATHS[$plugin]}"
-    source "$PLUGIN_FILE"
-    OPTIONS+=("$plugin" "$PLUGIN_CATEGORY" OFF)
+    category=$(get_plugin_category "$plugin")
+    OPTIONS+=("$plugin" "$category" OFF)
 done
 
 CHOICES=$(whiptail \
@@ -178,6 +179,7 @@ CHOICES=$(whiptail \
 
 for service in $CHOICES
 do
+
     service="${service//\"/}"
 
     if [[ "$service" == "ALL" ]]; then
@@ -186,6 +188,7 @@ do
     fi
 
     SELECTED_SERVICES+=("$service")
+
 done
 
 ########################################
@@ -196,21 +199,24 @@ CHANGED=true
 
 while [[ "$CHANGED" == true ]]
 do
+
     CHANGED=false
 
     for SERVICE in "${SELECTED_SERVICES[@]}"
     do
-        PLUGIN_FILE="${PLUGIN_PATHS[$SERVICE]}"
-        source "$PLUGIN_FILE"
 
-        for dep in "${PLUGIN_DEPENDS[@]:-}"
+        deps=$(get_plugin_dependencies "$SERVICE")
+
+        for dep in $deps
         do
             if [[ ! " ${SELECTED_SERVICES[*]} " =~ " ${dep} " ]]; then
                 SELECTED_SERVICES+=("$dep")
                 CHANGED=true
             fi
         done
+
     done
+
 done
 
 SELECTED_SERVICES=($(printf "%s\n" "${SELECTED_SERVICES[@]}" | sort -u))
@@ -220,10 +226,12 @@ SELECTED_SERVICES=($(printf "%s\n" "${SELECTED_SERVICES[@]}" | sort -u))
 ########################################
 
 if [[ "$MODE" == "validate" ]]; then
+
     echo ""
     echo "Validation mode complete."
     printf " - %s\n" "${SELECTED_SERVICES[@]}"
     exit 0
+
 fi
 
 ########################################
@@ -258,10 +266,7 @@ echo "networks:"
 echo "  media-network:"
 echo ""
 echo "services:"
-collect_plugin_compose "${SELECTED_SERVICES[@]}"
 } > "$TMP_COMPOSE"
-
-mv "$TMP_COMPOSE" "$COMPOSE_FILE"
 
 ########################################
 # Install services
@@ -271,40 +276,31 @@ progress_msg "Generating Docker Compose"
 
 for SERVICE in "${SELECTED_SERVICES[@]}"
 do
+
     log "Installing $SERVICE"
 
-    PLUGIN_FILE="${PLUGIN_PATHS[$SERVICE]}"
+    PLUGIN_FILE=$(get_plugin_path "$SERVICE")
     source "$PLUGIN_FILE"
 
     install_service
+
 done
 
 mv "$TMP_COMPOSE" "$COMPOSE_FILE"
 
 ########################################
-# Parallel image pull
+# Pull container images
 ########################################
 
 progress_msg "Pulling container images"
-
-MAX_PULLS=4
-running=0
 
 images=$(docker compose -f "$COMPOSE_FILE" config | grep image | awk '{print $2}')
 
 for img in $images
 do
-    docker pull "$img" &
-
-    ((running++))
-
-    if [[ "$running" -ge "$MAX_PULLS" ]]; then
-        wait -n
-        ((running--))
-    fi
+    log "Pulling $img"
+    docker pull "$img"
 done
-
-wait
 
 ########################################
 # Start containers
@@ -355,3 +351,5 @@ echo "http://$IP:3000"
 echo ""
 echo "Logs:"
 echo "tail -f $STACK_DIR/logs/post-install.log"
+
+echo ""

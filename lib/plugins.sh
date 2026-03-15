@@ -1,57 +1,112 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 ########################################
-# Load runtime
-########################################
-
-source "${INSTALL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}/lib/runtime.sh"
-
-########################################
-# Discover plugins
+# Plugin discovery
 ########################################
 
 discover_plugins() {
 
-    find "$PLUGIN_DIR" -type f -name "*.sh" \
-        ! -path "*/_template/*" \
-        | sort
+find "$PLUGIN_DIR" -type f -name "*.sh" \
+! -path "*/_template/*"
+
 }
 
 ########################################
-# Load plugin
+# Plugin metadata registries
 ########################################
 
-load_plugin() {
+declare -Ag PLUGIN_PATHS
+declare -Ag PLUGIN_CATEGORIES
+declare -Ag PLUGIN_DEPENDENCIES
+declare -Ag PLUGIN_PORTS
+declare -Ag PLUGIN_DASHBOARD
 
-    local FILE="$1"
+########################################
+# Load plugins once
+########################################
 
-    if [[ -f "$FILE" ]]; then
-        source "$FILE"
-    else
-        warn "Plugin not found: $FILE"
-    fi
+load_plugins() {
+
+while IFS= read -r file
+do
+
+PLUGIN_NAME=""
+PLUGIN_CATEGORY=""
+PLUGIN_DEPENDS=()
+PLUGIN_PORTS=()
+PLUGIN_DASHBOARD=false
+
+# Load plugin metadata
+source "$file"
+
+name=$(basename "$file" .sh)
+
+PLUGIN_PATHS["$name"]="$file"
+PLUGIN_CATEGORIES["$name"]="${PLUGIN_CATEGORY:-Misc}"
+PLUGIN_DEPENDENCIES["$name"]="${PLUGIN_DEPENDS[*]:-}"
+PLUGIN_PORTS["$name"]="${PLUGIN_PORTS[*]:-}"
+PLUGIN_DASHBOARD["$name"]="${PLUGIN_DASHBOARD:-false}"
+
+done < <(discover_plugins)
+
 }
 
 ########################################
-# Collect compose blocks
+# Get plugin path
 ########################################
 
-collect_plugin_compose() {
+get_plugin_path() {
 
-    local SERVICES=("$@")
+local name="$1"
 
-    for SERVICE in "${SERVICES[@]}"
-    do
-        local FILE="$PLUGIN_DIR/**/$SERVICE.sh"
+echo "${PLUGIN_PATHS[$name]}"
 
-        FILE=$(find "$PLUGIN_DIR" -name "$SERVICE.sh" | head -n1)
-
-        load_plugin "$FILE"
-
-        if declare -f plugin_compose >/dev/null; then
-            plugin_compose
-        else
-            warn "Plugin missing compose function: $SERVICE"
-        fi
-    done
 }
+
+########################################
+# Get plugin dependencies
+########################################
+
+get_plugin_dependencies() {
+
+local name="$1"
+
+echo "${PLUGIN_DEPENDENCIES[$name]}"
+
+}
+
+########################################
+# Get plugin category
+########################################
+
+get_plugin_category() {
+
+local name="$1"
+
+echo "${PLUGIN_CATEGORIES[$name]}"
+
+}
+
+########################################
+# Get plugin ports
+########################################
+
+get_plugin_ports() {
+
+local name="$1"
+
+echo "${PLUGIN_PORTS[$name]}"
+
+}
+
+########################################
+# Export functions
+########################################
+
+export -f discover_plugins
+export -f load_plugins
+export -f get_plugin_path
+export -f get_plugin_dependencies
+export -f get_plugin_category
+export -f get_plugin_ports

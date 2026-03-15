@@ -1,76 +1,81 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 ########################################
-# Load runtime
+# Ensure runtime loaded
 ########################################
 
-source "${INSTALL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}/lib/runtime.sh"
+source "${INSTALL_DIR:-/opt/media-server-installer}/lib/runtime.sh"
 
 ########################################
-# Compose configuration
+# Compose file path
 ########################################
 
-COMPOSE_FILE="${COMPOSE_FILE:-$STACK_DIR/docker-compose.yml}"
+COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
 
 ########################################
-# Validate compose environment
+# Collect plugin compose sections
 ########################################
 
-compose_validate_environment() {
+collect_plugin_compose() {
 
-    [[ -d "$STACK_DIR" ]] || die "Media Stack directory not found: $STACK_DIR"
+for SERVICE in "$@"
+do
 
-    [[ -f "$COMPOSE_FILE" ]] || die "docker-compose.yml missing in $STACK_DIR"
+    [[ -z "$SERVICE" ]] && continue
 
-    require_command docker
+    if [[ -z "${PLUGIN_PATHS[$SERVICE]:-}" ]]; then
+        warn "Plugin not found for compose generation: $SERVICE"
+        continue
+    fi
+
+    PLUGIN_FILE="${PLUGIN_PATHS[$SERVICE]}"
+
+    source "$PLUGIN_FILE"
+
+    if declare -f compose_service >/dev/null; then
+        compose_service
+    else
+        warn "Plugin $SERVICE does not define compose_service()"
+    fi
+
+done
+
 }
 
 ########################################
-# Start stack
+# Start containers
 ########################################
 
 compose_up() {
 
-    compose_validate_environment
+if [[ ! -f "$COMPOSE_FILE" ]]; then
+error "docker-compose.yml missing"
+return 1
+fi
 
-    log "Starting Media Stack"
+docker compose -f "$COMPOSE_FILE" up -d
 
-    (
-        cd "$STACK_DIR"
-        docker compose up -d
-    )
 }
 
 ########################################
-# Stop stack
+# Stop containers
 ########################################
 
 compose_down() {
 
-    compose_validate_environment
+docker compose -f "$COMPOSE_FILE" down
 
-    log "Stopping Media Stack"
-
-    (
-        cd "$STACK_DIR"
-        docker compose down
-    )
 }
 
 ########################################
-# Restart stack
+# Restart containers
 ########################################
 
 compose_restart() {
 
-    compose_validate_environment
+docker compose -f "$COMPOSE_FILE" restart
 
-    log "Restarting Media Stack"
-
-    (
-        cd "$STACK_DIR"
-        docker compose restart
-    )
 }
 
 ########################################
@@ -79,49 +84,18 @@ compose_restart() {
 
 compose_pull() {
 
-    compose_validate_environment
+docker compose -f "$COMPOSE_FILE" pull
 
-    log "Pulling container updates"
-
-    (
-        cd "$STACK_DIR"
-        docker compose pull
-    )
 }
 
 ########################################
-# Show logs
-########################################
-
-compose_logs() {
-
-    compose_validate_environment
-
-    local SERVICE="${1:-}"
-
-    (
-        cd "$STACK_DIR"
-
-        if [[ -n "$SERVICE" ]]; then
-            docker compose logs -f "$SERVICE"
-        else
-            docker compose logs -f
-        fi
-    )
-}
-
-########################################
-# Container status
+# Status
 ########################################
 
 compose_status() {
 
-    compose_validate_environment
+docker compose -f "$COMPOSE_FILE" ps
 
-    (
-        cd "$STACK_DIR"
-        docker compose ps
-    )
 }
 
 ########################################
@@ -130,12 +104,20 @@ compose_status() {
 
 compose_validate() {
 
-    compose_validate_environment
+docker compose -f "$COMPOSE_FILE" config >/dev/null
 
-    (
-        cd "$STACK_DIR"
-        docker compose config >/dev/null
-    )
+echo "Compose configuration valid."
 
-    log "Compose file valid"
 }
+
+########################################
+# Export functions
+########################################
+
+export -f collect_plugin_compose
+export -f compose_up
+export -f compose_down
+export -f compose_restart
+export -f compose_pull
+export -f compose_status
+export -f compose_validate

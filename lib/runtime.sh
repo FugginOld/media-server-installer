@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 ########################################
 # Prevent double loading
 ########################################
 
-if [ -n "${MEDIA_STACK_RUNTIME_LOADED:-}" ]; then
+if [[ -n "${MEDIA_STACK_RUNTIME_LOADED:-}" ]]; then
     return
 fi
 export MEDIA_STACK_RUNTIME_LOADED=1
@@ -13,18 +14,15 @@ export MEDIA_STACK_RUNTIME_LOADED=1
 # Resolve INSTALL_DIR
 ########################################
 
-if [ -n "${INSTALL_DIR:-}" ] && [ -d "$INSTALL_DIR" ]; then
-    :
-else
-    SCRIPT_PATH="${BASH_SOURCE[0]}"
-    SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
-    INSTALL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+if [[ -z "${INSTALL_DIR:-}" ]]; then
+    SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+    INSTALL_DIR="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
 fi
 
 export INSTALL_DIR
 
 ########################################
-# Standard project directories
+# Core project directories
 ########################################
 
 CORE_DIR="$INSTALL_DIR/core"
@@ -40,13 +38,43 @@ export PLUGIN_DIR
 export TEMPLATE_DIR
 
 ########################################
-# Verify directories exist
+# Validate directory structure
 ########################################
 
-if [ ! -d "$CORE_DIR" ]; then
-    echo "Runtime error: core directory missing"
+[[ -d "$CORE_DIR" ]] || { echo "Runtime error: core directory missing"; exit 1; }
+[[ -d "$LIB_DIR" ]] || { echo "Runtime error: lib directory missing"; exit 1; }
+[[ -d "$SCRIPT_DIR" ]] || { echo "Runtime error: scripts directory missing"; exit 1; }
+[[ -d "$PLUGIN_DIR" ]] || { echo "Runtime error: plugins directory missing"; exit 1; }
+
+########################################
+# Logging functions
+########################################
+
+log() {
+    echo "[INFO] $*"
+}
+
+warn() {
+    echo "[WARN] $*" >&2
+}
+
+error() {
+    echo "[ERROR] $*" >&2
+}
+
+die() {
+    error "$*"
     exit 1
-fi
+}
+
+########################################
+# Export logging functions
+########################################
+
+export -f log
+export -f warn
+export -f error
+export -f die
 
 ########################################
 # Detect host IP
@@ -54,30 +82,23 @@ fi
 
 detect_host_ip() {
 
-    HOST_IP=""
+HOST_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 
-    if command -v ip >/dev/null 2>&1; then
-        HOST_IP="$(ip route get 1 | awk '{print $7; exit}')"
-    fi
+if [[ -z "$HOST_IP" ]]; then
+    HOST_IP="127.0.0.1"
+fi
 
-    if [ -z "$HOST_IP" ]; then
-        HOST_IP="$(hostname -I | awk '{print $1}')"
-    fi
-
-    if [ -z "$HOST_IP" ]; then
-        HOST_IP="127.0.0.1"
-    fi
+export HOST_IP
 }
 
 detect_host_ip
-export HOST_IP
 
 ########################################
-# Logging helper
+# Runtime banner
 ########################################
 
-log() {
-    echo "[media-stack] $*"
-}
-
-export -f log
+echo ""
+echo "Using PUID=${PUID:-unknown}"
+echo "Using PGID=${PGID:-unknown}"
+echo "Detected HOST_IP=$HOST_IP"
+echo ""
