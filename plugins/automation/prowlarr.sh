@@ -2,32 +2,26 @@
 set -euo pipefail
 
 ########################################
-#Load media-stack runtime
+# Load runtime and libraries
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
+source "${INSTALL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}/lib/runtime.sh"
+source "$LIB_DIR/ports.sh"
+source "$LIB_DIR/services.sh"
 
 ########################################
-#Load installer libraries
-########################################
-
-source "$INSTALL_DIR/scripts/port-helper.sh"
-source "$INSTALL_DIR/scripts/service-registry.sh"
-
-########################################
-#Plugin Metadata
+# Plugin Metadata
 ########################################
 
 PLUGIN_NAME="prowlarr"
 PLUGIN_DESCRIPTION="Indexer Manager"
-PLUGIN_CATEGORY="Automation"
+PLUGIN_CATEGORY="automation"
 
 PLUGIN_DEPENDS=()
 
 PLUGIN_PORTS=(9696)
 
 PLUGIN_HOST_NETWORK=false
-
 PLUGIN_DASHBOARD=true
 
 ########################################
@@ -36,19 +30,20 @@ PLUGIN_DASHBOARD=true
 
 install_service() {
 
-echo "Installing Prowlarr..."
+    log "Installing Prowlarr"
 
 ########################################
-# Request port mapping
+# Register and retrieve port
 ########################################
 
-PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
+    register_port "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}"
+    PORT=$(get_port "$PLUGIN_NAME")
 
 ########################################
 # Create configuration directory
 ########################################
 
-mkdir -p "$CONFIG_DIR/prowlarr"
+    mkdir -p "$CONFIG_DIR/prowlarr"
 
 ########################################
 # Add container to docker-compose
@@ -86,16 +81,15 @@ EOF
 # Register Service
 ########################################
 
-if [ "$PLUGIN_DASHBOARD" = true ]; then
+    if [[ "$PLUGIN_DASHBOARD" == "true" ]]; then
 
-register_service \
-"Prowlarr" \
-"http://localhost:$PORT" \
-"$PLUGIN_CATEGORY" \
-"prowlarr.png"
+        register_service \
+            "Prowlarr" \
+            "$PORT" \
+            "$PLUGIN_CATEGORY" \
+            "prowlarr.png"
 
-fi
+    fi
 
-echo "Prowlarr installation complete."
-
+    log "Prowlarr installation complete"
 }

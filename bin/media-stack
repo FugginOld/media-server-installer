@@ -2,21 +2,36 @@
 set -euo pipefail
 
 ########################################
-#Load media-stack runtime
+# Resolve install directory
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+BIN_DIR="$(dirname "$SCRIPT_PATH")"
+INSTALL_DIR="$(cd "$BIN_DIR/.." && pwd)"
+
+export INSTALL_DIR
 
 ########################################
-#Load environment
+# Load runtime + libraries
 ########################################
 
-source "$INSTALL_DIR/core/env.sh"
+source "$INSTALL_DIR/lib/runtime.sh"
+source "$LIB_DIR/compose.sh"
+source "$LIB_DIR/services.sh"
+source "$LIB_DIR/ports.sh"
+
+########################################
+# Load environment
+########################################
+
+if [[ -f "$CORE_DIR/env.sh" ]]; then
+    source "$CORE_DIR/env.sh"
+fi
 
 COMMAND="${1:-help}"
 
 ########################################
-#Help Menu
+# Help Menu
 ########################################
 
 show_help() {
@@ -39,11 +54,10 @@ echo "media-stack backup"
 echo "media-stack reset"
 echo "media-stack version"
 echo ""
-
 }
 
 ########################################
-#Install Stack
+# Install Stack
 ########################################
 
 install_stack() {
@@ -54,60 +68,53 @@ bash installer.sh
 }
 
 ########################################
-#Update Stack
+# Update Stack
 ########################################
 
 update_stack() {
 
-bash "$INSTALL_DIR/scripts/updates.sh"
+bash "$SCRIPT_DIR/updates.sh"
 
 }
 
 ########################################
-#Stack Status
+# Stack Status
 ########################################
 
 status_stack() {
 
-bash "$INSTALL_DIR/scripts/compose.sh" status
+compose_status
 
 }
 
 ########################################
-#List Services
+# List Services
 ########################################
 
 services_stack() {
 
-command -v jq >/dev/null || {
-echo "jq required. Install with: apt install jq"
-exit 1
-}
+require_command jq
 
-if [ -f "$SERVICE_REGISTRY" ]; then
-
-jq -r '.services[] | "\(.name) -> \(.url)"' "$SERVICE_REGISTRY"
-
+if [[ -f "$SERVICE_REGISTRY" ]]; then
+    jq -r '.services[] | "\(.name) -> \(.url)"' "$SERVICE_REGISTRY"
 else
-
-echo "services.json not found"
-
+    echo "services.json not found"
 fi
 
 }
 
 ########################################
-#Doctor
+# Doctor
 ########################################
 
 doctor_stack() {
 
-bash "$INSTALL_DIR/scripts/doctor.sh"
+bash "$SCRIPT_DIR/doctor.sh"
 
 }
 
 ########################################
-#Verify System
+# Verify System
 ########################################
 
 verify_stack() {
@@ -118,10 +125,11 @@ echo "Media Stack Verification"
 echo "================================"
 echo ""
 
-bash "$INSTALL_DIR/scripts/preflight.sh"
-bash "$INSTALL_DIR/scripts/plugin-validator.sh"
-bash "$INSTALL_DIR/scripts/doctor.sh"
-bash "$INSTALL_DIR/scripts/compose.sh" validate
+bash "$SCRIPT_DIR/preflight.sh"
+bash "$SCRIPT_DIR/plugin-validator.sh"
+bash "$SCRIPT_DIR/doctor.sh"
+
+compose_validate
 
 echo ""
 echo "Verification complete."
@@ -130,27 +138,27 @@ echo ""
 }
 
 ########################################
-#Restart Containers
+# Restart Containers
 ########################################
 
 restart_stack() {
 
-bash "$INSTALL_DIR/scripts/compose.sh" restart
+compose_restart
 
 }
 
 ########################################
-#Logs
+# Logs
 ########################################
 
 logs_stack() {
 
-bash "$INSTALL_DIR/scripts/compose.sh" logs "${2:-}"
+compose_logs "${2:-}"
 
 }
 
 ########################################
-#Maintenance
+# Maintenance
 ########################################
 
 maintenance_stack() {
@@ -162,17 +170,17 @@ docker volume prune -f
 }
 
 ########################################
-#Backup
+# Backup
 ########################################
 
 backup_stack() {
 
-bash "$INSTALL_DIR/scripts/backup.sh"
+bash "$SCRIPT_DIR/backup.sh"
 
 }
 
 ########################################
-#Reset
+# Reset
 ########################################
 
 reset_stack() {
@@ -182,21 +190,21 @@ bash "$INSTALL_DIR/reset-stack.sh"
 }
 
 ########################################
-#Version
+# Version
 ########################################
 
 version_stack() {
 
-if [ -f "$INSTALL_DIR/VERSION" ]; then
-echo "Media Stack version: $(cat "$INSTALL_DIR/VERSION")"
+if [[ -f "$INSTALL_DIR/VERSION" ]]; then
+    echo "Media Stack version: $(cat "$INSTALL_DIR/VERSION")"
 else
-echo "Media Stack version unknown"
+    echo "Media Stack version unknown"
 fi
 
 }
 
 ########################################
-#Command Router
+# Command Router
 ########################################
 
 case "$COMMAND" in

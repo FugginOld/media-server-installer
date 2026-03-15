@@ -2,65 +2,93 @@
 set -euo pipefail
 
 ########################################
-#Load media-stack runtime
+# Load media-stack runtime
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
+source "${INSTALL_DIR:-/opt/media-server-installer}/lib/runtime.sh"
 
 ########################################
-#Wait For Container Health
-#
-#Usage:
-#wait-for-container.sh <container> [timeout]
+# Wait for container to become ready
 ########################################
 
-if [ $# -lt 1 ]; then
-echo "Usage: wait-for-container.sh <container> [timeout]"
+CONTAINER="${1:-}"
+TIMEOUT="${2:-120}"
+INTERVAL=5
+
+if [ -z "$CONTAINER" ]; then
+echo "Usage: wait-for-container.sh <container-name> [timeout]"
 exit 1
 fi
 
-CONTAINER="$1"
-TIMEOUT="${2:-120}"
+if ! command -v docker >/dev/null 2>&1; then
+echo "Docker not installed."
+exit 1
+fi
 
+echo ""
 echo "Waiting for container: $CONTAINER"
+echo "Timeout: ${TIMEOUT}s"
+echo ""
 
-ELAPSED=0
+START_TIME=$(date +%s)
 
 while true
 do
 
-STATUS="$(docker inspect \
---format='{{.State.Health.Status}}' \
-"$CONTAINER" 2>/dev/null || true)"
-
-########################################
-#Healthy container
-########################################
-
-if [ "$STATUS" = "healthy" ]; then
-echo "$CONTAINER is healthy"
-exit 0
-fi
-
-########################################
-#Running but no healthcheck
-########################################
-
-if [ "$STATUS" = "running" ]; then
-echo "$CONTAINER running (no healthcheck)"
-exit 0
-fi
-
-sleep 2
-ELAPSED=$((ELAPSED + 2))
-
-########################################
-#Timeout check
-########################################
+CURRENT_TIME=$(date +%s)
+ELAPSED=$((CURRENT_TIME - START_TIME))
 
 if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
-echo "Timeout waiting for $CONTAINER"
+echo "Timeout waiting for container: $CONTAINER"
 exit 1
 fi
+
+########################################
+# Check if container exists
+########################################
+
+if ! docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER}$"; then
+echo "Container not created yet: $CONTAINER"
+sleep "$INTERVAL"
+continue
+fi
+
+########################################
+# Get container state
+########################################
+
+STATUS=$(docker inspect \
+--format '{{.State.Status}}' \
+"$CONTAINER" 2>/dev/null || echo "unknown")
+
+HEALTH=$(docker inspect \
+--format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' \
+"$CONTAINER" 2>/dev/null || echo "unknown")
+
+########################################
+# Health check containers
+########################################
+
+if [ "$HEALTH" = "healthy" ]; then
+echo "Container healthy: $CONTAINER"
+exit 0
+fi
+
+########################################
+# Non-healthcheck containers
+########################################
+
+if [ "$HEALTH" = "none" ] && [ "$STATUS" = "running" ]; then
+echo "Container running: $CONTAINER"
+exit 0
+fi
+
+########################################
+# Status output
+########################################
+
+echo "Waiting... status=$STATUS health=$HEALTH"
+
+sleep "$INTERVAL"
 
 done

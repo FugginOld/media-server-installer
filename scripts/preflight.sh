@@ -2,10 +2,27 @@
 set -euo pipefail
 
 ########################################
-# Load media-stack runtime
+# Resolve installer directory
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
+SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export INSTALL_DIR="${INSTALL_DIR:-$SCRIPT_ROOT}"
+
+########################################
+# Load runtime
+########################################
+
+source "$INSTALL_DIR/lib/runtime.sh"
+
+########################################
+# Load required core modules
+########################################
+
+source "$CORE_DIR/platform.sh"
+source "$CORE_DIR/capabilities.sh"
+source "$CORE_DIR/hardware.sh"
+source "$CORE_DIR/docker.sh"
+source "$CORE_DIR/directories.sh"
 
 ########################################
 # Media Stack Preflight Checks
@@ -21,7 +38,7 @@ echo ""
 # Ensure running as root
 ########################################
 
-if [ "$EUID" -ne 0 ]; then
+if [[ "$EUID" -ne 0 ]]; then
     echo "Installer must be run as root."
     exit 1
 fi
@@ -76,8 +93,7 @@ REQUIRED_CMDS=(
 
 MISSING=()
 
-for CMD in "${REQUIRED_CMDS[@]}"
-do
+for CMD in "${REQUIRED_CMDS[@]}"; do
     if command -v "$CMD" >/dev/null 2>&1; then
         echo "$CMD installed"
     else
@@ -90,7 +106,7 @@ done
 # Install missing dependencies
 ########################################
 
-if [ "${#MISSING[@]}" -gt 0 ]; then
+if [[ "${#MISSING[@]}" -gt 0 ]]; then
 
     echo ""
     echo "Installing missing dependencies..."
@@ -98,8 +114,7 @@ if [ "${#MISSING[@]}" -gt 0 ]; then
 
     pkg_update
 
-    for PKG in "${MISSING[@]}"
-    do
+    for PKG in "${MISSING[@]}"; do
         pkg_install "$PKG"
     done
 
@@ -129,7 +144,7 @@ fi
 FREE_KB="$(df / | awk 'NR==2 {print $4}')"
 FREE_GB=$((FREE_KB / 1024 / 1024))
 
-if [ "$FREE_KB" -lt 1048576 ]; then
+if [[ "$FREE_KB" -lt 1048576 ]]; then
     echo "Less than 1GB free disk space."
     exit 1
 fi

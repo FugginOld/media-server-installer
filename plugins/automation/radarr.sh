@@ -2,32 +2,26 @@
 set -euo pipefail
 
 ########################################
-#Load media-stack runtime
+# Load runtime and libraries
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
+source "${INSTALL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}/lib/runtime.sh"
+source "$LIB_DIR/ports.sh"
+source "$LIB_DIR/services.sh"
 
 ########################################
-#Load installer libraries
-########################################
-
-source "$INSTALL_DIR/scripts/port-helper.sh"
-source "$INSTALL_DIR/scripts/service-registry.sh"
-
-########################################
-#Plugin Metadata
+# Plugin Metadata
 ########################################
 
 PLUGIN_NAME="radarr"
 PLUGIN_DESCRIPTION="Movie Collection Manager"
-PLUGIN_CATEGORY="Automation"
+PLUGIN_CATEGORY="automation"
 
 PLUGIN_DEPENDS=(sabnzbd)
 
 PLUGIN_PORTS=(7878)
 
 PLUGIN_HOST_NETWORK=false
-
 PLUGIN_DASHBOARD=true
 
 ########################################
@@ -36,19 +30,20 @@ PLUGIN_DASHBOARD=true
 
 install_service() {
 
-echo "Installing Radarr..."
+    log "Installing Radarr"
 
 ########################################
-# Request port mapping
+# Register and retrieve port
 ########################################
 
-PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
+    register_port "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}"
+    PORT=$(get_port "$PLUGIN_NAME")
 
 ########################################
 # Create configuration directory
 ########################################
 
-mkdir -p "$CONFIG_DIR/radarr"
+    mkdir -p "$CONFIG_DIR/radarr"
 
 ########################################
 # Add container to docker-compose
@@ -88,16 +83,15 @@ EOF
 # Register Service
 ########################################
 
-if [ "$PLUGIN_DASHBOARD" = true ]; then
+    if [[ "$PLUGIN_DASHBOARD" == "true" ]]; then
 
-register_service \
-"Radarr" \
-"http://localhost:$PORT" \
-"$PLUGIN_CATEGORY" \
-"radarr.png"
+        register_service \
+            "Radarr" \
+            "$PORT" \
+            "$PLUGIN_CATEGORY" \
+            "radarr.png"
 
-fi
+    fi
 
-echo "Radarr installation complete."
-
+    log "Radarr installation complete"
 }

@@ -2,13 +2,21 @@
 set -euo pipefail
 
 ########################################
-#Load media-stack runtime
+# Resolve install directory
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export INSTALL_DIR="$SCRIPT_DIR"
 
 ########################################
-#Updating Media Stack
+# Load runtime and libraries
+########################################
+
+source "$INSTALL_DIR/lib/runtime.sh"
+source "$LIB_DIR/compose.sh"
+
+########################################
+# Updating Media Stack
 ########################################
 
 echo ""
@@ -18,38 +26,38 @@ echo "================================"
 echo ""
 
 ########################################
-#Ensure git exists
+# Ensure git exists
 ########################################
 
 if ! command -v git >/dev/null 2>&1; then
-echo "Git is required for updates."
-exit 1
+    echo "Git is required for updates."
+    exit 1
 fi
 
 ########################################
-#Ensure installer repository exists
+# Ensure installer repository exists
 ########################################
 
-if [ ! -d "$INSTALL_DIR/.git" ]; then
-echo "Installer repository not found: $INSTALL_DIR"
-exit 1
+if [[ ! -d "$INSTALL_DIR/.git" ]]; then
+    echo "Installer repository not found: $INSTALL_DIR"
+    exit 1
 fi
 
 cd "$INSTALL_DIR" || exit 1
 
 ########################################
-#Update installer repository
+# Update installer repository
 ########################################
 
 echo "Pulling latest installer updates..."
 
 if ! git pull --ff-only; then
-echo "Failed to update installer repository."
-exit 1
+    echo "Failed to update installer repository."
+    exit 1
 fi
 
 ########################################
-#Show recent changes
+# Show recent changes
 ########################################
 
 echo ""
@@ -57,7 +65,7 @@ echo "Recent changes:"
 git --no-pager log --oneline -5 || true
 
 ########################################
-#Validate plugins after update
+# Validate plugins after update
 ########################################
 
 echo ""
@@ -66,31 +74,31 @@ echo "Validating plugins..."
 bash "$INSTALL_DIR/scripts/plugin-validator.sh"
 
 ########################################
-#Validate docker compose configuration
+# Validate docker compose configuration
 ########################################
 
 echo ""
 echo "Validating compose configuration..."
 
-bash "$INSTALL_DIR/scripts/compose.sh" validate
+compose_validate
 
 ########################################
-#Pull container updates
+# Pull container updates
 ########################################
 
 echo ""
 echo "Updating container images..."
 
-bash "$INSTALL_DIR/scripts/compose.sh" pull
+compose_pull
 
 ########################################
-#Restart containers
+# Restart containers
 ########################################
 
 echo ""
 echo "Restarting containers..."
 
-bash "$INSTALL_DIR/scripts/compose.sh" restart
+compose_restart
 
 echo ""
 echo "Media Stack update complete."

@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 
 ########################################
+# Load runtime if not already loaded
+########################################
+
+if [ -z "${MEDIA_STACK_RUNTIME_LOADED:-}" ]; then
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export INSTALL_DIR="$SCRIPT_DIR"
+source "$INSTALL_DIR/lib/runtime.sh"
+fi
+
+########################################
 # Platform Detection
 ########################################
 
@@ -31,10 +41,16 @@ detect_platform() {
 echo "Detecting operating system..."
 
 if [ -f /etc/os-release ]; then
+
 . /etc/os-release
+
 PLATFORM_ID="${ID,,}"
+PLATFORM_LIKE="${ID_LIKE:-}"
+
 else
+
 PLATFORM_ID="unknown"
+
 fi
 
 ########################################
@@ -72,8 +88,10 @@ case "$PLATFORM_ID" in
 ########################################
 
 debian|ubuntu|devuan|linuxmint|pop|elementary)
+
 PLATFORM_FAMILY="debian"
 PACKAGE_MANAGER="apt"
+
 ;;
 
 ########################################
@@ -81,6 +99,7 @@ PACKAGE_MANAGER="apt"
 ########################################
 
 fedora|rhel|centos|rocky|almalinux)
+
 PLATFORM_FAMILY="redhat"
 
 if command -v dnf >/dev/null 2>&1; then
@@ -88,6 +107,7 @@ PACKAGE_MANAGER="dnf"
 else
 PACKAGE_MANAGER="yum"
 fi
+
 ;;
 
 ########################################
@@ -95,8 +115,10 @@ fi
 ########################################
 
 arch|manjaro|endeavouros)
+
 PLATFORM_FAMILY="arch"
 PACKAGE_MANAGER="pacman"
+
 ;;
 
 ########################################
@@ -104,8 +126,10 @@ PACKAGE_MANAGER="pacman"
 ########################################
 
 opensuse*|sles)
+
 PLATFORM_FAMILY="suse"
 PACKAGE_MANAGER="zypper"
+
 ;;
 
 ########################################
@@ -113,17 +137,31 @@ PACKAGE_MANAGER="zypper"
 ########################################
 
 alpine)
+
 PLATFORM_FAMILY="alpine"
 PACKAGE_MANAGER="apk"
+
 ;;
 
 ########################################
-# Unknown
+# Fallback using ID_LIKE
 ########################################
 
 *)
+
+if [[ "$PLATFORM_LIKE" == *debian* ]]; then
+PLATFORM_FAMILY="debian"
+PACKAGE_MANAGER="apt"
+
+elif [[ "$PLATFORM_LIKE" == *rhel* ]]; then
+PLATFORM_FAMILY="redhat"
+PACKAGE_MANAGER="dnf"
+
+else
 PLATFORM_FAMILY="unknown"
 PACKAGE_MANAGER="unknown"
+fi
+
 ;;
 
 esac
@@ -149,6 +187,11 @@ echo "Unsupported Linux distribution."
 exit 1
 fi
 
+export PLATFORM_ID
+export PLATFORM_FAMILY
+export PACKAGE_MANAGER
+export NAS_PLATFORM
+
 }
 
 ########################################
@@ -160,23 +203,23 @@ pkg_update() {
 case "$PACKAGE_MANAGER" in
 
 apt)
-apt update
+apt update -y
 ;;
 
 dnf)
-dnf makecache
+dnf makecache -y
 ;;
 
 yum)
-yum makecache
+yum makecache -y
 ;;
 
 pacman)
-pacman -Syu --noconfirm
+pacman -Sy --noconfirm
 ;;
 
 zypper)
-zypper refresh
+zypper refresh -y
 ;;
 
 apk)
@@ -230,13 +273,8 @@ esac
 }
 
 ########################################
-# Export environment
+# Export functions
 ########################################
-
-export PLATFORM_ID
-export PLATFORM_FAMILY
-export PACKAGE_MANAGER
-export NAS_PLATFORM
 
 export -f require_root
 export -f detect_platform

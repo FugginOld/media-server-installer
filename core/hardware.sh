@@ -1,10 +1,21 @@
 #!/usr/bin/env bash
 
 ########################################
+# Load runtime if not already loaded
+########################################
+
+if [ -z "${MEDIA_STACK_RUNTIME_LOADED:-}" ]; then
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export INSTALL_DIR="$SCRIPT_DIR"
+source "$INSTALL_DIR/lib/runtime.sh"
+fi
+
+########################################
 # Hardware Detection
 ########################################
 
-GPU_DEVICE="none"
+GPU_TYPE="none"
+GPU_DEVICES=""
 
 ########################################
 # Detect GPU
@@ -28,6 +39,8 @@ case "${CAP_GPU:-none}" in
 
 nvidia)
 
+GPU_TYPE="nvidia"
+
 echo "NVIDIA GPU detected."
 
 if command -v nvidia-smi >/dev/null 2>&1; then
@@ -43,6 +56,8 @@ fi
 ########################################
 
 intel)
+
+GPU_TYPE="intel"
 
 echo "Intel integrated GPU detected."
 
@@ -60,6 +75,8 @@ fi
 
 amd)
 
+GPU_TYPE="amd"
+
 echo "AMD GPU detected."
 
 if [ -d /dev/dri ]; then
@@ -74,6 +91,8 @@ fi
 
 *)
 
+GPU_TYPE="none"
+
 echo "No compatible GPU detected."
 
 ;;
@@ -81,6 +100,8 @@ echo "No compatible GPU detected."
 esac
 
 echo ""
+
+export GPU_TYPE
 
 }
 
@@ -90,18 +111,24 @@ echo ""
 
 configure_gpu_devices() {
 
-case "${CAP_GPU:-none}" in
+case "$GPU_TYPE" in
 
 ########################################
-# Intel GPU
+# Intel / AMD GPU
 ########################################
 
-intel)
+intel|amd)
 
 if [ -d /dev/dri ]; then
-GPU_DEVICE="/dev/dri"
+
+GPU_DEVICES=$(cat <<EOF
+    devices:
+      - /dev/dri:/dev/dri
+EOF
+)
+
 else
-GPU_DEVICE="none"
+GPU_DEVICES=""
 fi
 
 ;;
@@ -112,21 +139,14 @@ fi
 
 nvidia)
 
-GPU_DEVICE="nvidia"
-
-;;
-
-########################################
-# AMD GPU
-########################################
-
-amd)
-
-if [ -d /dev/dri ]; then
-GPU_DEVICE="/dev/dri"
-else
-GPU_DEVICE="none"
-fi
+GPU_DEVICES=$(cat <<EOF
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+EOF
+)
 
 ;;
 
@@ -136,15 +156,15 @@ fi
 
 *)
 
-GPU_DEVICE="none"
+GPU_DEVICES=""
 
 ;;
 
 esac
 
-export GPU_DEVICE
+export GPU_DEVICES
 
-echo "GPU device configuration: $GPU_DEVICE"
+echo "GPU type: $GPU_TYPE"
 
 }
 

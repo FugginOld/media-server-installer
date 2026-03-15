@@ -2,13 +2,13 @@
 set -euo pipefail
 
 ########################################
-#Load media-stack runtime
+# Load media-stack runtime
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
+source "${INSTALL_DIR:-/opt/media-server-installer}/lib/runtime.sh"
 
 ########################################
-#Media Stack Doctor
+# Media Stack Doctor
 ########################################
 
 PASS_COUNT=0
@@ -16,7 +16,7 @@ WARN_COUNT=0
 FAIL_COUNT=0
 
 ########################################
-#Output helpers
+# Output helpers
 ########################################
 
 pass() {
@@ -41,27 +41,27 @@ echo "================================"
 echo ""
 
 ########################################
-#Installer directory
+# Installer directory
 ########################################
 
-if [ -d "$INSTALL_DIR" ]; then
+if [ -d "${INSTALL_DIR:-}" ]; then
 pass "Installer directory present"
 else
 fail "Installer directory missing ($INSTALL_DIR)"
 fi
 
 ########################################
-#Stack directory
+# Stack directory
 ########################################
 
-if [ -d "$STACK_DIR" ]; then
+if [ -d "${STACK_DIR:-}" ]; then
 pass "Stack directory present"
 else
 fail "Stack directory missing ($STACK_DIR)"
 fi
 
 ########################################
-#Docker binary
+# Docker binary
 ########################################
 
 DOCKER_PRESENT=false
@@ -74,7 +74,7 @@ fail "Docker NOT installed"
 fi
 
 ########################################
-#Docker daemon
+# Docker daemon
 ########################################
 
 if [ "$DOCKER_PRESENT" = true ]; then
@@ -90,7 +90,7 @@ warn "Skipping daemon check (docker missing)"
 fi
 
 ########################################
-#Docker compose
+# Docker compose
 ########################################
 
 if [ "$DOCKER_PRESENT" = true ]; then
@@ -106,32 +106,32 @@ warn "Skipping compose check"
 fi
 
 ########################################
-#docker-compose.yml
+# docker-compose.yml
 ########################################
 
-if [ -f "$STACK_DIR/docker-compose.yml" ]; then
+if [ -f "${STACK_DIR}/docker-compose.yml" ]; then
 pass "docker-compose.yml present"
 else
 fail "docker-compose.yml missing"
 fi
 
 ########################################
-#Service registry
+# Service registry
 ########################################
 
-if [ -f "$SERVICE_REGISTRY" ]; then
+if [ -f "${SERVICE_REGISTRY:-}" ]; then
 pass "Service registry present"
 else
 warn "services.json missing"
 fi
 
 ########################################
-#Port registry
+# Port registry
 ########################################
 
 PORT_REGISTRY_PRESENT=false
 
-if [ -f "$PORT_REGISTRY" ]; then
+if [ -f "${PORT_REGISTRY:-}" ]; then
 pass "Port registry present"
 PORT_REGISTRY_PRESENT=true
 else
@@ -139,10 +139,10 @@ warn "Port registry missing"
 fi
 
 ########################################
-#Plugin directory
+# Plugin directory
 ########################################
 
-if [ -d "$PLUGIN_DIR" ]; then
+if [ -d "${PLUGIN_DIR:-}" ]; then
 
 PLUGIN_COUNT=$(find "$PLUGIN_DIR" -type f -name "*.sh" ! -path "*/_template/*" | wc -l)
 
@@ -157,25 +157,26 @@ warn "Plugin directory missing"
 fi
 
 ########################################
-#Running containers
+# Running containers
 ########################################
 
 echo ""
 echo "Container Status"
 
-if [ "$DOCKER_PRESENT" = true ]; then
+if [ "$DOCKER_PRESENT" = true ] && docker info >/dev/null 2>&1; then
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 else
 echo "Docker unavailable"
 fi
 
 ########################################
-#Port conflict check
+# Port conflict check
 ########################################
 
 if [ "$PORT_REGISTRY_PRESENT" = true ] && command -v jq >/dev/null 2>&1; then
 
-DUPLICATES=$(jq -r '.[]' "$PORT_REGISTRY" | sort | uniq -d || true)
+PORTS=$(jq -r '.[]' "$PORT_REGISTRY" 2>/dev/null || true)
+DUPLICATES=$(echo "$PORTS" | sort | uniq -d || true)
 
 if [ -z "$DUPLICATES" ]; then
 pass "No duplicate ports in registry"
@@ -188,7 +189,7 @@ warn "Skipping port conflict check"
 fi
 
 ########################################
-#Summary
+# Summary
 ########################################
 
 echo ""

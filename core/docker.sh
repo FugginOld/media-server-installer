@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 
 ########################################
+# Load runtime if not already loaded
+########################################
+
+if [ -z "${MEDIA_STACK_RUNTIME_LOADED:-}" ]; then
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export INSTALL_DIR="$SCRIPT_DIR"
+source "$INSTALL_DIR/lib/runtime.sh"
+fi
+
+########################################
 # Docker Management
 ########################################
 
@@ -221,7 +231,12 @@ verify_docker
 }
 
 ########################################
-# Export function
+# Export functions
 ########################################
 
+export -f docker_installed
+export -f install_docker
+export -f enable_docker_service
+export -f configure_docker_permissions
+export -f verify_docker
 export -f ensure_docker

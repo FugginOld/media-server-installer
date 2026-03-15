@@ -2,32 +2,26 @@
 set -euo pipefail
 
 ########################################
-#Load media-stack runtime
+# Load runtime and libraries
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
+source "${INSTALL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}/lib/runtime.sh"
+source "$LIB_DIR/ports.sh"
+source "$LIB_DIR/services.sh"
 
 ########################################
-#Load installer libraries
-########################################
-
-source "$INSTALL_DIR/scripts/port-helper.sh"
-source "$INSTALL_DIR/scripts/service-registry.sh"
-
-########################################
-#Plugin Metadata
+# Plugin Metadata
 ########################################
 
 PLUGIN_NAME="tdarr"
 PLUGIN_DESCRIPTION="Media Transcoding Automation"
-PLUGIN_CATEGORY="Media"
+PLUGIN_CATEGORY="media"
 
 PLUGIN_DEPENDS=()
 
 PLUGIN_PORTS=(8265)
 
 PLUGIN_HOST_NETWORK=false
-
 PLUGIN_DASHBOARD=true
 
 ########################################
@@ -36,21 +30,22 @@ PLUGIN_DASHBOARD=true
 
 install_service() {
 
-echo "Installing Tdarr..."
+    log "Installing Tdarr"
 
 ########################################
-# Request port mapping
+# Register and retrieve port
 ########################################
 
-PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
+    register_port "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}"
+    PORT=$(get_port "$PLUGIN_NAME")
 
 ########################################
 # Create configuration directories
 ########################################
 
-mkdir -p "$CONFIG_DIR/tdarr/server"
-mkdir -p "$CONFIG_DIR/tdarr/config"
-mkdir -p "$CONFIG_DIR/tdarr/logs"
+    mkdir -p "$CONFIG_DIR/tdarr/server"
+    mkdir -p "$CONFIG_DIR/tdarr/config"
+    mkdir -p "$CONFIG_DIR/tdarr/logs"
 
 ########################################
 # Add container to docker-compose
@@ -81,9 +76,9 @@ EOF
 # GPU Support
 ########################################
 
-if [ "$GPU_TYPE" != "none" ]; then
-echo "$GPU_DEVICES" >> "$TMP_COMPOSE"
-fi
+    if [[ "${GPU_TYPE:-none}" != "none" ]]; then
+        echo "$GPU_DEVICES" >> "$TMP_COMPOSE"
+    fi
 
 ########################################
 # Health Check
@@ -101,16 +96,15 @@ EOF
 # Register Service
 ########################################
 
-if [ "$PLUGIN_DASHBOARD" = true ]; then
+    if [[ "$PLUGIN_DASHBOARD" == "true" ]]; then
 
-register_service \
-"Tdarr" \
-"http://localhost:$PORT" \
-"$PLUGIN_CATEGORY" \
-"tdarr.png"
+        register_service \
+            "Tdarr" \
+            "$PORT" \
+            "$PLUGIN_CATEGORY" \
+            "tdarr.png"
 
-fi
+    fi
 
-echo "Tdarr installation complete."
-
+    log "Tdarr installation complete"
 }

@@ -5,13 +5,7 @@ set -euo pipefail
 # Load media-stack runtime
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
-
-########################################
-# Load environment
-########################################
-
-source "$INSTALL_DIR/core/env.sh"
+source "${INSTALL_DIR:-/opt/media-server-installer}/lib/runtime.sh"
 
 ########################################
 # Plugin Validation
@@ -30,7 +24,7 @@ COUNT=0
 # Ensure plugin directory exists
 ########################################
 
-if [ ! -d "$PLUGIN_DIR" ]; then
+if [ ! -d "${PLUGIN_DIR:-}" ]; then
 echo "Plugin directory not found: $PLUGIN_DIR"
 exit 1
 fi
@@ -44,7 +38,7 @@ check_field() {
 FIELD="$1"
 FILE="$2"
 
-if ! grep -qE "^${FIELD}=" "$FILE"; then
+if ! grep -qE "^[[:space:]]*${FIELD}=" "$FILE"; then
 echo "  Missing $FIELD"
 FAIL=1
 fi
@@ -60,8 +54,8 @@ check_function() {
 FUNC="$1"
 FILE="$2"
 
-if ! grep -qE "(^${FUNC}\(\)|^function ${FUNC})" "$FILE"; then
-echo "  Missing function: $FUNC()"
+if ! grep -qE "(^${FUNC}\(\)|^function[[:space:]]+${FUNC})" "$FILE"; then
+echo "  Missing function: ${FUNC}()"
 FAIL=1
 fi
 
@@ -87,7 +81,8 @@ COUNT=$((COUNT+1))
 
 done < <(
 find "$PLUGIN_DIR" -type f -name "*.sh" \
-! -path "*/_template/*"
+! -path "*/_template/*" \
+! -path "*/README.md"
 )
 
 ########################################

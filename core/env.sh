@@ -9,24 +9,24 @@ fi
 export MEDIA_STACK_ENV_LOADED=1
 
 ########################################
-# Stack directory
+# Load runtime if needed
 ########################################
 
-STACK_DIR="/opt/media-stack"
+if [ -z "${MEDIA_STACK_RUNTIME_LOADED:-}" ]; then
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export INSTALL_DIR="$SCRIPT_DIR"
+source "$INSTALL_DIR/lib/runtime.sh"
+fi
 
 ########################################
-# Core directories
+# Stack directories
 ########################################
 
-CONFIG_DIR="$STACK_DIR/config"
-LOG_DIR="$STACK_DIR/logs"
-BACKUP_DIR="$STACK_DIR/backups"
+STACK_DIR="${STACK_DIR:-/opt/media-stack}"
 
-########################################
-# Plugin architecture
-########################################
-
-PLUGIN_DIR="$INSTALL_DIR/plugins"
+CONFIG_DIR="${CONFIG_DIR:-$STACK_DIR/config}"
+LOG_DIR="${LOG_DIR:-$STACK_DIR/logs}"
+BACKUP_DIR="${BACKUP_DIR:-$STACK_DIR/backups}"
 
 ########################################
 # Registry files
@@ -49,26 +49,8 @@ DOWNLOADS_PATH="${DOWNLOADS_PATH:-/downloads}"
 ########################################
 
 if [ -f "$STACK_DIR/stack.env" ]; then
-    # shellcheck disable=SC1090
-    source "$STACK_DIR/stack.env"
-fi
-
-########################################
-# Ensure base directories exist
-########################################
-
-mkdir -p "$STACK_DIR" "$CONFIG_DIR" "$LOG_DIR" "$BACKUP_DIR"
-
-########################################
-# Ensure registry files exist
-########################################
-
-if [ ! -f "$SERVICE_REGISTRY" ]; then
-    echo '{"services":[]}' > "$SERVICE_REGISTRY"
-fi
-
-if [ ! -f "$PORT_REGISTRY" ]; then
-    echo '{}' > "$PORT_REGISTRY"
+# shellcheck disable=SC1090
+source "$STACK_DIR/stack.env"
 fi
 
 ########################################
@@ -77,28 +59,26 @@ fi
 
 if [ -n "${PUID:-}" ]; then
 
-    # Already provided via stack.env or environment
-    PUID="$PUID"
-    PGID="${PGID:-$PUID}"
+PGID="${PGID:-$PUID}"
 
 else
 
-    if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
-        USER_NAME="$SUDO_USER"
+if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
+USER_NAME="$SUDO_USER"
 
-    elif [ "$(id -u)" -ne 0 ]; then
-        USER_NAME="$(whoami)"
+elif [ "$(id -u)" -ne 0 ]; then
+USER_NAME="$(whoami)"
 
-    else
-        if getent passwd 1000 >/dev/null; then
-            USER_NAME="$(getent passwd 1000 | cut -d: -f1)"
-        else
-            USER_NAME="root"
-        fi
-    fi
+else
+if getent passwd 1000 >/dev/null; then
+USER_NAME="$(getent passwd 1000 | cut -d: -f1)"
+else
+USER_NAME="root"
+fi
+fi
 
-    PUID="$(id -u "$USER_NAME" 2>/dev/null || echo 1000)"
-    PGID="$(id -g "$USER_NAME" 2>/dev/null || echo 1000)"
+PUID="$(id -u "$USER_NAME" 2>/dev/null || echo 1000)"
+PGID="$(id -g "$USER_NAME" 2>/dev/null || echo 1000)"
 
 fi
 
@@ -115,18 +95,17 @@ TIMEZONE="${TIMEZONE:-UTC}"
 echo ""
 echo "Using PUID=$PUID"
 echo "Using PGID=$PGID"
+echo "Detected HOST_IP=${HOST_IP:-unknown}"
 echo ""
 
 ########################################
 # Export variables
 ########################################
 
-export INSTALL_DIR
 export STACK_DIR
 export CONFIG_DIR
 export LOG_DIR
 export BACKUP_DIR
-export PLUGIN_DIR
 
 export SERVICE_REGISTRY
 export PORT_REGISTRY

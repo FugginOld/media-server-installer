@@ -2,19 +2,20 @@
 set -euo pipefail
 
 ########################################
-#Load media-stack runtime
+# Load media-stack runtime
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
+source "${INSTALL_DIR:-/opt/media-server-installer}/lib/runtime.sh"
 
 ########################################
-#Media Stack Health Monitor
+# Media Stack Health Monitor
 ########################################
 
 CHECK_INTERVAL=60
+CURL_TIMEOUT=5
 
 ########################################
-#Ensure dependencies exist
+# Ensure dependencies exist
 ########################################
 
 if ! command -v jq >/dev/null 2>&1; then
@@ -28,7 +29,7 @@ exit 1
 fi
 
 ########################################
-#Verify registry exists
+# Verify registry exists
 ########################################
 
 if [ ! -f "$SERVICE_REGISTRY" ]; then
@@ -37,40 +38,51 @@ exit 1
 fi
 
 ########################################
-#Handle shutdown
+# Handle shutdown
 ########################################
 
 trap "echo ''; echo 'Health monitor stopped.'; exit 0" SIGINT SIGTERM
 
 echo ""
-echo "Media Stack Health Monitor started."
+echo "================================"
+echo "Media Stack Health Monitor"
+echo "================================"
+echo ""
 echo "Checking services every $CHECK_INTERVAL seconds."
 echo ""
 
 ########################################
-#Monitoring loop
+# Monitoring loop
 ########################################
 
 while true
 do
 
-jq -r '.services[] | "\(.name)|\(.url)"' "$SERVICE_REGISTRY" | while IFS="|" read -r NAME URL
+SERVICES=$(jq -r '.services[]? | "\(.name)|\(.url)"' "$SERVICE_REGISTRY" 2>/dev/null || true)
+
+if [ -z "$SERVICES" ]; then
+echo "$(date '+%H:%M:%S') No services registered."
+sleep "$CHECK_INTERVAL"
+continue
+fi
+
+echo "$SERVICES" | while IFS="|" read -r NAME URL
 do
 
 ########################################
-#Check service availability
+# Check service availability
 ########################################
 
-if curl -fs "$URL" >/dev/null 2>&1; then
-echo "$(date '+%H:%M:%S') OK: $NAME"
+if curl -fs --max-time "$CURL_TIMEOUT" "$URL" >/dev/null 2>&1; then
+echo "$(date '+%H:%M:%S') OK       $NAME"
 else
-echo "$(date '+%H:%M:%S') WARNING: $NAME not responding"
+echo "$(date '+%H:%M:%S') WARNING  $NAME not responding"
 fi
 
 done
 
 ########################################
-#Wait before next check
+# Wait before next check
 ########################################
 
 sleep "$CHECK_INTERVAL"

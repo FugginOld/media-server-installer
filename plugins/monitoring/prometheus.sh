@@ -2,32 +2,26 @@
 set -euo pipefail
 
 ########################################
-#Load media-stack runtime
+# Load runtime and libraries
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
+source "${INSTALL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}/lib/runtime.sh"
+source "$LIB_DIR/ports.sh"
+source "$LIB_DIR/services.sh"
 
 ########################################
-#Load installer libraries
-########################################
-
-source "$INSTALL_DIR/scripts/port-helper.sh"
-source "$INSTALL_DIR/scripts/service-registry.sh"
-
-########################################
-#Plugin Metadata
+# Plugin Metadata
 ########################################
 
 PLUGIN_NAME="prometheus"
 PLUGIN_DESCRIPTION="Metrics Collection Server"
-PLUGIN_CATEGORY="Monitoring"
+PLUGIN_CATEGORY="monitoring"
 
 PLUGIN_DEPENDS=()
 
 PLUGIN_PORTS=(9090)
 
 PLUGIN_HOST_NETWORK=false
-
 PLUGIN_DASHBOARD=true
 
 ########################################
@@ -36,19 +30,20 @@ PLUGIN_DASHBOARD=true
 
 install_service() {
 
-echo "Installing Prometheus..."
+    log "Installing Prometheus"
 
 ########################################
-# Request port mapping
+# Register and retrieve port
 ########################################
 
-PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
+    register_port "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}"
+    PORT=$(get_port "$PLUGIN_NAME")
 
 ########################################
 # Create configuration directory
 ########################################
 
-mkdir -p "$CONFIG_DIR/prometheus"
+    mkdir -p "$CONFIG_DIR/prometheus"
 
 ########################################
 # Generate default Prometheus config
@@ -105,16 +100,15 @@ EOF
 # Register Service
 ########################################
 
-if [ "$PLUGIN_DASHBOARD" = true ]; then
+    if [[ "$PLUGIN_DASHBOARD" == "true" ]]; then
 
-register_service \
-"Prometheus" \
-"http://localhost:$PORT" \
-"$PLUGIN_CATEGORY" \
-"prometheus.png"
+        register_service \
+            "Prometheus" \
+            "$PORT" \
+            "$PLUGIN_CATEGORY" \
+            "prometheus.png"
 
-fi
+    fi
 
-echo "Prometheus installation complete."
-
+    log "Prometheus installation complete"
 }

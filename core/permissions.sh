@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 
 ########################################
+# Load runtime if not already loaded
+########################################
+
+if [ -z "${MEDIA_STACK_RUNTIME_LOADED:-}" ]; then
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export INSTALL_DIR="$SCRIPT_DIR"
+source "$INSTALL_DIR/lib/runtime.sh"
+fi
+
+########################################
 # Permissions Management
 ########################################
 
@@ -18,6 +28,9 @@ if [ -z "${PGID:-}" ]; then
 PGID=$(id -g)
 fi
 
+export PUID
+export PGID
+
 echo "Using PUID=$PUID"
 echo "Using PGID=$PGID"
 
@@ -29,10 +42,10 @@ echo "Using PGID=$PGID"
 
 resolve_directories() {
 
-MEDIA_ROOT="${MEDIA_DIR:-$MEDIA_PATH}"
-MOVIES_ROOT="${MOVIES_DIR:-$MOVIES_PATH}"
-TV_ROOT="${TV_DIR:-$TV_PATH}"
-DOWNLOADS_ROOT="${DOWNLOADS_DIR:-$DOWNLOADS_PATH}"
+MEDIA_ROOT="${MEDIA_DIR:-${MEDIA_PATH:-/media}}"
+MOVIES_ROOT="${MOVIES_DIR:-${MOVIES_PATH:-/media/movies}}"
+TV_ROOT="${TV_DIR:-${TV_PATH:-/media/tv}}"
+DOWNLOADS_ROOT="${DOWNLOADS_DIR:-${DOWNLOADS_PATH:-/downloads}}"
 
 }
 
@@ -56,6 +69,10 @@ for DIR in "${DIRS[@]}"
 do
 
 if [ -z "$DIR" ]; then
+continue
+fi
+
+if [ "$DIR" = "/" ]; then
 continue
 fi
 
@@ -138,7 +155,11 @@ apply_nas_permissions
 }
 
 ########################################
-# Export function
+# Export functions
 ########################################
 
+export -f detect_user_ids
+export -f resolve_directories
+export -f fix_media_permissions
+export -f apply_nas_permissions
 export -f setup_permissions

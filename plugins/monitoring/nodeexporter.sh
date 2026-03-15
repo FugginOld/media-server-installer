@@ -2,32 +2,26 @@
 set -euo pipefail
 
 ########################################
-#Load media-stack runtime
+# Load runtime and libraries
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
+source "${INSTALL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}/lib/runtime.sh"
+source "$LIB_DIR/ports.sh"
+source "$LIB_DIR/services.sh"
 
 ########################################
-#Load installer libraries
-########################################
-
-source "$INSTALL_DIR/scripts/port-helper.sh"
-source "$INSTALL_DIR/scripts/service-registry.sh"
-
-########################################
-#Plugin Metadata
+# Plugin Metadata
 ########################################
 
 PLUGIN_NAME="nodeexporter"
 PLUGIN_DESCRIPTION="System Metrics Exporter"
-PLUGIN_CATEGORY="Monitoring"
+PLUGIN_CATEGORY="monitoring"
 
 PLUGIN_DEPENDS=(prometheus)
 
 PLUGIN_PORTS=(9100)
 
 PLUGIN_HOST_NETWORK=false
-
 PLUGIN_DASHBOARD=false
 
 ########################################
@@ -36,13 +30,14 @@ PLUGIN_DASHBOARD=false
 
 install_service() {
 
-echo "Installing Node Exporter..."
+    log "Installing Node Exporter"
 
 ########################################
-# Request port mapping
+# Register and retrieve port
 ########################################
 
-PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
+    register_port "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}"
+    PORT=$(get_port "$PLUGIN_NAME")
 
 ########################################
 # Add container to docker-compose
@@ -70,6 +65,5 @@ cat <<EOF >> "$TMP_COMPOSE"
       retries: 3
 EOF
 
-echo "Node Exporter installation complete."
-
+    log "Node Exporter installation complete"
 }

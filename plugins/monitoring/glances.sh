@@ -2,32 +2,26 @@
 set -euo pipefail
 
 ########################################
-#Load media-stack runtime
+# Load runtime and libraries
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
+source "${INSTALL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}/lib/runtime.sh"
+source "$LIB_DIR/ports.sh"
+source "$LIB_DIR/services.sh"
 
 ########################################
-#Load installer libraries
-########################################
-
-source "$INSTALL_DIR/scripts/port-helper.sh"
-source "$INSTALL_DIR/scripts/service-registry.sh"
-
-########################################
-#Plugin Metadata
+# Plugin Metadata
 ########################################
 
 PLUGIN_NAME="glances"
 PLUGIN_DESCRIPTION="System Monitoring Dashboard"
-PLUGIN_CATEGORY="Monitoring"
+PLUGIN_CATEGORY="monitoring"
 
 PLUGIN_DEPENDS=(prometheus)
 
 PLUGIN_PORTS=(61208)
 
 PLUGIN_HOST_NETWORK=false
-
 PLUGIN_DASHBOARD=true
 
 ########################################
@@ -36,19 +30,20 @@ PLUGIN_DASHBOARD=true
 
 install_service() {
 
-echo "Installing Glances..."
+    log "Installing Glances"
 
 ########################################
-# Request port mapping
+# Register and retrieve port
 ########################################
 
-PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
+    register_port "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}"
+    PORT=$(get_port "$PLUGIN_NAME")
 
 ########################################
 # Create configuration directory
 ########################################
 
-mkdir -p "$CONFIG_DIR/glances"
+    mkdir -p "$CONFIG_DIR/glances"
 
 ########################################
 # Add container to docker-compose
@@ -85,16 +80,15 @@ EOF
 # Register Service
 ########################################
 
-if [ "$PLUGIN_DASHBOARD" = true ]; then
+    if [[ "$PLUGIN_DASHBOARD" == "true" ]]; then
 
-register_service \
-"Glances" \
-"http://localhost:$PORT" \
-"$PLUGIN_CATEGORY" \
-"glances.png"
+        register_service \
+            "Glances" \
+            "$PORT" \
+            "$PLUGIN_CATEGORY" \
+            "glances.png"
 
-fi
+    fi
 
-echo "Glances installation complete."
-
+    log "Glances installation complete"
 }

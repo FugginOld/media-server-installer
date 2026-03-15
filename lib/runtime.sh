@@ -28,11 +28,13 @@ export INSTALL_DIR
 ########################################
 
 CORE_DIR="$INSTALL_DIR/core"
+LIB_DIR="$INSTALL_DIR/lib"
 SCRIPT_DIR="$INSTALL_DIR/scripts"
 PLUGIN_DIR="$INSTALL_DIR/plugins"
 TEMPLATE_DIR="$INSTALL_DIR/templates"
 
 export CORE_DIR
+export LIB_DIR
 export SCRIPT_DIR
 export PLUGIN_DIR
 export TEMPLATE_DIR
@@ -46,18 +48,36 @@ if [ ! -d "$CORE_DIR" ]; then
     exit 1
 fi
 
-if [ ! -d "$SCRIPT_DIR" ]; then
-    echo "Runtime error: scripts directory missing"
-    exit 1
-fi
-
-if [ ! -d "$PLUGIN_DIR" ]; then
-    echo "Runtime error: plugins directory missing"
-    exit 1
-fi
-
 ########################################
-# Load environment
+# Detect host IP
 ########################################
 
-source "$CORE_DIR/env.sh"
+detect_host_ip() {
+
+    HOST_IP=""
+
+    if command -v ip >/dev/null 2>&1; then
+        HOST_IP="$(ip route get 1 | awk '{print $7; exit}')"
+    fi
+
+    if [ -z "$HOST_IP" ]; then
+        HOST_IP="$(hostname -I | awk '{print $1}')"
+    fi
+
+    if [ -z "$HOST_IP" ]; then
+        HOST_IP="127.0.0.1"
+    fi
+}
+
+detect_host_ip
+export HOST_IP
+
+########################################
+# Logging helper
+########################################
+
+log() {
+    echo "[media-stack] $*"
+}
+
+export -f log

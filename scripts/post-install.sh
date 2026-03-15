@@ -38,6 +38,12 @@ if [ -f "$SCRIPT_DIR/grafana-dynamic.sh" ]; then
 fi
 
 ########################################
+# Generate dashboard configuration
+########################################
+
+bash "$INSTALL_DIR/scripts/dashboard-generator.sh"
+
+########################################
 # Display registered services
 ########################################
 

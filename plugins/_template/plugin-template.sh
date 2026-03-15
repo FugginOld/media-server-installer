@@ -2,106 +2,27 @@
 set -euo pipefail
 
 ########################################
-#Load media-stack runtime
+# Load runtime and libraries
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
-
-########################################
-# Media Stack Plugin Template
-#
-# This file defines the standard format
-# for Media Stack plugins.
-#
-# Plugins are responsible for installing
-# individual services and integrating
-# them into the Media Stack ecosystem.
-#
-# Every plugin must:
-#
-# 1. Define plugin metadata
-# 2. Request ports through the port helper
-# 3. Create required configuration folders
-# 4. Append its container definition to
-#    the docker-compose.yml
-# 5. Optionally register itself in the
-#    service registry for dashboards
-#
-# Plugins integrate with the following
-# core systems:
-#
-# - Environment loader (env.sh)
-# - Port registry
-# - Service registry
-# - Docker compose generator
-# - GPU detection
-# - Dashboard systems
-#
-# Plugin lifecycle during installation:
-#
-# installer.sh
-#   ├─ loads plugin
-#   ├─ resolves dependencies
-#   └─ runs install_service()
-#
-# install_service() should:
-#
-# 1. Request required ports
-# 2. Create config directories
-# 3. Append docker-compose service block
-# 4. Register dashboard entry
-#
-# Important:
-#
-# Plugins must be idempotent.
-# Running the installer multiple times
-# must not create duplicate services.
-#
-########################################
-
-########################################
-# Load Media Stack Environment
-########################################
-
-
-########################################
-# Load Helpers
-########################################
-
-source "$INSTALL_DIR/scripts/port-helper.sh"
-source "$INSTALL_DIR/scripts/service-registry.sh"
+source "${INSTALL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}/lib/runtime.sh"
+source "$LIB_DIR/ports.sh"
+source "$LIB_DIR/services.sh"
 
 ########################################
 # Plugin Metadata
 ########################################
 
-# Unique plugin identifier
 PLUGIN_NAME="example"
-
-# Human readable description
 PLUGIN_DESCRIPTION="Example Service"
+PLUGIN_CATEGORY="system"
 
-# Category used by dashboards
-PLUGIN_CATEGORY="Utility"
-
-# Plugin version
-PLUGIN_VERSION="1.0"
-
-# Container image
-PLUGIN_IMAGE="example/example:latest"
-
-# Dependencies on other plugins
 PLUGIN_DEPENDS=()
 
-# Default ports used by the service
-PLUGIN_PORTS=(1234)
+PLUGIN_PORTS=(8080)
 
-# Whether the container requires host networking
 PLUGIN_HOST_NETWORK=false
-
-# Whether the service should appear in dashboards
-PLUGIN_DASHBOARD=true
-
+PLUGIN_DASHBOARD=false
 
 ########################################
 # Install Service
@@ -109,99 +30,115 @@ PLUGIN_DASHBOARD=true
 
 install_service() {
 
-echo "Installing $PLUGIN_NAME..."
+    log "Installing $PLUGIN_DESCRIPTION"
 
-########################################
-# Prevent duplicate installs
-########################################
+    ########################################
+    # Register port
+    ########################################
 
-if grep -q "^\s*$PLUGIN_NAME:" "$TMP_COMPOSE" 2>/dev/null; then
-echo "$PLUGIN_NAME already installed. Skipping."
-return
-fi
+    local PORT="${PLUGIN_PORTS[0]}"
 
+    if [[ "$PLUGIN_HOST_NETWORK" != "true" ]]; then
+        register_port "$PLUGIN_NAME" "$PORT"
+    fi
 
-########################################
-# Request port mapping
-########################################
+    ########################################
+    # Create configuration directory
+    ########################################
 
-PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
+    mkdir -p "$CONFIG_DIR/$PLUGIN_NAME"
 
-if [ -z "$PORT" ]; then
-echo "Failed to allocate port for $PLUGIN_NAME"
-exit 1
-fi
-
-
-########################################
-# Create configuration directory
-########################################
-
-mkdir -p "$CONFIG_DIR/$PLUGIN_NAME"
-
-
-########################################
-# Add container to docker-compose
-########################################
+    ########################################
+    # Add container to docker-compose
+    ########################################
 
 cat <<EOF >> "$TMP_COMPOSE"
 
   $PLUGIN_NAME:
-    image: $PLUGIN_IMAGE
+    image: example/image:latest
     container_name: $PLUGIN_NAME
 EOF
 
+    ########################################
+    # Networking configuration
+    ########################################
 
-########################################
-# Networking configuration
-########################################
-
-if [ "$PLUGIN_HOST_NETWORK" = true ]; then
+    if [[ "$PLUGIN_HOST_NETWORK" == "true" ]]; then
 
 cat <<EOF >> "$TMP_COMPOSE"
     network_mode: host
 EOF
 
-else
+    else
 
 cat <<EOF >> "$TMP_COMPOSE"
     ports:
       - "$PORT:${PLUGIN_PORTS[0]}"
 EOF
 
-fi
+    fi
 
-
-########################################
-# Container configuration
-########################################
+    ########################################
+    # Environment configuration
+    ########################################
 
 cat <<EOF >> "$TMP_COMPOSE"
     environment:
       - PUID=\${PUID}
       - PGID=\${PGID}
       - TZ=\${TIMEZONE}
+EOF
+
+    ########################################
+    # Volumes
+    ########################################
+
+cat <<EOF >> "$TMP_COMPOSE"
     volumes:
       - ./config/$PLUGIN_NAME:/config
+EOF
+
+    ########################################
+    # Restart policy
+    ########################################
+
+cat <<EOF >> "$TMP_COMPOSE"
     restart: unless-stopped
 EOF
 
+    ########################################
+    # Optional GPU support
+    ########################################
 
-########################################
-# Register service in dashboard
-########################################
+    if [[ "${GPU_TYPE:-none}" != "none" ]]; then
+        echo "$GPU_DEVICES" >> "$TMP_COMPOSE"
+    fi
 
-if [ "$PLUGIN_DASHBOARD" = true ]; then
+    ########################################
+    # Optional healthcheck
+    ########################################
 
-register_service \
-"$PLUGIN_NAME" \
-"http://localhost:$PORT" \
-"$PLUGIN_CATEGORY" \
-"$PLUGIN_NAME.png"
+cat <<EOF >> "$TMP_COMPOSE"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:${PLUGIN_PORTS[0]} || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+EOF
 
-fi
+    ########################################
+    # Dashboard registration
+    ########################################
 
+    if [[ "$PLUGIN_DASHBOARD" == "true" ]]; then
 
-echo "$PLUGIN_NAME installation complete."
+        register_service \
+            "$PLUGIN_DESCRIPTION" \
+            "$PORT" \
+            "$PLUGIN_CATEGORY" \
+            "$PLUGIN_NAME.png"
 
+    fi
+
+    log "$PLUGIN_DESCRIPTION installation complete"
 }

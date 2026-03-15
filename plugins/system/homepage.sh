@@ -2,32 +2,26 @@
 set -euo pipefail
 
 ########################################
-#Load media-stack runtime
+# Load runtime and libraries
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
+source "${INSTALL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}/lib/runtime.sh"
+source "$LIB_DIR/ports.sh"
+source "$LIB_DIR/services.sh"
 
 ########################################
-#Load installer libraries
-########################################
-
-source "$INSTALL_DIR/scripts/port-helper.sh"
-source "$INSTALL_DIR/scripts/service-registry.sh"
-
-########################################
-#Plugin Metadata
+# Plugin Metadata
 ########################################
 
 PLUGIN_NAME="homepage"
 PLUGIN_DESCRIPTION="Media Stack Dashboard"
-PLUGIN_CATEGORY="System"
+PLUGIN_CATEGORY="system"
 
 PLUGIN_DEPENDS=()
 
 PLUGIN_PORTS=(3001)
 
 PLUGIN_HOST_NETWORK=false
-
 PLUGIN_DASHBOARD=false
 
 ########################################
@@ -36,19 +30,20 @@ PLUGIN_DASHBOARD=false
 
 install_service() {
 
-echo "Installing Homepage Dashboard..."
+    log "Installing Homepage Dashboard"
 
 ########################################
-# Request port mapping
+# Register and retrieve port
 ########################################
 
-PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
+    register_port "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}"
+    PORT=$(get_port "$PLUGIN_NAME")
 
 ########################################
 # Create configuration directory
 ########################################
 
-mkdir -p "$CONFIG_DIR/homepage"
+    mkdir -p "$CONFIG_DIR/homepage"
 
 ########################################
 # Add container to docker-compose
@@ -82,6 +77,5 @@ cat <<EOF >> "$TMP_COMPOSE"
       retries: 3
 EOF
 
-echo "Homepage dashboard installed."
-
+    log "Homepage dashboard installed"
 }

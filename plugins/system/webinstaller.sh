@@ -2,32 +2,26 @@
 set -euo pipefail
 
 ########################################
-#Load media-stack runtime
+# Load runtime and libraries
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
+source "${INSTALL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}/lib/runtime.sh"
+source "$LIB_DIR/ports.sh"
+source "$LIB_DIR/services.sh"
 
 ########################################
-#Load installer libraries
-########################################
-
-source "$INSTALL_DIR/scripts/port-helper.sh"
-source "$INSTALL_DIR/scripts/service-registry.sh"
-
-########################################
-#Plugin Metadata
+# Plugin Metadata
 ########################################
 
 PLUGIN_NAME="webinstaller"
 PLUGIN_DESCRIPTION="Web Landing Page"
-PLUGIN_CATEGORY="System"
+PLUGIN_CATEGORY="system"
 
 PLUGIN_DEPENDS=()
 
 PLUGIN_PORTS=(8088)
 
 PLUGIN_HOST_NETWORK=false
-
 PLUGIN_DASHBOARD=true
 
 ########################################
@@ -36,19 +30,20 @@ PLUGIN_DASHBOARD=true
 
 install_service() {
 
-echo "Installing Web Installer..."
+    log "Installing Web Installer"
 
 ########################################
-# Request port mapping
+# Register and retrieve port
 ########################################
 
-PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
+    register_port "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}"
+    PORT=$(get_port "$PLUGIN_NAME")
 
 ########################################
 # Create configuration directory
 ########################################
 
-mkdir -p "$CONFIG_DIR/webinstaller"
+    mkdir -p "$CONFIG_DIR/webinstaller"
 
 ########################################
 # Add container to docker-compose
@@ -82,16 +77,15 @@ EOF
 # Register service
 ########################################
 
-if [ "$PLUGIN_DASHBOARD" = true ]; then
+    if [[ "$PLUGIN_DASHBOARD" == "true" ]]; then
 
-register_service \
-"Web Installer" \
-"http://localhost:$PORT" \
-"$PLUGIN_CATEGORY" \
-"webinstaller.png"
+        register_service \
+            "Web Installer" \
+            "$PORT" \
+            "$PLUGIN_CATEGORY" \
+            "webinstaller.png"
 
-fi
+    fi
 
-echo "Web Installer installation complete."
-
+    log "Web Installer installation complete"
 }

@@ -2,16 +2,20 @@
 set -euo pipefail
 
 ########################################
-#Media Stack Remote Installer
+# Media Stack Remote Installer
 ########################################
 
 INSTALL_DIR="${INSTALL_DIR:-/opt/media-server-installer}"
+REPO_URL="https://github.com/FugginOld/media-server-installer"
 
+echo ""
+echo "================================"
+echo "Media Stack Installer"
 echo "================================"
 echo ""
 
 ########################################
-#Ensure running as root
+# Ensure running as root
 ########################################
 
 if [ "$EUID" -ne 0 ]; then
@@ -22,21 +26,72 @@ exit 1
 fi
 
 ########################################
-#Ensure git is installed
+# Detect package manager
 ########################################
 
-if ! command -v git >/dev/null 2>&1; then
-echo "Git not found. Installing..."
+detect_pkg_manager() {
 
-apt update
-apt install -y git
+if command -v apt >/dev/null 2>&1; then
+PKG_UPDATE="apt update"
+PKG_INSTALL="apt install -y"
+
+elif command -v dnf >/dev/null 2>&1; then
+PKG_UPDATE="dnf makecache"
+PKG_INSTALL="dnf install -y"
+
+elif command -v yum >/dev/null 2>&1; then
+PKG_UPDATE="yum makecache"
+PKG_INSTALL="yum install -y"
+
+elif command -v pacman >/dev/null 2>&1; then
+PKG_UPDATE="pacman -Sy"
+PKG_INSTALL="pacman -S --noconfirm"
+
+elif command -v zypper >/dev/null 2>&1; then
+PKG_UPDATE="zypper refresh"
+PKG_INSTALL="zypper install -y"
+
+elif command -v apk >/dev/null 2>&1; then
+PKG_UPDATE="apk update"
+PKG_INSTALL="apk add"
+
+else
+echo "Unsupported package manager."
+exit 1
 fi
 
+}
+
+detect_pkg_manager
+
 ########################################
-#Download or update installer
+# Ensure required tools
 ########################################
 
-echo "Downloading Media Stack Installer..."
+ensure_dependency() {
+
+CMD="$1"
+PKG="$2"
+
+if ! command -v "$CMD" >/dev/null 2>&1; then
+echo "$CMD not found. Installing..."
+$PKG_UPDATE
+$PKG_INSTALL "$PKG"
+fi
+
+}
+
+ensure_dependency git git
+ensure_dependency curl curl
+ensure_dependency tar tar
+
+########################################
+# Download or update installer
+########################################
+
+echo ""
+echo "Preparing Media Stack Installer..."
+echo ""
 
 if [ -d "$INSTALL_DIR/.git" ]; then
 
@@ -44,28 +99,39 @@ echo "Existing installation detected."
 echo "Updating installer..."
 
 cd "$INSTALL_DIR"
-git pull
+git pull --ff-only
 
 else
 
-git clone https://github.com/FugginOld/media-server-installer "$INSTALL_DIR"
+echo "Cloning installer repository..."
+
+git clone "$REPO_URL" "$INSTALL_DIR"
 
 fi
 
 ########################################
-#Ensure scripts are executable
+# Ensure scripts executable
 ########################################
 
-chmod -R +x "$INSTALL_DIR"
+find "$INSTALL_DIR" -type f -name "*.sh" -exec chmod +x {} \;
 
 ########################################
-#Install CLI command
+# Install CLI command
 ########################################
 
-ln -sf "$INSTALL_DIR/scripts/media-stack" /usr/local/bin/media-stack
+CLI_SRC="$INSTALL_DIR/scripts/media-stack"
+CLI_DST="/usr/local/bin/media-stack"
+
+if [ -f "$CLI_SRC" ]; then
+ln -sf "$CLI_SRC" "$CLI_DST"
+chmod +x "$CLI_SRC"
+echo "CLI installed: media-stack"
+else
+echo "Warning: media-stack CLI not found."
+fi
 
 ########################################
-#Launch installer
+# Launch installer
 ########################################
 
 cd "$INSTALL_DIR"

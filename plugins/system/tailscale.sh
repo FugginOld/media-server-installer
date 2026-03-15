@@ -2,32 +2,26 @@
 set -euo pipefail
 
 ########################################
-#Load media-stack runtime
+# Load runtime and libraries
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
+source "${INSTALL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}/lib/runtime.sh"
+source "$LIB_DIR/ports.sh"
+source "$LIB_DIR/services.sh"
 
 ########################################
-#Load installer libraries
-########################################
-
-source "$INSTALL_DIR/scripts/port-helper.sh"
-source "$INSTALL_DIR/scripts/service-registry.sh"
-
-########################################
-#Plugin Metadata
+# Plugin Metadata
 ########################################
 
 PLUGIN_NAME="tailscale"
 PLUGIN_DESCRIPTION="Secure Remote Access VPN"
-PLUGIN_CATEGORY="System"
+PLUGIN_CATEGORY="system"
 
 PLUGIN_DEPENDS=()
 
 PLUGIN_PORTS=()
 
 PLUGIN_HOST_NETWORK=true
-
 PLUGIN_DASHBOARD=false
 
 ########################################
@@ -36,13 +30,13 @@ PLUGIN_DASHBOARD=false
 
 install_service() {
 
-echo "Installing Tailscale..."
+    log "Installing Tailscale"
 
 ########################################
 # Create configuration directory
 ########################################
 
-mkdir -p "$CONFIG_DIR/tailscale"
+    mkdir -p "$CONFIG_DIR/tailscale"
 
 ########################################
 # Add container to docker-compose
@@ -79,6 +73,5 @@ cat <<EOF >> "$TMP_COMPOSE"
       retries: 3
 EOF
 
-echo "Tailscale installation complete."
-
+    log "Tailscale installation complete"
 }

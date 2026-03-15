@@ -2,32 +2,26 @@
 set -euo pipefail
 
 ########################################
-#Load media-stack runtime
+# Load runtime and libraries
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
+source "${INSTALL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}/lib/runtime.sh"
+source "$LIB_DIR/ports.sh"
+source "$LIB_DIR/services.sh"
 
 ########################################
-#Load installer libraries
-########################################
-
-source "$INSTALL_DIR/scripts/port-helper.sh"
-source "$INSTALL_DIR/scripts/service-registry.sh"
-
-########################################
-#Plugin Metadata
+# Plugin Metadata
 ########################################
 
 PLUGIN_NAME="watchtower"
 PLUGIN_DESCRIPTION="Automatic Container Updates"
-PLUGIN_CATEGORY="System"
+PLUGIN_CATEGORY="system"
 
 PLUGIN_DEPENDS=()
 
 PLUGIN_PORTS=()
 
 PLUGIN_HOST_NETWORK=false
-
 PLUGIN_DASHBOARD=false
 
 ########################################
@@ -36,7 +30,7 @@ PLUGIN_DASHBOARD=false
 
 install_service() {
 
-echo "Installing Watchtower..."
+    log "Installing Watchtower"
 
 ########################################
 # Add container to docker-compose
@@ -55,6 +49,5 @@ cat <<EOF >> "$TMP_COMPOSE"
     restart: unless-stopped
 EOF
 
-echo "Watchtower installation complete."
-
+    log "Watchtower installation complete"
 }

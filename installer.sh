@@ -8,7 +8,15 @@ set -euo pipefail
 SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export INSTALL_DIR="$SCRIPT_ROOT"
 
-source "$INSTALL_DIR/core/runtime.sh"
+########################################
+# Load libraries
+########################################
+
+source "$INSTALL_DIR/lib/runtime.sh"
+source "$INSTALL_DIR/lib/plugins.sh"
+source "$INSTALL_DIR/lib/services.sh"
+source "$INSTALL_DIR/lib/ports.sh"
+source "$INSTALL_DIR/lib/compose.sh"
 
 ########################################
 # Installer mode
@@ -20,7 +28,7 @@ NONINTERACTIVE=0
 if [[ "${1:-}" == "--validate" ]]; then
     MODE="validate"
     NONINTERACTIVE=1
-    echo "Running installer in validation mode."
+    log "Running installer in validation mode"
 fi
 
 ########################################
@@ -52,6 +60,7 @@ review_gate() {
 }
 
 progress_msg() {
+
     echo ""
     echo "================================"
     echo "$1"
@@ -120,10 +129,7 @@ configure_gpu_devices
 # Initialize registries
 ########################################
 
-source "$SCRIPT_DIR/service-registry.sh"
 init_registry
-
-source "$SCRIPT_DIR/port-registry.sh"
 init_port_registry
 
 ########################################
@@ -146,9 +152,7 @@ do
     AVAILABLE_PLUGINS+=("$plugin")
     PLUGIN_PATHS["$plugin"]="$file"
 done < <(
-    find "$PLUGIN_DIR" -type f -name "*.sh" \
-    ! -path "*/_template/*" \
-    ! -name "webinstaller.sh" | sort
+    discover_plugins | grep -v webinstaller.sh
 )
 
 ########################################
@@ -199,7 +203,7 @@ do
         PLUGIN_FILE="${PLUGIN_PATHS[$SERVICE]}"
         source "$PLUGIN_FILE"
 
-        for dep in "${PLUGIN_DEPENDS[@]}"
+        for dep in "${PLUGIN_DEPENDS[@]:-}"
         do
             if [[ ! " ${SELECTED_SERVICES[*]} " =~ " ${dep} " ]]; then
                 SELECTED_SERVICES+=("$dep")
@@ -249,12 +253,15 @@ bash "$SCRIPT_DIR/port-check.sh"
 TMP_COMPOSE="$STACK_DIR/docker-compose.tmp"
 COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
 
-cat <<EOF > "$TMP_COMPOSE"
-networks:
-  media-network:
+{
+echo "networks:"
+echo "  media-network:"
+echo ""
+echo "services:"
+collect_plugin_compose "${SELECTED_SERVICES[@]}"
+} > "$TMP_COMPOSE"
 
-services:
-EOF
+mv "$TMP_COMPOSE" "$COMPOSE_FILE"
 
 ########################################
 # Install services
@@ -264,7 +271,7 @@ progress_msg "Generating Docker Compose"
 
 for SERVICE in "${SELECTED_SERVICES[@]}"
 do
-    echo "Installing $SERVICE"
+    log "Installing $SERVICE"
 
     PLUGIN_FILE="${PLUGIN_PATHS[$SERVICE]}"
     source "$PLUGIN_FILE"
@@ -305,7 +312,7 @@ wait
 
 progress_msg "Starting containers"
 
-bash "$SCRIPT_DIR/compose.sh" up
+compose_up
 
 ########################################
 # Container startup tracker

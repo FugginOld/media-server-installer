@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 
 ########################################
+# Load runtime if not already loaded
+########################################
+
+if [ -z "${MEDIA_STACK_RUNTIME_LOADED:-}" ]; then
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export INSTALL_DIR="$SCRIPT_DIR"
+source "$INSTALL_DIR/lib/runtime.sh"
+fi
+
+########################################
 # Directory Mode
 ########################################
 
@@ -80,6 +90,25 @@ DOWNLOADS_DIR="/downloads"
 
 esac
 
+########################################
+# Compatibility exports
+########################################
+
+MEDIA_PATH="$MEDIA_DIR"
+MOVIES_PATH="$MOVIES_DIR"
+TV_PATH="$TV_DIR"
+DOWNLOADS_PATH="$DOWNLOADS_DIR"
+
+export MEDIA_DIR
+export MOVIES_DIR
+export TV_DIR
+export DOWNLOADS_DIR
+
+export MEDIA_PATH
+export MOVIES_PATH
+export TV_PATH
+export DOWNLOADS_PATH
+
 }
 
 ########################################
@@ -125,18 +154,14 @@ echo ""
 }
 
 ########################################
-# Export variables
+# Export base variables
 ########################################
 
 export STACK_DIR
 export CONFIG_DIR
 export LOG_DIR
 export BACKUP_DIR
-
-export MEDIA_DIR
-export MOVIES_DIR
-export TV_DIR
-export DOWNLOADS_DIR
+export DIR_MODE
 
 ########################################
 # Export functions

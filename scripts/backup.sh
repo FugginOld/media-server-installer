@@ -2,19 +2,19 @@
 set -euo pipefail
 
 ########################################
-#Load media-stack runtime
+# Load media-stack runtime
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
+source "${INSTALL_DIR:-/opt/media-server-installer}/lib/runtime.sh"
 
 ########################################
-#Create Media Stack Backup
+# Create Media Stack Backup
 ########################################
 
 DATE="$(date +%Y%m%d-%H%M)"
 
 ########################################
-#Ensure stack directory exists
+# Ensure stack directory exists
 ########################################
 
 if [ ! -d "$STACK_DIR" ]; then
@@ -23,13 +23,13 @@ exit 1
 fi
 
 ########################################
-#Ensure backup directory exists
+# Ensure backup directory exists
 ########################################
 
 mkdir -p "$BACKUP_DIR"
 
 ########################################
-#Backup filename
+# Backup filename
 ########################################
 
 BACKUP_FILE="$BACKUP_DIR/media-stack-$DATE.tar.gz"
@@ -45,28 +45,28 @@ echo "Destination: $BACKUP_FILE"
 echo ""
 
 ########################################
-#Files to include
+# Files to include
 ########################################
 
 FILES=()
 
-[ -d "$STACK_DIR/config" ] && FILES+=("config")
+[ -d "$CONFIG_DIR" ] && FILES+=("config")
 [ -f "$STACK_DIR/docker-compose.yml" ] && FILES+=("docker-compose.yml")
 [ -f "$STACK_DIR/stack.env" ] && FILES+=("stack.env")
-[ -f "$STACK_DIR/services.json" ] && FILES+=("services.json")
-[ -f "$STACK_DIR/ports.json" ] && FILES+=("ports.json")
+[ -f "$SERVICE_REGISTRY" ] && FILES+=("services.json")
+[ -f "$PORT_REGISTRY" ] && FILES+=("ports.json")
 
 ########################################
-#Ensure something to backup
+# Ensure something to backup
 ########################################
 
-if [ ${#FILES[@]} -eq 0 ]; then
+if [ "${#FILES[@]}" -eq 0 ]; then
 echo "Nothing to backup."
 exit 1
 fi
 
 ########################################
-#Create backup
+# Create backup
 ########################################
 
 tar -czf "$BACKUP_FILE" \
@@ -74,7 +74,7 @@ tar -czf "$BACKUP_FILE" \
 "${FILES[@]}"
 
 ########################################
-#Verify backup
+# Verify backup
 ########################################
 
 if [ -f "$BACKUP_FILE" ]; then
@@ -95,14 +95,18 @@ exit 1
 fi
 
 ########################################
-#Cleanup old backups (keep last 10)
+# Cleanup old backups (keep last 10)
 ########################################
 
 cd "$BACKUP_DIR" || exit 1
 
-ls -1t media-stack-*.tar.gz 2>/dev/null | tail -n +11 | while read -r old
+OLD_BACKUPS=$(ls -1t media-stack-*.tar.gz 2>/dev/null | tail -n +11 || true)
+
+if [ -n "$OLD_BACKUPS" ]; then
+echo "$OLD_BACKUPS" | while read -r old
 do
 rm -f "$old"
 done
+fi
 
 echo ""

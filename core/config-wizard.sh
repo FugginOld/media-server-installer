@@ -1,14 +1,20 @@
+#!/usr/bin/env bash
+
+########################################
+# Load runtime if not already loaded
+########################################
+
+if [ -z "${MEDIA_STACK_RUNTIME_LOADED:-}" ]; then
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export INSTALL_DIR="$SCRIPT_DIR"
+source "$INSTALL_DIR/lib/runtime.sh"
+fi
+
 ########################################
 # Configuration Wizard
 ########################################
 
 CONFIG_FILE="$STACK_DIR/stack.env"
-
-########################################
-# Ensure stack directory exists
-########################################
-
-mkdir -p "$STACK_DIR"
 
 ########################################
 # Load existing configuration
@@ -26,16 +32,22 @@ fi
 run_configuration_wizard() {
 
 ########################################
+# Ensure stack directory exists
+########################################
+
+mkdir -p "$STACK_DIR"
+
+########################################
 # Detect defaults
 ########################################
 
-DEFAULT_TZ=${TIMEZONE:-$(timedatectl show --property=Timezone --value 2>/dev/null)}
-DEFAULT_TZ=${DEFAULT_TZ:-UTC}
+DEFAULT_TZ="${TIMEZONE:-$(timedatectl show --property=Timezone --value 2>/dev/null)}"
+DEFAULT_TZ="${DEFAULT_TZ:-UTC}"
 
-DEFAULT_UID=${PUID:-$(id -u)}
-DEFAULT_GID=${PGID:-$(id -g)}
-DEFAULT_NET=${DOCKER_NETWORK:-media-network}
-DEFAULT_DIR_MODE=${DIR_MODE:-default}
+DEFAULT_UID="${PUID:-$(id -u)}"
+DEFAULT_GID="${PGID:-$(id -g)}"
+DEFAULT_NET="${DOCKER_NETWORK:-media-network}"
+DEFAULT_DIR_MODE="${DIR_MODE:-default}"
 
 ########################################
 # Timezone prompt

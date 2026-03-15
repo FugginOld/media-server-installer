@@ -2,32 +2,26 @@
 set -euo pipefail
 
 ########################################
-#Load media-stack runtime
+# Load runtime and libraries
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
+source "${INSTALL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}/lib/runtime.sh"
+source "$LIB_DIR/ports.sh"
+source "$LIB_DIR/services.sh"
 
 ########################################
-#Load installer libraries
-########################################
-
-source "$INSTALL_DIR/scripts/port-helper.sh"
-source "$INSTALL_DIR/scripts/service-registry.sh"
-
-########################################
-#Plugin Metadata
+# Plugin Metadata
 ########################################
 
 PLUGIN_NAME="bazarr"
 PLUGIN_DESCRIPTION="Subtitle Management"
-PLUGIN_CATEGORY="Automation"
+PLUGIN_CATEGORY="automation"
 
 PLUGIN_DEPENDS=(radarr sonarr)
 
 PLUGIN_PORTS=(6767)
 
 PLUGIN_HOST_NETWORK=false
-
 PLUGIN_DASHBOARD=true
 
 ########################################
@@ -36,19 +30,20 @@ PLUGIN_DASHBOARD=true
 
 install_service() {
 
-echo "Installing Bazarr..."
+    log "Installing Bazarr"
 
 ########################################
-# Request port mapping
+# Register and retrieve port
 ########################################
 
-PORT=$(get_port_mapping "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}")
+    register_port "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}"
+    PORT=$(get_port "$PLUGIN_NAME")
 
 ########################################
 # Create configuration directory
 ########################################
 
-mkdir -p "$CONFIG_DIR/bazarr"
+    mkdir -p "$CONFIG_DIR/bazarr"
 
 ########################################
 # Add container to docker-compose
@@ -88,16 +83,15 @@ EOF
 # Register Service
 ########################################
 
-if [ "$PLUGIN_DASHBOARD" = true ]; then
+    if [[ "$PLUGIN_DASHBOARD" == "true" ]]; then
 
-register_service \
-"Bazarr" \
-"http://localhost:$PORT" \
-"$PLUGIN_CATEGORY" \
-"bazarr.png"
+        register_service \
+            "Bazarr" \
+            "$PORT" \
+            "$PLUGIN_CATEGORY" \
+            "bazarr.png"
 
-fi
+    fi
 
-echo "Bazarr installation complete."
-
+    log "Bazarr installation complete"
 }
