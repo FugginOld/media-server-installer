@@ -31,6 +31,39 @@ echo "================================"
 echo ""
 
 ########################################
+# Validate stack directory before delete
+########################################
+
+validate_stack_dir_for_reset() {
+    local path="$1"
+
+    [[ -n "$path" ]] || return 1
+    [[ "$path" == /* ]] || return 1
+
+    case "$path" in
+        "/"|"/opt"|"/usr"|"/var"|"/home"|"/root"|"/etc"|"/bin"|"/sbin"|"/lib"|"/lib64")
+            return 1
+            ;;
+    esac
+
+    return 0
+}
+
+if ! validate_stack_dir_for_reset "$STACK_DIR"; then
+    echo "Unsafe STACK_DIR detected: $STACK_DIR"
+    echo "Refusing to continue."
+    exit 1
+fi
+
+if [[ "$STACK_DIR" != "/opt/media-stack" ]]; then
+    read -rp "STACK_DIR is '$STACK_DIR'. Type this exact path to confirm deletion: " CONFIRM_STACK_PATH
+    if [[ "$CONFIRM_STACK_PATH" != "$STACK_DIR" ]]; then
+        echo "Path confirmation failed. Reset cancelled."
+        exit 1
+    fi
+fi
+
+########################################
 # Confirm reset
 ########################################
 
@@ -75,7 +108,7 @@ if [[ -d "$STACK_DIR" ]]; then
     echo ""
     echo "Removing stack directory..."
 
-    rm -rf "$STACK_DIR"
+    rm -rf -- "$STACK_DIR"
 
 fi
 

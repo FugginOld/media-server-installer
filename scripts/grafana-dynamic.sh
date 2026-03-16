@@ -5,7 +5,7 @@ set -euo pipefail
 #Load media-stack runtime
 ########################################
 
-source "${INSTALL_DIR:-/opt/media-server-installer}/core/runtime.sh"
+source "${INSTALL_DIR:-/opt/media-server-installer}/lib/runtime.sh"
 
 ########################################
 #Grafana Dynamic Configuration

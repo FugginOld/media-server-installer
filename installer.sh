@@ -24,16 +24,27 @@ source "$INSTALL_DIR/lib/compose.sh"
 
 validate_plugin_file() {
     local file="$1"
+    local perm=""
+    local last_digit=""
     
     # Check file exists and is readable
     [[ -r "$file" ]] || { error "Plugin not readable: $file"; return 1; }
     
     # Check file is not writable by others (prevent tampering)
     if command -v stat >/dev/null 2>&1; then
-        [[ $(stat -c '%A' "$file" 2>/dev/null | cut -c8-10) == "---" ]] || {
-            error "Plugin is world-writable: $file"
-            return 1
-        }
+        perm="$(stat -c '%a' "$file" 2>/dev/null || stat -f '%Lp' "$file" 2>/dev/null || true)"
+
+        if [[ -n "$perm" ]]; then
+            last_digit="${perm: -1}"
+            case "$last_digit" in
+                2|3|6|7)
+                    error "Plugin is world-writable: $file"
+                    return 1
+                    ;;
+            esac
+        else
+            warn "Could not determine plugin permissions with stat: $file"
+        fi
     fi
     
     # Check for suspicious patterns before sourcing
@@ -94,6 +105,18 @@ progress_msg() {
     echo "================================"
     echo ""
 
+}
+
+array_contains() {
+    local needle="$1"
+    shift
+
+    local item
+    for item in "$@"; do
+        [[ "$item" == "$needle" ]] && return 0
+    done
+
+    return 1
 }
 
 ########################################
@@ -197,43 +220,63 @@ do
     OPTIONS+=("$plugin" "$category" OFF)
 done
 
-CHOICES=$(whiptail \
-    --title "Media Stack Services" \
-    --checklist "Select services to install" \
-    22 70 15 \
-    "${OPTIONS[@]}" \
-    3>&1 1>&2 2>&3)
+if [[ "$NONINTERACTIVE" -eq 1 ]]; then
+    SELECTED_SERVICES=("${AVAILABLE_PLUGINS[@]}")
+else
+    CHOICES=$(whiptail \
+        --title "Media Stack Services" \
+        --checklist "Select services to install" \
+        22 70 15 \
+        "${OPTIONS[@]}" \
+        3>&1 1>&2 2>&3)
 
-while IFS= read -r service; do
-    service="${service//\"/}"
+    while IFS= read -r service; do
+        service="${service//\"/}"
 
-    if [[ "$service" == "ALL" ]]; then
-        SELECTED_SERVICES=("${AVAILABLE_PLUGINS[@]}")
-        break
-    fi
+        if [[ "$service" == "ALL" ]]; then
+            SELECTED_SERVICES=("${AVAILABLE_PLUGINS[@]}")
+            break
+        fi
 
-    SELECTED_SERVICES+=("$service")
-done <<< "$CHOICES"
+        SELECTED_SERVICES+=("$service")
+    done <<< "$CHOICES"
+fi
 
 ########################################
 # Dependency resolution
 ########################################
 
 CHANGED=true
+MAX_DEP_PASSES=50
+DEP_PASS=0
 
 while [[ "$CHANGED" == true ]]
 do
+
+    ((DEP_PASS++))
+    if (( DEP_PASS > MAX_DEP_PASSES )); then
+        error "Dependency resolution exceeded ${MAX_DEP_PASSES} passes. Possible circular dependency."
+        exit 1
+    fi
 
     CHANGED=false
 
     for SERVICE in "${SELECTED_SERVICES[@]}"
     do
 
-        deps=$(get_plugin_dependencies "$SERVICE")
+        deps="$(get_plugin_dependencies "$SERVICE")"
+        read -r -a dep_list <<< "$deps"
 
-        for dep in $deps
+        for dep in "${dep_list[@]}"
         do
-            if [[ ! " ${SELECTED_SERVICES[*]} " =~ " ${dep} " ]]; then
+            [[ -z "$dep" ]] && continue
+
+            if [[ -z "${PLUGIN_PATHS[$dep]:-}" ]]; then
+                error "Unknown dependency '$dep' required by '$SERVICE'"
+                exit 1
+            fi
+
+            if ! array_contains "$dep" "${SELECTED_SERVICES[@]}"; then
                 SELECTED_SERVICES+=("$dep")
                 CHANGED=true
             fi
@@ -243,7 +286,7 @@ do
 
 done
 
-SELECTED_SERVICES=($(printf "%s\n" "${SELECTED_SERVICES[@]}" | sort -u))
+mapfile -t SELECTED_SERVICES < <(printf "%s\n" "${SELECTED_SERVICES[@]}" | awk 'NF' | sort -u)
 
 ########################################
 # Validation mode
@@ -327,10 +370,18 @@ mv "$TMP_COMPOSE" "$COMPOSE_FILE"
 
 progress_msg "Pulling container images"
 
-images=$(docker compose -f "$COMPOSE_FILE" config | grep image | awk '{print $2}') || {
+if ! images="$(docker compose -f "$COMPOSE_FILE" config --format json 2>/dev/null | jq -r '.services[]?.image // empty')"; then
+    images=""
+fi
+
+if [[ -z "$images" ]]; then
+    images="$(docker compose -f "$COMPOSE_FILE" config 2>/dev/null | awk '/^[[:space:]]*image:/ {print $2}')"
+fi
+
+if [[ -z "$images" ]]; then
     error "Failed to get image list from compose file"
     exit 1
-}
+fi
 
 while IFS= read -r img; do
     [[ -n "$img" ]] && {

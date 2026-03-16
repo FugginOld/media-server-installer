@@ -102,14 +102,6 @@ register_service() {
 
     mv "$TMP_FILE" "$SERVICE_REGISTRY" || return 1
     log "Registered service: $NAME -> $URL"
-}
-
-    echo "Registered service: $NAME -> $URL"
-
-########################################
-# Regenerate dashboard automatically
-########################################
-
     if [[ -f "$INSTALL_DIR/scripts/dashboard-generator.sh" ]]; then
         bash "$INSTALL_DIR/scripts/dashboard-generator.sh" >/dev/null 2>&1 || true
     fi

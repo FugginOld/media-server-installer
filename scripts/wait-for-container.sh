@@ -47,7 +47,7 @@ fi
 # Check if container exists
 ########################################
 
-if ! docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER}$"; then
+if ! docker ps -a --format '{{.Names}}' | grep -Fxq "$CONTAINER"; then
 echo "Container not created yet: $CONTAINER"
 sleep "$INTERVAL"
 continue

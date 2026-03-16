@@ -34,7 +34,7 @@ log "Waiting for container: $NAME"
 for ((i=0;i<TIMEOUT;i++))
 do
 
-if docker ps --format '{{.Names}}' | grep -q "^${NAME}$"; then
+if docker ps --format '{{.Names}}' | grep -Fxq "$NAME"; then
 log "$NAME container started"
 return 0
 fi
@@ -101,11 +101,13 @@ fi
 # Configure Grafana if present
 ########################################
 
-if docker ps --format '{{.Names}}' | grep -q "^grafana$"; then
+if docker ps --format '{{.Names}}' | grep -Fxq "grafana"; then
 
 log "Running Grafana configuration"
 
-bash "$INSTALL_DIR/scripts/configure-grafana.sh" || true
+if [[ -f "$INSTALL_DIR/scripts/grafana-dynamic.sh" ]]; then
+bash "$INSTALL_DIR/scripts/grafana-dynamic.sh" || true
+fi
 
 fi
 
@@ -125,7 +127,7 @@ fi
 # Restart homepage container if needed
 ########################################
 
-if docker ps --format '{{.Names}}' | grep -q "^homepage$"; then
+if docker ps --format '{{.Names}}' | grep -Fxq "homepage"; then
 
 log "Restarting homepage container to load new configuration"
 
