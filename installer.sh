@@ -277,6 +277,11 @@ do
     for SERVICE in "${SELECTED_SERVICES[@]}"
     do
 
+        if [[ -z "${PLUGIN_PATHS[$SERVICE]:-}" ]]; then
+            error "Unknown selected service '$SERVICE'"
+            exit 1
+        fi
+
         deps="$(get_plugin_dependencies "$SERVICE")"
         read -r -a dep_list <<< "$deps"
 

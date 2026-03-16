@@ -60,7 +60,7 @@ get_plugin_path() {
 
 local name="$1"
 
-echo "${PLUGIN_PATHS[$name]}"
+echo "${PLUGIN_PATHS[$name]:-}"
 
 }
 
@@ -72,7 +72,7 @@ get_plugin_dependencies() {
 
 local name="$1"
 
-echo "${PLUGIN_DEPENDENCIES[$name]}"
+echo "${PLUGIN_DEPENDENCIES[$name]:-}"
 
 }
 
@@ -84,7 +84,7 @@ get_plugin_category() {
 
 local name="$1"
 
-echo "${PLUGIN_CATEGORIES[$name]}"
+echo "${PLUGIN_CATEGORIES[$name]:-Misc}"
 
 }
 
@@ -96,7 +96,7 @@ get_plugin_port() {
 
 local name="$1"
 
-echo "${PLUGIN_PORT[$name]}"
+echo "${PLUGIN_PORT[$name]:-}"
 
 }
 
