@@ -38,6 +38,13 @@ export PLUGIN_DIR
 export TEMPLATE_DIR
 
 ########################################
+# Stack directory
+########################################
+
+STACK_DIR="${STACK_DIR:-/opt/media-stack}"
+export STACK_DIR
+
+########################################
 # Validate directory structure
 ########################################
 
