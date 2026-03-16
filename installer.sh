@@ -326,7 +326,7 @@ bash "$SCRIPT_DIR/port-check.sh"
 ########################################
 
 TMP_COMPOSE="$(mktemp -p "$STACK_DIR" -t docker-compose.XXXXXX)"
-trap "rm -f '$TMP_COMPOSE'" EXIT
+trap 'rm -f "$TMP_COMPOSE"' EXIT
 chmod 600 "$TMP_COMPOSE"
 COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
 
