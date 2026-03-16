@@ -181,14 +181,14 @@ array_contains() {
     return 1
 }
 
-print_hyperlink() {
+print_modern_link() {
     local url="$1"
-    local label="${2:-$1}"
 
+    # OSC 8 hyperlinks are supported by modern terminal emulators (xterm.js/noVNC, iTerm2, etc.).
     if [[ -t 1 ]]; then
-        printf '\e]8;;%s\a%s\e]8;;\a\n' "$url" "$label"
+        printf '\e]8;;%s\a%s\e]8;;\a\n' "$url" "$url"
     else
-        echo "$label"
+        echo "$url"
     fi
 }
 
@@ -212,9 +212,10 @@ show_installed_services() {
         url="${entry#*|}"
 
         [[ -z "$name" || -z "$url" ]] && continue
+        [[ "$name" == "Web Installer" ]] && continue
 
         printf " - %s: " "$name"
-        print_hyperlink "$url" "$url"
+        print_modern_link "$url"
     done
 
     return 0

@@ -30,6 +30,7 @@ register_service() {
     local PORT="$2"
     local CATEGORY="$3"
     local ICON="$4"
+    local PATH_SUFFIX="${5:-}"
 
     # Validate inputs
     [[ -z "$NAME" ]] && { error "Service name required"; return 1; }
@@ -40,7 +41,11 @@ register_service() {
     # Check jq is available
     command -v jq >/dev/null || { error "jq not installed"; return 1; }
 
-    local URL="http://${HOST_IP}:${PORT}"
+    if [[ -n "$PATH_SUFFIX" ]]; then
+        [[ "$PATH_SUFFIX" == /* ]] || PATH_SUFFIX="/$PATH_SUFFIX"
+    fi
+
+    local URL="http://${HOST_IP}:${PORT}${PATH_SUFFIX}"
     local TMP_FILE
     TMP_FILE="$(mktemp)" || { error "Failed to create temp file"; return 1; }
     trap 'rm -f "$TMP_FILE"' RETURN

@@ -87,7 +87,8 @@ EOF
             "Grafana" \
             "$PORT" \
             "$PLUGIN_CATEGORY" \
-            "grafana.png"
+          "grafana.png" \
+          "/login"
 
     fi
 

@@ -125,7 +125,8 @@ EOF
             "Plex" \
             "$PORT" \
             "$PLUGIN_CATEGORY" \
-            "plex.png"
+            "plex.png" \
+            "/web"
     fi
 
     log "Plex installation complete"

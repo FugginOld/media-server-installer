@@ -22,7 +22,7 @@ PLUGIN_DEPENDS=()
 PLUGIN_PORTS=(3001)
 
 PLUGIN_HOST_NETWORK=false
-PLUGIN_DASHBOARD=false
+PLUGIN_DASHBOARD=true
 
 ########################################
 # Install Service
@@ -88,6 +88,14 @@ cat <<EOF >> "$TMP_COMPOSE"
       timeout: 10s
       retries: 3
 EOF
+
+    if [[ "$PLUGIN_DASHBOARD" == "true" ]]; then
+        register_service \
+            "Homepage" \
+            "$PORT" \
+            "$PLUGIN_CATEGORY" \
+            "homepage.png"
+    fi
 
     log "Homepage dashboard installed"
 }
