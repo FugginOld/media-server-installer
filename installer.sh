@@ -220,26 +220,6 @@ show_installed_services() {
     return 0
 }
 
-open_installed_service_urls() {
-    local entry
-    local url
-
-    command -v xdg-open >/dev/null 2>&1 || {
-        warn "xdg-open not found; cannot open URLs automatically"
-        return 1
-    }
-
-    [[ "${#INSTALLED_ENTRIES[@]}" -gt 0 ]] || return 1
-
-    for entry in "${INSTALLED_ENTRIES[@]}"; do
-        url="${entry#*|}"
-        [[ -n "$url" ]] || continue
-        xdg-open "$url" >/dev/null 2>&1 &
-    done
-
-    return 0
-}
-
 ########################################
 # Platform initialization
 ########################################
@@ -567,11 +547,5 @@ fi
 echo ""
 echo "Logs:"
 echo "tail -f $STACK_DIR/logs/post-install.log"
-
-if [[ "$NONINTERACTIVE" -eq 0 ]] && [[ "${#INSTALLED_ENTRIES[@]}" -gt 0 ]]; then
-    if review_gate "Open Links" "Open all installed service URLs in your default browser? This may open many tabs."; then
-        open_installed_service_urls || true
-    fi
-fi
 
 echo ""
