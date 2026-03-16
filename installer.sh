@@ -181,6 +181,65 @@ array_contains() {
     return 1
 }
 
+print_hyperlink() {
+    local url="$1"
+    local label="${2:-$1}"
+
+    if [[ -t 1 ]]; then
+        printf '\e]8;;%s\a%s\e]8;;\a\n' "$url" "$label"
+    else
+        echo "$label"
+    fi
+}
+
+show_installed_services() {
+    local entry
+    local name
+    local url
+
+    if [[ ! -f "$SERVICE_REGISTRY" ]] || ! command -v jq >/dev/null 2>&1; then
+        return 1
+    fi
+
+    mapfile -t INSTALLED_ENTRIES < <(jq -r '.services[]? | "\(.name)|\(.url)"' "$SERVICE_REGISTRY")
+    if [[ "${#INSTALLED_ENTRIES[@]}" -eq 0 ]]; then
+        return 1
+    fi
+
+    echo "Installed Services:"
+    for entry in "${INSTALLED_ENTRIES[@]}"; do
+        name="${entry%%|*}"
+        url="${entry#*|}"
+
+        [[ -z "$name" || -z "$url" ]] && continue
+
+        printf " - %s: " "$name"
+        print_hyperlink "$url" "$url"
+    done
+
+    return 0
+}
+
+open_installed_service_urls() {
+    local entry
+    local url
+
+    command -v xdg-open >/dev/null 2>&1 || {
+        warn "xdg-open not found; cannot open URLs automatically"
+        return 1
+    }
+
+    [[ "${#INSTALLED_ENTRIES[@]}" -gt 0 ]] || return 1
+
+    for entry in "${INSTALLED_ENTRIES[@]}"; do
+        url="${entry#*|}"
+        [[ -n "$url" ]] || continue
+        xdg-open "$url" >/dev/null 2>&1 &
+    done
+
+    return 0
+}
+
 ########################################
 # Platform initialization
 ########################################
@@ -488,7 +547,7 @@ bash "$SCRIPT_DIR/post-install.sh" \
 # Completion
 ########################################
 
-IP=$(hostname -I | awk '{print $1}')
+INSTALLED_ENTRIES=()
 
 echo ""
 echo "================================"
@@ -496,15 +555,23 @@ echo "Installation Complete"
 echo "================================"
 echo ""
 
-echo "Homepage:"
-echo "http://$IP:3001"
-
-echo ""
-echo "Grafana:"
-echo "http://$IP:3000"
+if ! show_installed_services; then
+    IP=$(hostname -I | awk '{print $1}')
+    echo "Homepage:"
+    echo "http://$IP:3001"
+    echo ""
+    echo "Grafana:"
+    echo "http://$IP:3000"
+fi
 
 echo ""
 echo "Logs:"
 echo "tail -f $STACK_DIR/logs/post-install.log"
+
+if [[ "$NONINTERACTIVE" -eq 0 ]] && [[ "${#INSTALLED_ENTRIES[@]}" -gt 0 ]]; then
+    if review_gate "Open Links" "Open all installed service URLs in your default browser? This may open many tabs."; then
+        open_installed_service_urls || true
+    fi
+fi
 
 echo ""
