@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 ########################################
 # Service Registry
@@ -25,49 +26,83 @@ init_registry() {
 ########################################
 
 register_service() {
-
     local NAME="$1"
     local PORT="$2"
     local CATEGORY="$3"
     local ICON="$4"
 
+    # Validate inputs
+    [[ -z "$NAME" ]] && { error "Service name required"; return 1; }
+    [[ ! "$PORT" =~ ^[0-9]+$ ]] && { error "Invalid port: $PORT"; return 1; }
+
     init_registry
 
-    URL="http://${HOST_IP}:${PORT}"
+    # Check jq is available
+    command -v jq >/dev/null || { error "jq not installed"; return 1; }
 
-    TMP_FILE="$(mktemp)"
+    local URL="http://${HOST_IP}:${PORT}"
+    local TMP_FILE
+    TMP_FILE="$(mktemp)" || { error "Failed to create temp file"; return 1; }
+    trap "rm -f '$TMP_FILE'" RETURN
 
-########################################
-# Remove existing service entry
-########################################
+    # Check if registry is valid JSON
+    if ! jq empty "$SERVICE_REGISTRY" 2>/dev/null; then
+        error "Service registry corrupted: $SERVICE_REGISTRY"
+        return 1
+    fi
 
-    jq \
-    --arg name "$NAME" \
-    '.services |= map(select(.name != $name))' \
-    "$SERVICE_REGISTRY" > "$TMP_FILE"
+    ########################################
+    # Remove existing service entry
+    ########################################
 
-    mv "$TMP_FILE" "$SERVICE_REGISTRY"
+    if ! jq \
+        --arg name "$NAME" \
+        '.services |= map(select(.name != $name))' \
+        "$SERVICE_REGISTRY" > "$TMP_FILE"; then
+        error "Failed to remove existing service entry: $NAME"
+        return 1
+    fi
 
-########################################
-# Add service entry
-########################################
+    # Verify output is valid JSON before moving
+    if ! jq empty "$TMP_FILE" 2>/dev/null; then
+        error "Generated invalid service registry during removal"
+        return 1
+    fi
 
-    TMP_FILE="$(mktemp)"
+    mv "$TMP_FILE" "$SERVICE_REGISTRY" || return 1
 
-    jq \
-    --arg name "$NAME" \
-    --arg url "$URL" \
-    --arg category "$CATEGORY" \
-    --arg icon "$ICON" \
-    '.services += [{
-        name:$name,
-        url:$url,
-        category:$category,
-        icon:$icon
-    }]' \
-    "$SERVICE_REGISTRY" > "$TMP_FILE"
+    ########################################
+    # Add service entry
+    ########################################
 
-    mv "$TMP_FILE" "$SERVICE_REGISTRY"
+    TMP_FILE="$(mktemp)" || { error "Failed to create temp file"; return 1; }
+    trap "rm -f '$TMP_FILE'" RETURN
+
+    if ! jq \
+        --arg name "$NAME" \
+        --arg url "$URL" \
+        --arg category "$CATEGORY" \
+        --arg icon "$ICON" \
+        '.services += [{
+            name:$name,
+            url:$url,
+            category:$category,
+            icon:$icon
+        }]' \
+        "$SERVICE_REGISTRY" > "$TMP_FILE"; then
+        error "Failed to add service entry: $NAME"
+        return 1
+    fi
+
+    # Verify output is valid JSON before moving
+    if ! jq empty "$TMP_FILE" 2>/dev/null; then
+        error "Generated invalid service registry during addition"
+        return 1
+    fi
+
+    mv "$TMP_FILE" "$SERVICE_REGISTRY" || return 1
+    log "Registered service: $NAME -> $URL"
+}
 
     echo "Registered service: $NAME -> $URL"
 

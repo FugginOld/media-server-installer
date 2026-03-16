@@ -61,7 +61,19 @@ cat <<EOF >> "$TMP_COMPOSE"
       - HOMEPAGE_ALLOWED_HOSTS=*
     volumes:
       - ./config/homepage:/app/config
-      - /var/run/docker.sock:/var/run/docker.sock
+EOF
+
+# Only mount Docker socket if explicitly authorized
+if [[ "${ALLOW_DOCKER_SOCKET:-false}" == "true" ]]; then
+    cat <<EOF >> "$TMP_COMPOSE"
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+EOF
+else
+    warn "Docker socket access disabled for homepage (security)"
+    warn "To enable: export ALLOW_DOCKER_SOCKET=true"
+fi
+
+cat <<EOF >> "$TMP_COMPOSE"
     restart: unless-stopped
 EOF
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 ########################################
 # Load runtime if not already loaded
@@ -24,6 +25,35 @@ if [ -f "$CONFIG_FILE" ]; then
 # shellcheck disable=SC1090
 source "$CONFIG_FILE"
 fi
+
+########################################
+# Validation functions
+########################################
+
+validate_uid() {
+    local uid="$1"
+    if ! [[ "$uid" =~ ^[0-9]+$ ]] || [[ "$uid" -lt 0 ]] || [[ "$uid" -gt 65535 ]]; then
+        return 1
+    fi
+    return 0
+}
+
+get_validated_uid() {
+    local prompt="$1" default="$2"
+    local uid
+    while true; do
+        uid=$(whiptail \
+            --title "Media Stack Configuration" \
+            --inputbox "$prompt" \
+            10 60 "$default" \
+            3>&1 1>&2 2>&3)
+        if validate_uid "$uid"; then
+            echo "$uid"
+            return 0
+        fi
+        whiptail --msgbox "Invalid UID. Must be between 0-65535" 10 40
+    done
+}
 
 ########################################
 # Run configuration wizard
@@ -63,21 +93,13 @@ TIMEZONE=$(whiptail \
 # PUID prompt
 ########################################
 
-PUID=$(whiptail \
---title "Media Stack Configuration" \
---inputbox "Container User ID (PUID):" \
-10 60 "$DEFAULT_UID" \
-3>&1 1>&2 2>&3)
+PUID=$(get_validated_uid "Container User ID (PUID):" "$DEFAULT_UID")
 
 ########################################
 # PGID prompt
 ########################################
 
-PGID=$(whiptail \
---title "Media Stack Configuration" \
---inputbox "Container Group ID (PGID):" \
-10 60 "$DEFAULT_GID" \
-3>&1 1>&2 2>&3)
+PGID=$(get_validated_uid "Container Group ID (PGID):" "$DEFAULT_GID")
 
 ########################################
 # Docker network prompt

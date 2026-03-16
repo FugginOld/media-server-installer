@@ -100,13 +100,12 @@ fi
 
 cd "$BACKUP_DIR" || exit 1
 
-OLD_BACKUPS=$(ls -1t media-stack-*.tar.gz 2>/dev/null | tail -n +11 || true)
+OLD_BACKUPS=$(ls -1t media-stack-*.tar.gz 2>/dev/null | tail -n +11) || true
 
 if [ -n "$OLD_BACKUPS" ]; then
-echo "$OLD_BACKUPS" | while read -r old
-do
-rm -f "$old"
-done
+    while IFS= read -r old; do
+        rm -f "$old"
+    done <<< "$OLD_BACKUPS"
 fi
 
 echo ""

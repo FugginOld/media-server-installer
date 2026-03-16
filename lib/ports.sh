@@ -32,11 +32,14 @@ fi
 ########################################
 
 port_in_use() {
+    local port="$1"
 
-local PORT="$1"
-
-ss -tuln | awk '{print $5}' | grep -q ":$PORT$"
-
+    # Use more specific ss output format
+    if ss -tuln 2>/dev/null | awk -vp="$port" '$5 ~ ":"p"$" {found=1; exit 0} END {exit !found}'; then
+        return 0  # Port is in use
+    else
+        return 1  # Port is free
+    fi
 }
 
 ########################################

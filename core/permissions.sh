@@ -83,7 +83,28 @@ fi
 echo "Fixing permissions: $DIR"
 
 chown -R "$PUID:$PGID" "$DIR" 2>/dev/null || true
-chmod -R 775 "$DIR" 2>/dev/null || true
+
+# Set strict permissions (rwxr-x---)
+if [[ "$DIR" == "$DOWNLOADS_ROOT" ]]; then
+    # Downloads need group write for torrent clients
+    chmod 770 "$DIR" 2>/dev/null || true
+else
+    chmod 750 "$DIR" 2>/dev/null || true
+fi
+
+# Use setfacl for granular control if available
+if command -v setfacl >/dev/null 2>&1; then
+    # User gets full permissions
+    setfacl -m u:"$PUID":rwx "$DIR" 2>/dev/null || true
+    # Group gets read+exec (or write for downloads)
+    if [[ "$DIR" == "$DOWNLOADS_ROOT" ]]; then
+        setfacl -m g:"$PGID":rwx "$DIR" 2>/dev/null || true
+    else
+        setfacl -m g:"$PGID":rx "$DIR" 2>/dev/null || true
+    fi
+    # Others get nothing
+    setfacl -m o::- "$DIR" 2>/dev/null || true
+fi
 
 done
 

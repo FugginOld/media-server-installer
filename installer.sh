@@ -19,6 +19,33 @@ source "$INSTALL_DIR/lib/ports.sh"
 source "$INSTALL_DIR/lib/compose.sh"
 
 ########################################
+# Plugin validation
+########################################
+
+validate_plugin_file() {
+    local file="$1"
+    
+    # Check file exists and is readable
+    [[ -r "$file" ]] || { error "Plugin not readable: $file"; return 1; }
+    
+    # Check file is not writable by others (prevent tampering)
+    if command -v stat >/dev/null 2>&1; then
+        [[ $(stat -c '%A' "$file" 2>/dev/null | cut -c8-10) == "---" ]] || {
+            error "Plugin is world-writable: $file"
+            return 1
+        }
+    fi
+    
+    # Check for suspicious patterns before sourcing
+    if grep -q 'rm -rf\|:(){:\|:(){ :;}\|sudo false' "$file" 2>/dev/null; then
+        error "Plugin contains suspicious code: $file"
+        return 1
+    fi
+    
+    return 0
+}
+
+########################################
 # Installer mode
 ########################################
 
@@ -177,9 +204,7 @@ CHOICES=$(whiptail \
     "${OPTIONS[@]}" \
     3>&1 1>&2 2>&3)
 
-for service in $CHOICES
-do
-
+while IFS= read -r service; do
     service="${service//\"/}"
 
     if [[ "$service" == "ALL" ]]; then
@@ -188,8 +213,7 @@ do
     fi
 
     SELECTED_SERVICES+=("$service")
-
-done
+done <<< "$CHOICES"
 
 ########################################
 # Dependency resolution
@@ -258,7 +282,9 @@ bash "$SCRIPT_DIR/port-check.sh"
 # Generate docker compose
 ########################################
 
-TMP_COMPOSE="$STACK_DIR/docker-compose.tmp"
+TMP_COMPOSE="$(mktemp -p "$STACK_DIR" -t docker-compose.XXXXXX)"
+trap "rm -f '$TMP_COMPOSE'" EXIT
+chmod 600 "$TMP_COMPOSE"
 COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
 
 {
@@ -280,11 +306,18 @@ do
     log "Installing $SERVICE"
 
     PLUGIN_FILE=$(get_plugin_path "$SERVICE")
+    validate_plugin_file "$PLUGIN_FILE" || exit 1
     source "$PLUGIN_FILE"
 
     install_service
 
 done
+
+# Validate the generated compose file
+if ! docker compose -f "$TMP_COMPOSE" config >/dev/null 2>&1; then
+    error "Generated invalid docker-compose.yml"
+    exit 1
+fi
 
 mv "$TMP_COMPOSE" "$COMPOSE_FILE"
 
@@ -294,13 +327,17 @@ mv "$TMP_COMPOSE" "$COMPOSE_FILE"
 
 progress_msg "Pulling container images"
 
-images=$(docker compose -f "$COMPOSE_FILE" config | grep image | awk '{print $2}')
+images=$(docker compose -f "$COMPOSE_FILE" config | grep image | awk '{print $2}') || {
+    error "Failed to get image list from compose file"
+    exit 1
+}
 
-for img in $images
-do
-    log "Pulling $img"
-    docker pull "$img"
-done
+while IFS= read -r img; do
+    [[ -n "$img" ]] && {
+        log "Pulling $img"
+        docker pull "$img" || error "Failed to pull image: $img"
+    }
+done <<< "$images"
 
 ########################################
 # Start containers
