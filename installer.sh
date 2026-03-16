@@ -111,6 +111,54 @@ review_gate() {
         14 60
 }
 
+get_dialog_size() {
+    local rows="${LINES:-}"
+    local cols="${COLUMNS:-}"
+
+    if [[ -z "$rows" || -z "$cols" ]]; then
+        if command -v tput >/dev/null 2>&1; then
+            rows="$(tput lines 2>/dev/null || echo 24)"
+            cols="$(tput cols 2>/dev/null || echo 80)"
+        else
+            rows=24
+            cols=80
+        fi
+    fi
+
+    DIALOG_HEIGHT=$((rows - 4))
+    DIALOG_WIDTH=$((cols - 6))
+
+    (( DIALOG_HEIGHT < 16 )) && DIALOG_HEIGHT=16
+    (( DIALOG_WIDTH < 60 )) && DIALOG_WIDTH=60
+    (( DIALOG_HEIGHT > 40 )) && DIALOG_HEIGHT=40
+    (( DIALOG_WIDTH > 140 )) && DIALOG_WIDTH=140
+}
+
+show_install_preview() {
+    local summary="$1"
+    local tmp_preview
+
+    [[ "$NONINTERACTIVE" -eq 1 ]] && return 0
+
+    get_dialog_size
+
+    tmp_preview="$(mktemp -p "$STACK_DIR" -t install-preview.XXXXXX)"
+
+    {
+        echo "The following services will be installed:"
+        echo ""
+        printf "%s\n" "$summary"
+    } > "$tmp_preview"
+
+    whiptail \
+        --title "Install Services" \
+        --scrolltext \
+        --textbox "$tmp_preview" \
+        "$DIALOG_HEIGHT" "$DIALOG_WIDTH"
+
+    rm -f "$tmp_preview"
+}
+
 progress_msg() {
 
     echo ""
@@ -327,13 +375,11 @@ fi
 
 SERVICE_SUMMARY=$(printf "%s\n" "${SELECTED_SERVICES[@]}")
 
+show_install_preview "$SERVICE_SUMMARY"
+
 review_gate \
 "Install Services" \
-"The following services will be installed:
-
-$SERVICE_SUMMARY
-
-Proceed with installation?" || exit 0
+"Proceed with installation?" || exit 0
 
 ########################################
 # Port conflict check
