@@ -192,6 +192,38 @@ print_modern_link() {
     fi
 }
 
+service_url_reachable() {
+    local url="$1"
+
+    curl -fsS --max-time 3 "$url" >/dev/null 2>&1
+}
+
+wait_for_ui_services() {
+    local entry
+    local name
+    local url
+    local timeout=60
+    local elapsed
+
+    for entry in "${INSTALLED_ENTRIES[@]}"; do
+        name="${entry%%|*}"
+        url="${entry#*|}"
+
+        case "$name" in
+            "Homepage"|"Grafana")
+                elapsed=0
+                while (( elapsed < timeout )); do
+                    if service_url_reachable "$url"; then
+                        break
+                    fi
+                    sleep 2
+                    ((elapsed+=2))
+                done
+                ;;
+        esac
+    done
+}
+
 show_installed_services() {
     local entry
     local name
@@ -206,6 +238,8 @@ show_installed_services() {
         return 1
     fi
 
+    wait_for_ui_services
+
     echo "Installed Services:"
     for entry in "${INSTALLED_ENTRIES[@]}"; do
         name="${entry%%|*}"
@@ -215,7 +249,13 @@ show_installed_services() {
         [[ "$name" == "Web Installer" ]] && continue
 
         printf " - %s: " "$name"
-        print_modern_link "$url"
+
+        if service_url_reachable "$url"; then
+            print_modern_link "$url"
+        else
+            print_modern_link "$url"
+            echo "   [WARN] Service not reachable yet. Check container status: docker compose -f $COMPOSE_FILE ps"
+        fi
     done
 
     return 0

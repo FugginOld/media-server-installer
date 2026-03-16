@@ -89,7 +89,18 @@ export -f die
 
 detect_host_ip() {
 
-HOST_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+if [[ -n "${HOST_IP:-}" ]]; then
+    export HOST_IP
+    return
+fi
+
+if command -v ip >/dev/null 2>&1; then
+    HOST_IP="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '/src/ {for (i=1; i<=NF; i++) if ($i=="src") {print $(i+1); exit}}')"
+fi
+
+if [[ -z "${HOST_IP:-}" ]]; then
+    HOST_IP="$(hostname -I 2>/dev/null | awk '{for (i=1; i<=NF; i++) if ($i !~ /^127\./) {print $i; exit}}')"
+fi
 
 if [[ -z "$HOST_IP" ]]; then
     HOST_IP="127.0.0.1"
