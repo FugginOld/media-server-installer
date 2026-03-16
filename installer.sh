@@ -266,7 +266,7 @@ DEP_PASS=0
 while [[ "$CHANGED" == true ]]
 do
 
-    ((DEP_PASS++))
+    ((++DEP_PASS))
     if (( DEP_PASS > MAX_DEP_PASSES )); then
         error "Dependency resolution exceeded ${MAX_DEP_PASSES} passes. Possible circular dependency."
         exit 1
