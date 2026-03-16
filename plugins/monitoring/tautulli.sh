@@ -19,7 +19,7 @@ PLUGIN_CATEGORY="monitoring"
 
 PLUGIN_DEPENDS=(plex)
 
-PLUGIN_PORTS=(8181)
+PLUGIN_PORT=8181
 
 PLUGIN_HOST_NETWORK=false
 PLUGIN_DASHBOARD=true
@@ -36,7 +36,7 @@ install_service() {
 # Register and retrieve port
 ########################################
 
-    register_port "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}"
+    register_port "$PLUGIN_NAME" "$PLUGIN_PORT"
     PORT=$(get_port "$PLUGIN_NAME")
 
 ########################################
@@ -55,7 +55,7 @@ cat <<EOF >> "$TMP_COMPOSE"
     image: lscr.io/linuxserver/tautulli:latest
     container_name: tautulli
     ports:
-      - "$PORT:${PLUGIN_PORTS[0]}"
+      - "$PORT:$PLUGIN_PORT"
     environment:
       - PUID=\${PUID}
       - PGID=\${PGID}

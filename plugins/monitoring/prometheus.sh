@@ -19,7 +19,7 @@ PLUGIN_CATEGORY="monitoring"
 
 PLUGIN_DEPENDS=()
 
-PLUGIN_PORTS=(9090)
+PLUGIN_PORT=9090
 
 PLUGIN_HOST_NETWORK=false
 PLUGIN_DASHBOARD=true
@@ -36,7 +36,7 @@ install_service() {
 # Register and retrieve port
 ########################################
 
-    register_port "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}"
+    register_port "$PLUGIN_NAME" "$PLUGIN_PORT"
     PORT=$(get_port "$PLUGIN_NAME")
 
 ########################################
@@ -78,7 +78,7 @@ cat <<EOF >> "$TMP_COMPOSE"
     image: prom/prometheus:latest
     container_name: prometheus
     ports:
-      - "$PORT:${PLUGIN_PORTS[0]}"
+      - "$PORT:$PLUGIN_PORT"
     volumes:
       - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     restart: unless-stopped

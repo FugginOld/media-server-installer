@@ -19,7 +19,7 @@ PLUGIN_CATEGORY="monitoring"
 
 PLUGIN_DEPENDS=(prometheus plex)
 
-PLUGIN_PORTS=(9594)
+PLUGIN_PORT=9594
 
 PLUGIN_HOST_NETWORK=false
 PLUGIN_DASHBOARD=false
@@ -45,7 +45,7 @@ install_service() {
 # Register and retrieve port
 ########################################
 
-    register_port "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}"
+    register_port "$PLUGIN_NAME" "$PLUGIN_PORT"
     PORT=$(get_port "$PLUGIN_NAME")
 
 ########################################
@@ -64,7 +64,7 @@ cat <<EOF >> "$TMP_COMPOSE"
     image: ghcr.io/jsclayton/prometheus-plex-exporter
     container_name: plex-exporter
     ports:
-      - "$PORT:${PLUGIN_PORTS[0]}"
+      - "$PORT:$PLUGIN_PORT"
     environment:
       - TZ=\${TIMEZONE}
       - PLEX_SERVER=http://plex:32400

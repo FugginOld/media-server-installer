@@ -19,7 +19,7 @@ find "$PLUGIN_DIR" -type f -name "*.sh" \
 declare -Ag PLUGIN_PATHS
 declare -Ag PLUGIN_CATEGORIES
 declare -Ag PLUGIN_DEPENDENCIES
-declare -Ag PLUGIN_PORTS
+declare -Ag PLUGIN_PORT
 declare -Ag PLUGIN_DASHBOARD
 
 ########################################
@@ -34,7 +34,7 @@ do
 PLUGIN_NAME=""
 PLUGIN_CATEGORY=""
 PLUGIN_DEPENDS=()
-PLUGIN_PORTS=()
+PLUGIN_PORT=""
 PLUGIN_DASHBOARD=false
 
 # Load plugin metadata
@@ -45,7 +45,7 @@ name=$(basename "$file" .sh)
 PLUGIN_PATHS["$name"]="$file"
 PLUGIN_CATEGORIES["$name"]="${PLUGIN_CATEGORY:-Misc}"
 PLUGIN_DEPENDENCIES["$name"]="${PLUGIN_DEPENDS[*]:-}"
-PLUGIN_PORTS["$name"]="${PLUGIN_PORTS[*]:-}"
+PLUGIN_PORT["$name"]="${PLUGIN_PORT:-}"
 PLUGIN_DASHBOARD["$name"]="${PLUGIN_DASHBOARD:-false}"
 
 done < <(discover_plugins)
@@ -92,11 +92,11 @@ echo "${PLUGIN_CATEGORIES[$name]}"
 # Get plugin ports
 ########################################
 
-get_plugin_ports() {
+get_plugin_port() {
 
 local name="$1"
 
-echo "${PLUGIN_PORTS[$name]}"
+echo "${PLUGIN_PORT[$name]}"
 
 }
 
@@ -109,4 +109,4 @@ export -f load_plugins
 export -f get_plugin_path
 export -f get_plugin_dependencies
 export -f get_plugin_category
-export -f get_plugin_ports
+export -f get_plugin_port

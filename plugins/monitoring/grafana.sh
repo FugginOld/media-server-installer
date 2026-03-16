@@ -19,7 +19,7 @@ PLUGIN_CATEGORY="monitoring"
 
 PLUGIN_DEPENDS=(prometheus)
 
-PLUGIN_PORTS=(3000)
+PLUGIN_PORT=3000
 
 PLUGIN_HOST_NETWORK=false
 PLUGIN_DASHBOARD=true
@@ -36,7 +36,7 @@ install_service() {
 # Register and retrieve port
 ########################################
 
-    register_port "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}"
+    register_port "$PLUGIN_NAME" "$PLUGIN_PORT"
     PORT=$(get_port "$PLUGIN_NAME")
 
 ########################################
@@ -55,7 +55,7 @@ cat <<EOF >> "$TMP_COMPOSE"
     image: grafana/grafana:latest
     container_name: grafana
     ports:
-      - "$PORT:${PLUGIN_PORTS[0]}"
+      - "$PORT:$PLUGIN_PORT"
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin

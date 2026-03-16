@@ -19,7 +19,7 @@ PLUGIN_CATEGORY="system"
 
 PLUGIN_DEPENDS=()
 
-PLUGIN_PORTS=(8080)
+PLUGIN_PORT=8080
 
 PLUGIN_HOST_NETWORK=false
 PLUGIN_DASHBOARD=false
@@ -36,9 +36,9 @@ install_service() {
     # Register port
     ########################################
 
-    local PORT="${PLUGIN_PORTS[0]}"
+    local PORT="$PLUGIN_PORT"
 
-    if [[ "$PLUGIN_HOST_NETWORK" != "true" ]]; then
+    if [[ "$PLUGIN_HOST_NETWORK" != "true" && -n "$PLUGIN_PORT" ]]; then
         register_port "$PLUGIN_NAME" "$PORT"
     fi
 
@@ -73,7 +73,7 @@ EOF
 
 cat <<EOF >> "$TMP_COMPOSE"
     ports:
-      - "$PORT:${PLUGIN_PORTS[0]}"
+      - "$PORT:$PLUGIN_PORT"
 EOF
 
     fi
@@ -120,7 +120,7 @@ EOF
 
 cat <<EOF >> "$TMP_COMPOSE"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:${PLUGIN_PORTS[0]} || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:$PLUGIN_PORT || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

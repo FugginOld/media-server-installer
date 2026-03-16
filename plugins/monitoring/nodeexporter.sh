@@ -19,7 +19,7 @@ PLUGIN_CATEGORY="monitoring"
 
 PLUGIN_DEPENDS=(prometheus)
 
-PLUGIN_PORTS=(9100)
+PLUGIN_PORT=9100
 
 PLUGIN_HOST_NETWORK=false
 PLUGIN_DASHBOARD=false
@@ -36,7 +36,7 @@ install_service() {
 # Register and retrieve port
 ########################################
 
-    register_port "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}"
+    register_port "$PLUGIN_NAME" "$PLUGIN_PORT"
     PORT=$(get_port "$PLUGIN_NAME")
 
 ########################################
@@ -49,7 +49,7 @@ cat <<EOF >> "$TMP_COMPOSE"
     image: prom/node-exporter:latest
     container_name: nodeexporter
     ports:
-      - "$PORT:${PLUGIN_PORTS[0]}"
+      - "$PORT:$PLUGIN_PORT"
     restart: unless-stopped
 EOF
 

@@ -19,7 +19,7 @@ PLUGIN_CATEGORY="automation"
 
 PLUGIN_DEPENDS=(sabnzbd)
 
-PLUGIN_PORTS=(7878)
+PLUGIN_PORT=7878
 
 PLUGIN_HOST_NETWORK=false
 PLUGIN_DASHBOARD=true
@@ -36,7 +36,7 @@ install_service() {
 # Register and retrieve port
 ########################################
 
-    register_port "$PLUGIN_NAME" "${PLUGIN_PORTS[0]}"
+    register_port "$PLUGIN_NAME" "$PLUGIN_PORT"
     PORT=$(get_port "$PLUGIN_NAME")
 
 ########################################
@@ -55,7 +55,7 @@ cat <<EOF >> "$TMP_COMPOSE"
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
     ports:
-      - "$PORT:${PLUGIN_PORTS[0]}"
+      - "$PORT:$PLUGIN_PORT"
     environment:
       - PUID=\${PUID}
       - PGID=\${PGID}

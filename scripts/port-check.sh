@@ -68,21 +68,18 @@ source "$PLUGIN_FILE"
 # Skip plugins without ports
 ########################################
 
-if [[ -z "${PLUGIN_PORTS:-}" ]]; then
-continue
+if [[ -z "${PLUGIN_PORT:-}" ]]; then
+    continue
 fi
 
-for PORT in "${PLUGIN_PORTS[@]}"
-do
+if port_in_use "$PLUGIN_PORT"; then
 
-if port_in_use "$PORT"; then
-
-PROCESS=$(ss -tulnp 2>/dev/null | grep ":$PORT " | awk '{print $NF}' | head -n1)
-CONFLICTS+=("$PORT ($PROCESS)")
+    PROCESS=$(ss -tulnp 2>/dev/null | grep ":$PLUGIN_PORT " | awk '{print $NF}' | head -n1)
+    CONFLICTS+=("$PLUGIN_PORT ($PROCESS)")
 
 else
 
-CHECKED_PORTS+=("$PORT")
+    CHECKED_PORTS+=("$PLUGIN_PORT")
 
 fi
 
