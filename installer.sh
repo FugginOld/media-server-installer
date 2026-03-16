@@ -243,16 +243,16 @@ else
         "${OPTIONS[@]}" \
         3>&1 1>&2 2>&3)
 
-    while IFS= read -r service; do
-        service="${service//\"/}"
-
-        if [[ "$service" == "ALL" ]]; then
-            SELECTED_SERVICES=("${AVAILABLE_PLUGINS[@]}")
-            break
-        fi
-
-        SELECTED_SERVICES+=("$service")
-    done <<< "$CHOICES"
+    if [[ "$CHOICES" == *'"ALL"'* ]]; then
+        SELECTED_SERVICES=("${AVAILABLE_PLUGINS[@]}")
+    else
+        mapfile -t SELECTED_SERVICES < <(
+            printf "%s\n" "$CHOICES" \
+            | tr ' ' '\n' \
+            | sed 's/^"//; s/"$//' \
+            | awk 'NF'
+        )
+    fi
 fi
 
 ########################################
