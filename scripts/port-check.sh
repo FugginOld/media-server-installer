@@ -6,6 +6,8 @@ set -euo pipefail
 ########################################
 
 source "${INSTALL_DIR:-/opt/media-server-installer}/lib/runtime.sh"
+# shellcheck disable=SC1091
+source "$LIB_DIR/plugins.sh"
 
 ########################################
 # Port conflict detection
@@ -19,6 +21,16 @@ echo ""
 
 CONFLICTS=()
 CHECKED_PORTS=()
+
+########################################
+# Resolve selected services
+########################################
+
+if [[ "$#" -gt 0 ]]; then
+    SELECTED_SERVICES=("$@")
+fi
+
+load_plugins
 
 ########################################
 # Validate selected services

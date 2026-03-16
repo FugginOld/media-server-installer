@@ -89,6 +89,8 @@ source "$CORE_DIR/hardware.sh"
 # shellcheck disable=SC1091
 source "$CORE_DIR/docker.sh"
 # shellcheck disable=SC1091
+source "$CORE_DIR/env.sh"
+# shellcheck disable=SC1091
 source "$CORE_DIR/config-wizard.sh"
 # shellcheck disable=SC1091
 source "$CORE_DIR/permissions.sh"
@@ -337,7 +339,7 @@ Proceed with installation?" || exit 0
 # Port conflict check
 ########################################
 
-bash "$SCRIPT_DIR/port-check.sh"
+bash "$SCRIPT_DIR/port-check.sh" "${SELECTED_SERVICES[@]}"
 
 ########################################
 # Generate docker compose
