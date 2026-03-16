@@ -62,6 +62,7 @@ warn "Missing plugin path for $SERVICE"
 continue
 fi
 
+# shellcheck disable=SC1090
 source "$PLUGIN_FILE"
 
 ########################################

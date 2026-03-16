@@ -43,7 +43,7 @@ register_service() {
     local URL="http://${HOST_IP}:${PORT}"
     local TMP_FILE
     TMP_FILE="$(mktemp)" || { error "Failed to create temp file"; return 1; }
-    trap "rm -f '$TMP_FILE'" RETURN
+    trap 'rm -f "$TMP_FILE"' RETURN
 
     # Check if registry is valid JSON
     if ! jq empty "$SERVICE_REGISTRY" 2>/dev/null; then
@@ -76,7 +76,7 @@ register_service() {
     ########################################
 
     TMP_FILE="$(mktemp)" || { error "Failed to create temp file"; return 1; }
-    trap "rm -f '$TMP_FILE'" RETURN
+    trap 'rm -f "$TMP_FILE"' RETURN
 
     if ! jq \
         --arg name "$NAME" \

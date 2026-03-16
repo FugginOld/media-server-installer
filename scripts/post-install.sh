@@ -12,7 +12,6 @@ source "${INSTALL_DIR:-/opt/media-server-installer}/lib/runtime.sh"
 ########################################
 
 LOG_DIR="$STACK_DIR/logs"
-LOG_FILE="$LOG_DIR/post-install.log"
 
 mkdir -p "$LOG_DIR"
 

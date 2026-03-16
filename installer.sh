@@ -12,10 +12,15 @@ export INSTALL_DIR="$SCRIPT_ROOT"
 # Load libraries
 ########################################
 
+# shellcheck disable=SC1091
 source "$INSTALL_DIR/lib/runtime.sh"
+# shellcheck disable=SC1091
 source "$INSTALL_DIR/lib/plugins.sh"
+# shellcheck disable=SC1091
 source "$INSTALL_DIR/lib/services.sh"
+# shellcheck disable=SC1091
 source "$INSTALL_DIR/lib/ports.sh"
+# shellcheck disable=SC1091
 source "$INSTALL_DIR/lib/compose.sh"
 
 ########################################
@@ -73,12 +78,19 @@ fi
 # Load core modules
 ########################################
 
+# shellcheck disable=SC1091
 source "$CORE_DIR/platform.sh"
+# shellcheck disable=SC1091
 source "$CORE_DIR/capabilities.sh"
+# shellcheck disable=SC1091
 source "$CORE_DIR/directories.sh"
+# shellcheck disable=SC1091
 source "$CORE_DIR/hardware.sh"
+# shellcheck disable=SC1091
 source "$CORE_DIR/docker.sh"
+# shellcheck disable=SC1091
 source "$CORE_DIR/config-wizard.sh"
+# shellcheck disable=SC1091
 source "$CORE_DIR/permissions.sh"
 
 ########################################
@@ -160,6 +172,7 @@ fi
 ########################################
 
 if [[ -f "$STACK_DIR/stack.env" ]]; then
+    # shellcheck disable=SC1091
     source "$STACK_DIR/stack.env"
 fi
 
@@ -350,6 +363,7 @@ do
 
     PLUGIN_FILE=$(get_plugin_path "$SERVICE")
     validate_plugin_file "$PLUGIN_FILE" || exit 1
+    # shellcheck disable=SC1090
     source "$PLUGIN_FILE"
 
     install_service

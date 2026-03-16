@@ -33,7 +33,7 @@ bash "$INSTALL_DIR/scripts/wait-for-container.sh" grafana 120 || exit 0
 
 echo "Waiting for Grafana API..."
 
-for i in {1..30}
+for _ in {1..30}
 do
 if curl -sf "$GRAFANA_URL/api/health" >/dev/null 2>&1; then
 echo "Grafana API ready"

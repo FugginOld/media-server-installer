@@ -13,6 +13,7 @@ export INSTALL_DIR="$SCRIPT_DIR"
 ########################################
 
 source "$INSTALL_DIR/lib/runtime.sh"
+# shellcheck disable=SC1091
 source "$LIB_DIR/compose.sh"
 
 ########################################
