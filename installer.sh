@@ -198,6 +198,23 @@ service_url_reachable() {
     curl -fsS --max-time 3 "$url" >/dev/null 2>&1
 }
 
+service_url_reachable_with_retry() {
+    local url="$1"
+    local attempts="${2:-5}"
+    local delay="${3:-1}"
+    local i
+
+    for ((i=1; i<=attempts; i++)); do
+        if service_url_reachable "$url"; then
+            return 0
+        fi
+
+        (( i < attempts )) && sleep "$delay"
+    done
+
+    return 1
+}
+
 wait_for_service_with_countdown() {
     local name="$1"
     local url="$2"
@@ -261,7 +278,7 @@ show_installed_services() {
 
         printf " - %s: " "$name"
 
-        if service_url_reachable "$url"; then
+        if service_url_reachable_with_retry "$url" 5 1; then
             print_modern_link "$url"
         else
             print_modern_link "$url"
@@ -281,7 +298,7 @@ show_installed_services() {
             printf " - %s: " "$name"
             print_modern_link "$url"
 
-            if ! service_url_reachable "$url"; then
+            if ! service_url_reachable_with_retry "$url" 3 1; then
                 echo "   [WARN] Service not reachable yet. Check container status: docker compose -f $COMPOSE_FILE ps"
             fi
         done
