@@ -84,7 +84,7 @@ EOF
 
 cat <<EOF >> "$TMP_COMPOSE"
     healthcheck:
-  test: ["CMD-SHELL", "wget -q --spider http://localhost:$PLUGIN_INTERNAL_PORT/ || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:$PLUGIN_INTERNAL_PORT/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

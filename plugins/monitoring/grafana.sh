@@ -72,7 +72,7 @@ EOF
 
 cat <<EOF >> "$TMP_COMPOSE"
     healthcheck:
-  test: ["CMD-SHELL", "curl -f http://localhost:$PLUGIN_PORT/login || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:$PLUGIN_PORT/login || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
