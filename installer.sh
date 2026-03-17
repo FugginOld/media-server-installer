@@ -215,6 +215,19 @@ service_url_reachable_with_retry() {
     return 1
 }
 
+service_startup_retry_attempts() {
+    local name="$1"
+
+    case "$name" in
+        "Bazarr"|"Overseerr"|"Radarr")
+            echo 20
+            ;;
+        *)
+            echo 5
+            ;;
+    esac
+}
+
 wait_for_service_with_countdown() {
     local name="$1"
     local url="$2"
@@ -250,6 +263,7 @@ show_installed_services() {
     local entry
     local name
     local url
+    local attempts
     local -a ui_entries=()
 
     if [[ ! -f "$SERVICE_REGISTRY" ]] || ! command -v jq >/dev/null 2>&1; then
@@ -277,8 +291,9 @@ show_installed_services() {
         esac
 
         printf " - %s: " "$name"
+        attempts="$(service_startup_retry_attempts "$name")"
 
-        if service_url_reachable_with_retry "$url" 5 1; then
+        if service_url_reachable_with_retry "$url" "$attempts" 1; then
             print_modern_link "$url"
         else
             print_modern_link "$url"
