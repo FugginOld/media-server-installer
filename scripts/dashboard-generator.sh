@@ -20,20 +20,68 @@ generate_services() {
 
 echo "Generating Homepage services..."
 
-jq -r '
-.services
-| group_by(.category)
-| map({
-    (.[0].category):
-      map({
-        (.name): {
-          href: .url,
-          icon: .icon
-        }
-      })
-  })
-| .[]
-' "$SERVICE_REGISTRY" > "$HOMEPAGE_CONFIG/services.yaml"
+if [[ ! -f "$SERVICE_REGISTRY" ]]; then
+  echo "[]" > "$HOMEPAGE_CONFIG/services.yaml"
+  return
+fi
+
+mapfile -t categories < <(jq -r '.services | map(.category) | unique | .[]' "$SERVICE_REGISTRY")
+
+if [[ "${#categories[@]}" -eq 0 ]]; then
+  echo "[]" > "$HOMEPAGE_CONFIG/services.yaml"
+  return
+fi
+
+{
+  for category in "${categories[@]}"; do
+    printf -- "- %s:\n" "${category^}"
+
+    while IFS=$'\t' read -r name url icon; do
+      [[ -z "$name" ]] && continue
+      printf -- "    - %s:\n" "$name"
+      printf -- "        href: %s\n" "$url"
+      printf -- "        icon: %s\n" "$icon"
+    done < <(
+      jq -r --arg c "$category" '
+        .services
+        | map(select(.category == $c))
+        | sort_by(.name)
+        | .[]
+        | [.name, .url, .icon] | @tsv
+      ' "$SERVICE_REGISTRY"
+    )
+  done
+} > "$HOMEPAGE_CONFIG/services.yaml"
+
+}
+
+########################################
+# Validate services.yaml
+########################################
+
+validate_services_yaml() {
+
+local file="$HOMEPAGE_CONFIG/services.yaml"
+
+if [[ ! -s "$file" ]]; then
+  error "Homepage services.yaml is missing or empty"
+  return 1
+fi
+
+# Guard against accidental JSON concatenation (previous failure mode).
+if grep -qE '^[[:space:]]*\{' "$file"; then
+  error "Homepage services.yaml appears to contain JSON fragments"
+  return 1
+fi
+
+# Best-effort runtime validation: if Homepage is running, try parsing with its runtime.
+if command -v docker >/dev/null 2>&1 && docker ps --format '{{.Names}}' | grep -Fxq "homepage"; then
+  if ! docker exec homepage node -e "const fs=require('fs'); const y=require('yaml'); y.parse(fs.readFileSync('/app/config/services.yaml','utf8'));" >/dev/null 2>&1; then
+    warn "Could not run Homepage in-container parse validation; skipping runtime parse check"
+  fi
+fi
+
+return 0
 
 }
 
@@ -84,6 +132,7 @@ EOF
 ########################################
 
 generate_services
+validate_services_yaml
 generate_settings
 generate_widgets
 
