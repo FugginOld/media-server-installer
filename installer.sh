@@ -219,7 +219,10 @@ service_startup_retry_attempts() {
     local name="$1"
 
     case "$name" in
-        "Bazarr"|"Overseerr"|"Radarr")
+        "Bazarr")
+            echo 30
+            ;;
+        "Overseerr"|"Radarr")
             echo 20
             ;;
         *)

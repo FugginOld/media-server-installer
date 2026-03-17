@@ -63,6 +63,7 @@ cat <<EOF >> "$TMP_COMPOSE"
       - TZ=\${TIMEZONE}
     volumes:
       - ./config/grafana:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
     restart: unless-stopped
 EOF
 

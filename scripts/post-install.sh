@@ -111,6 +111,26 @@ fi
 fi
 
 ########################################
+# Generate Grafana provisioning
+########################################
+
+log "Generating Grafana provisioning configuration"
+
+if [[ -f "$INSTALL_DIR/scripts/grafana-provisioning.sh" ]]; then
+    bash "$INSTALL_DIR/scripts/grafana-provisioning.sh" >/dev/null 2>&1 || true
+fi
+
+########################################
+# Import Grafana dashboards
+########################################
+
+log "Importing Grafana dashboards"
+
+if [[ -f "$INSTALL_DIR/scripts/import-grafana-dashboards.sh" ]]; then
+    bash "$INSTALL_DIR/scripts/import-grafana-dashboards.sh" || true
+fi
+
+########################################
 # Generate Homepage dashboard
 ########################################
 
