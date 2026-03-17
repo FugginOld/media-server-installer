@@ -52,25 +52,19 @@ import_dashboard() {
   # Read the dashboard JSON and wrap it for API import
   local dashboard_json=$(cat "$dashboard_file")
   
-  # Try with authentication first
+  # Import with admin credentials (wrapped format required by Grafana API)
   local response=$(curl -s -X POST "$GRAFANA_URL/api/dashboards/db" \
+    -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer admin" \
     -d "{\"dashboard\": $dashboard_json, \"overwrite\": true}" 2>&1)
   
-  # If auth fails, try with service account or admin user
-  if echo "$response" | grep -q "Unauthorized\|401"; then
-    response=$(curl -s -X POST "$GRAFANA_URL/api/dashboards/db" \
-      -H "Content-Type: application/json" \
-      -H "X-Grafana-Org-Id: 1" \
-      -d "{\"dashboard\": $dashboard_json, \"overwrite\": true}" 2>&1)
-  fi
-  
-  if echo "$response" | grep -q "\"id\""; then
-    log "✓ Dashboard imported: $dashboard_name"
+  if echo "$response" | grep -q "\"status\":\"success\""; then
+    local dashboard_url=$(echo "$response" | grep -o '"url":"[^"]*"' | cut -d'"' -f4)
+    log "✓ Dashboard imported: $dashboard_name (${dashboard_url:-/d/$dashboard_name})"
     return 0
   else
-    warn "Dashboard import result for $dashboard_name: $response"
+    error "Failed to import dashboard: $dashboard_name"
+    error "Response: $response"
     return 1
   fi
 }

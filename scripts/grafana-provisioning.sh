@@ -14,13 +14,13 @@ DASHBOARDS_DIR="$PROVISIONING_DIR/dashboards"
 
 mkdir -p "$DATASOURCES_DIR" "$DASHBOARDS_DIR"
 
-log_info "Generating Grafana provisioning configs..."
+log "Generating Grafana provisioning configs..."
 
 ########################################
 # Prometheus datasource
 ########################################
 
-log_info "Creating Prometheus datasource config..."
+log "Creating Prometheus datasource config..."
 cat > "$DATASOURCES_DIR/prometheus.yaml" <<'EOF'
 apiVersion: 1
 
@@ -37,7 +37,7 @@ EOF
 # Dashboard provider (for HTTP API imports)
 ########################################
 
-log_info "Creating dashboard provider config..."
+log "Creating dashboard provider config..."
 cat > "$PROVISIONING_DIR/dashboards.yaml" <<'EOF'
 apiVersion: 1
 
@@ -57,7 +57,7 @@ EOF
 # Generate dashboard JSON files
 ########################################
 
-log_info "Generating dashboard JSON files..."
+log "Generating dashboard JSON files..."
 
 # System Performance metrics
 cat > "$DASHBOARDS_DIR/system-metrics.json" <<'EOF'
@@ -226,10 +226,10 @@ cat > "$DASHBOARDS_DIR/stack-health.json" <<'EOF'
 }
 EOF
 
-log_info "Grafana provisioning configs generated successfully"
-log_info "- Datasources: $DATASOURCES_DIR/prometheus.yaml"
-log_info "- Dashboard provider: $PROVISIONING_DIR/dashboards.yaml"
-log_info "- Dashboard files: $DASHBOARDS_DIR/"
-ls -1 "$DASHBOARDS_DIR"/*.json 2>/dev/null | while read f; do log_info "  - $(basename "$f")"; done
+log "Grafana provisioning configs generated successfully"
+log "- Datasources: $DATASOURCES_DIR/prometheus.yaml"
+log "- Dashboard provider: $PROVISIONING_DIR/dashboards.yaml"
+log "- Dashboard files: $DASHBOARDS_DIR/"
+ls -1 "$DASHBOARDS_DIR"/*.json 2>/dev/null | while read f; do log "  - $(basename "$f")"; done
 
 exit 0
