@@ -20,6 +20,7 @@ PLUGIN_CATEGORY="system"
 PLUGIN_DEPENDS=()
 
 PLUGIN_PORTS=(3001)
+PLUGIN_INTERNAL_PORT=3000
 
 PLUGIN_HOST_NETWORK=false
 PLUGIN_DASHBOARD=true
@@ -55,7 +56,7 @@ cat <<EOF >> "$TMP_COMPOSE"
     image: ghcr.io/gethomepage/homepage:latest
     container_name: homepage
     ports:
-      - "$PORT:${PLUGIN_PORTS[0]}"
+      - "$PORT:$PLUGIN_INTERNAL_PORT"
     environment:
       - TZ=\${TIMEZONE}
       - HOMEPAGE_ALLOWED_HOSTS=*
@@ -83,7 +84,7 @@ EOF
 
 cat <<EOF >> "$TMP_COMPOSE"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:$PORT || exit 1"]
+  test: ["CMD-SHELL", "wget -q --spider http://localhost:$PLUGIN_INTERNAL_PORT/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

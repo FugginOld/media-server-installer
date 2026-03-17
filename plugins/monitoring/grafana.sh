@@ -54,6 +54,7 @@ cat <<EOF >> "$TMP_COMPOSE"
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
+    user: "\${PUID}:\${PGID}"
     ports:
       - "$PORT:$PLUGIN_PORT"
     environment:
@@ -71,7 +72,7 @@ EOF
 
 cat <<EOF >> "$TMP_COMPOSE"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:$PORT/login || exit 1"]
+  test: ["CMD-SHELL", "curl -f http://localhost:$PLUGIN_PORT/login || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
