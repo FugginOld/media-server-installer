@@ -198,36 +198,42 @@ service_url_reachable() {
     curl -fsS --max-time 3 "$url" >/dev/null 2>&1
 }
 
-wait_for_ui_services() {
-    local entry
-    local name
-    local url
+wait_for_service_with_countdown() {
+    local name="$1"
+    local url="$2"
     local timeout=60
-    local elapsed
+    local remaining
 
-    for entry in "${INSTALLED_ENTRIES[@]}"; do
-        name="${entry%%|*}"
-        url="${entry#*|}"
+    if service_url_reachable "$url"; then
+        echo " - $name: ready"
+        return 0
+    fi
 
-        case "$name" in
-            "Homepage"|"Grafana")
-                elapsed=0
-                while (( elapsed < timeout )); do
-                    if service_url_reachable "$url"; then
-                        break
-                    fi
-                    sleep 2
-                    ((elapsed+=2))
-                done
-                ;;
-        esac
+    for ((remaining=timeout; remaining>0; remaining-=2)); do
+        printf '\r - %s: waiting... %2ss remaining' "$name" "$remaining"
+
+        if service_url_reachable "$url"; then
+            printf '\r - %s: ready.                    \n' "$name"
+            return 0
+        fi
+
+        sleep 2
     done
+
+    if service_url_reachable "$url"; then
+        printf '\r - %s: ready.                    \n' "$name"
+        return 0
+    fi
+
+    printf '\r - %s: timed out after %ss.      \n' "$name" "$timeout"
+    return 1
 }
 
 show_installed_services() {
     local entry
     local name
     local url
+    local -a ui_entries=()
 
     if [[ ! -f "$SERVICE_REGISTRY" ]] || ! command -v jq >/dev/null 2>&1; then
         return 1
@@ -238,8 +244,6 @@ show_installed_services() {
         return 1
     fi
 
-    wait_for_ui_services
-
     echo "Installed Services:"
     for entry in "${INSTALLED_ENTRIES[@]}"; do
         name="${entry%%|*}"
@@ -247,6 +251,13 @@ show_installed_services() {
 
         [[ -z "$name" || -z "$url" ]] && continue
         [[ "$name" == "Web Installer" ]] && continue
+
+        case "$name" in
+            "Homepage"|"Grafana")
+                ui_entries+=("$entry")
+                continue
+                ;;
+        esac
 
         printf " - %s: " "$name"
 
@@ -257,6 +268,24 @@ show_installed_services() {
             echo "   [WARN] Service not reachable yet. Check container status: docker compose -f $COMPOSE_FILE ps"
         fi
     done
+
+    if (( ${#ui_entries[@]} > 0 )); then
+        echo ""
+        echo "Waiting for Homepage and Grafana:"
+
+        for entry in "${ui_entries[@]}"; do
+            name="${entry%%|*}"
+            url="${entry#*|}"
+
+            wait_for_service_with_countdown "$name" "$url" || true
+            printf " - %s: " "$name"
+            print_modern_link "$url"
+
+            if ! service_url_reachable "$url"; then
+                echo "   [WARN] Service not reachable yet. Check container status: docker compose -f $COMPOSE_FILE ps"
+            fi
+        done
+    fi
 
     return 0
 }
@@ -347,6 +376,7 @@ SELECTED_SERVICES=()
 
 for plugin in "${!PLUGIN_PATHS[@]}"
 do
+    [[ "$plugin" == "webinstaller" ]] && continue
     AVAILABLE_PLUGINS+=("$plugin")
 done
 
