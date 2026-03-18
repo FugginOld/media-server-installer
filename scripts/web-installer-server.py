@@ -154,6 +154,12 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json(200, {"ok": True})
             return
 
+        if self.path == "/api/cancel":
+            cancel_path = os.path.join(self.session_dir, "cancel.json")
+            write_json(cancel_path, {"cancelled": True})
+            self._send_json(200, {"ok": True})
+            return
+
         self._send_json(404, {"error": "not_found"})
 
 
@@ -237,6 +243,7 @@ def render_html(host_ip):
         </div>
         <div class=\"bar\">
           <button class=\"btn\" id=\"saveConfig\" type=\"button\">Save Configuration</button>
+          <button class=\"btn secondary\" id=\"cancelInstall\" type=\"button\">Cancel Installation</button>
           <span id=\"configMsg\" class=\"muted\" style=\"margin:0\"></span>
         </div>
       </section>
@@ -253,6 +260,9 @@ def render_html(host_ip):
       <section id=\"progress\" class=\"hidden\">
         <h2>Install Progress</h2>
         <p id=\"phase\" class=\"muted\">Waiting...</p>
+        <div class=\"bar\">
+          <button class=\"btn secondary\" id=\"cancelDuringProgress\" type=\"button\">Cancel Installation</button>
+        </div>
         <div class=\"progress-wrap\">
           <div class=\"progress-meta\">
             <span id=\"progressSummary\">0/0 complete</span>
@@ -276,7 +286,10 @@ def render_html(host_ip):
     const cfgNetwork = document.getElementById('cfgNetwork');
     const cfgDirMode = document.getElementById('cfgDirMode');
     const cfgMsg = document.getElementById('configMsg');
+    const cancelInstallBtn = document.getElementById('cancelInstall');
     const pluginGrid = document.getElementById('pluginGrid');
+    const selectAllBtn = document.getElementById('selectAll');
+    const startInstallBtn = document.getElementById('startInstall');
     const statusGrid = document.getElementById('statusGrid');
     const phase = document.getElementById('phase');
     const progressFill = document.getElementById('progressFill');
@@ -285,9 +298,12 @@ def render_html(host_ip):
     const progressActive = document.getElementById('progressActive');
     const selectionSection = document.getElementById('selection');
     const progressSection = document.getElementById('progress');
+    const cancelDuringProgressBtn = document.getElementById('cancelDuringProgress');
 
     let plugins = [];
     let poller = null;
+    let pluginsPoller = null;
+    let selectionHandlersBound = false;
 
     function renderPlugins() {
       pluginGrid.innerHTML = '';
@@ -317,6 +333,68 @@ def render_html(host_ip):
       }
     }
 
+    async function refreshPlugins() {
+      const r = await fetch('/api/plugins', { cache: 'no-store' });
+      const data = await r.json();
+      plugins = data.plugins || [];
+
+      if (plugins.length > 0) {
+        renderPlugins();
+        selectionSection.classList.remove('hidden');
+        if (pluginsPoller) {
+          clearInterval(pluginsPoller);
+          pluginsPoller = null;
+        }
+        return true;
+      }
+
+      selectionSection.classList.add('hidden');
+      return false;
+    }
+
+    function bindSelectionHandlers() {
+      if (selectionHandlersBound) {
+        return;
+      }
+
+      selectAllBtn.addEventListener('click', () => setAll(true));
+
+      startInstallBtn.addEventListener('click', async () => {
+        cfgMsg.textContent = 'Saving...';
+        try {
+          await saveConfig();
+        } catch (e) {
+          cfgMsg.textContent = 'Failed to save configuration: ' + e.message;
+          return;
+        }
+
+        const selected = selectedPlugins();
+        const all = plugins.length > 0 && selected.length === plugins.length;
+        if (selected.length === 0) {
+          alert('Select at least one plugin.');
+          return;
+        }
+
+        const res = await fetch('/api/select', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ selected, all })
+        });
+
+        if (!res.ok) {
+          alert('Failed to submit selection.');
+          return;
+        }
+
+        selectionSection.classList.add('hidden');
+        progressSection.classList.remove('hidden');
+        await fetchProgress();
+        poller = setInterval(fetchProgress, 2000);
+      });
+
+      selectionHandlersBound = true;
+    }
+
     async function saveConfig() {
       const payload = {
         timezone: (cfgTimezone.value || '').trim(),
@@ -338,6 +416,19 @@ def render_html(host_ip):
       }
 
       cfgMsg.textContent = 'Configuration saved.';
+    }
+
+    async function cancelInstall() {
+      const res = await fetch('/api/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cancel: true })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'unknown' }));
+        throw new Error(err.error || 'cancel_request_failed');
+      }
     }
 
     function renderProgress(payload) {
@@ -396,7 +487,7 @@ def render_html(host_ip):
       const r = await fetch('/api/progress', { cache: 'no-store' });
       const data = await r.json();
       renderProgress(data);
-      if (data.phase === 'completed' || data.phase === 'failed') {
+      if (data.phase === 'completed' || data.phase === 'failed' || data.phase === 'cancelled') {
         if (poller) clearInterval(poller);
       }
     }
@@ -411,13 +502,11 @@ def render_html(host_ip):
       cfgNetwork.value = cfg.dockerNetwork || 'media-network';
       cfgDirMode.value = cfg.dirMode || 'default';
 
-      const r = await fetch('/api/plugins', { cache: 'no-store' });
-      const data = await r.json();
-      plugins = data.plugins || [];
-      renderPlugins();
-
-      if (plugins.length === 0) {
-        selectionSection.classList.add('hidden');
+      bindSelectionHandlers();
+      const hasPlugins = await refreshPlugins();
+      if (!hasPlugins) {
+        cfgMsg.textContent = 'Save configuration, then plugin choices will appear shortly.';
+        pluginsPoller = setInterval(refreshPlugins, 2000);
       }
 
       document.getElementById('saveConfig').addEventListener('click', async () => {
@@ -425,49 +514,40 @@ def render_html(host_ip):
         try {
           await saveConfig();
           if (plugins.length === 0) {
-            cfgMsg.textContent = 'Configuration saved. Return to the installer terminal.';
+            cfgMsg.textContent = 'Configuration saved. Waiting for plugin list...';
           }
         } catch (e) {
           cfgMsg.textContent = 'Failed to save configuration: ' + e.message;
         }
       });
 
-      if (plugins.length > 0) {
-        document.getElementById('selectAll').addEventListener('click', () => setAll(true));
+      cancelInstallBtn.addEventListener('click', async () => {
+        cfgMsg.textContent = 'Cancelling...';
+        try {
+          await cancelInstall();
+          cfgMsg.textContent = 'Installation cancelled. Return to the terminal prompt.';
+          startInstallBtn.disabled = true;
+          selectAllBtn.disabled = true;
+          cancelInstallBtn.disabled = true;
+          cancelDuringProgressBtn.disabled = true;
+        } catch (e) {
+          cfgMsg.textContent = 'Failed to cancel installation: ' + e.message;
+        }
+      });
 
-        document.getElementById('startInstall').addEventListener('click', async () => {
-          cfgMsg.textContent = 'Saving...';
-          try {
-            await saveConfig();
-          } catch (e) {
-            cfgMsg.textContent = 'Failed to save configuration: ' + e.message;
-            return;
-          }
-
-          const selected = selectedPlugins();
-          const all = selected.length === plugins.length;
-          if (selected.length === 0) {
-            alert('Select at least one plugin.');
-            return;
-          }
-
-          const res = await fetch('/api/select', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ selected, all })
-          });
-
-          if (!res.ok) {
-            alert('Failed to submit selection.');
-            return;
-          }
-
-          selectionSection.classList.add('hidden');
-          progressSection.classList.remove('hidden');
-          await fetchProgress();
-          poller = setInterval(fetchProgress, 2000);
-        });
-      }
+      cancelDuringProgressBtn.addEventListener('click', async () => {
+        progressActive.textContent = 'Currently installing: cancelling...';
+        try {
+          await cancelInstall();
+          progressActive.textContent = 'Currently installing: cancellation requested';
+          cancelDuringProgressBtn.disabled = true;
+          startInstallBtn.disabled = true;
+          selectAllBtn.disabled = true;
+          cancelInstallBtn.disabled = true;
+        } catch (e) {
+          progressActive.textContent = 'Currently installing: cancel failed (' + e.message + ')';
+        }
+      });
     }
 
     init();

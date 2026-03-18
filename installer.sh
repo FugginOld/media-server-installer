@@ -72,6 +72,7 @@ WEB_SESSION_PORT=8099
 WEB_SESSION_DIR=""
 WEB_CONFIG_DEFAULTS_FILE=""
 WEB_CONFIG_FILE=""
+WEB_CANCEL_FILE=""
 WEB_SELECTION_FILE=""
 WEB_PROGRESS_FILE=""
 WEB_PLUGINS_FILE=""
@@ -230,6 +231,32 @@ web_progress_set_service() {
     fi
 }
 
+web_cancel_requested() {
+    [[ "$INSTALLER_FRONTEND" == "web" ]] || return 1
+    [[ -n "$WEB_CANCEL_FILE" && -f "$WEB_CANCEL_FILE" ]]
+}
+
+web_cancel_install_if_requested() {
+    local stage="$1"
+
+    if ! web_cancel_requested; then
+        return 0
+    fi
+
+    warn "Installation cancelled from web UI during: $stage"
+    web_progress_set_phase "cancelled" "Installation cancelled from web UI"
+
+    # Best-effort cleanup if containers may have started.
+    if [[ -n "${COMPOSE_FILE:-}" && -f "${COMPOSE_FILE:-}" ]]; then
+        docker compose -f "$COMPOSE_FILE" down --remove-orphans >/dev/null 2>&1 || true
+    fi
+
+    cleanup_web_session
+    echo ""
+    echo "Installation cancelled. Returning to command prompt."
+    exit 0
+}
+
 start_web_selection_server() {
     local plugin_json='[]'
     local plugin
@@ -239,13 +266,14 @@ start_web_selection_server() {
     WEB_SESSION_DIR="$STACK_DIR/web-installer-session"
     WEB_CONFIG_DEFAULTS_FILE="$WEB_SESSION_DIR/config-defaults.json"
     WEB_CONFIG_FILE="$WEB_SESSION_DIR/config.json"
+    WEB_CANCEL_FILE="$WEB_SESSION_DIR/cancel.json"
     WEB_SELECTION_FILE="$WEB_SESSION_DIR/selection.json"
     WEB_PROGRESS_FILE="$WEB_SESSION_DIR/progress.json"
     WEB_PLUGINS_FILE="$WEB_SESSION_DIR/plugins.json"
 
     mkdir -p "$WEB_SESSION_DIR" "$STACK_DIR/logs"
     cleanup_web_session
-    rm -f "$WEB_SELECTION_FILE"
+    rm -f "$WEB_SELECTION_FILE" "$WEB_CANCEL_FILE"
 
     for plugin in "${AVAILABLE_PLUGINS[@]}"; do
         category="$(get_plugin_category "$plugin")"
@@ -288,6 +316,12 @@ start_web_selection_server() {
     echo "Waiting for plugin selection from web UI..."
 
     while [[ ! -f "$WEB_SELECTION_FILE" ]]; do
+        if [[ -f "$WEB_CANCEL_FILE" ]]; then
+            warn "Installation cancelled from web UI."
+            web_progress_set_phase "cancelled" "Installation cancelled from web UI"
+            cleanup_web_session
+            return 2
+        fi
         sleep 1
     done
 
@@ -317,6 +351,7 @@ start_web_config_server() {
     WEB_SESSION_DIR="$STACK_DIR/web-installer-session"
     WEB_CONFIG_DEFAULTS_FILE="$WEB_SESSION_DIR/config-defaults.json"
     WEB_CONFIG_FILE="$WEB_SESSION_DIR/config.json"
+    WEB_CANCEL_FILE="$WEB_SESSION_DIR/cancel.json"
     WEB_SELECTION_FILE="$WEB_SESSION_DIR/selection.json"
     WEB_PROGRESS_FILE="$WEB_SESSION_DIR/progress.json"
     WEB_PLUGINS_FILE="$WEB_SESSION_DIR/plugins.json"
@@ -331,7 +366,7 @@ start_web_config_server() {
     default_network="${DOCKER_NETWORK:-media-network}"
     default_dir_mode="${DIR_MODE:-default}"
 
-    rm -f "$WEB_CONFIG_FILE" "$WEB_SELECTION_FILE"
+    rm -f "$WEB_CONFIG_FILE" "$WEB_SELECTION_FILE" "$WEB_CANCEL_FILE"
 
     jq -n \
         --arg timezone "$default_tz" \
@@ -365,6 +400,12 @@ start_web_config_server() {
     echo "Waiting for web configuration (timezone, PUID, PGID, Docker network, directory mode)..."
 
     while [[ ! -f "$WEB_CONFIG_FILE" ]]; do
+        if [[ -f "$WEB_CANCEL_FILE" ]]; then
+            warn "Installation cancelled from web UI."
+            web_progress_set_phase "cancelled" "Installation cancelled from web UI"
+            cleanup_web_session
+            return 2
+        fi
         sleep 1
     done
 
@@ -649,7 +690,15 @@ fi
 
 if [[ "$NONINTERACTIVE" -eq 0 ]]; then
     if [[ "$INSTALLER_FRONTEND" == "web" ]]; then
-        start_web_config_server
+        web_config_rc=0
+        start_web_config_server || web_config_rc=$?
+        if [[ "$web_config_rc" -eq 2 ]]; then
+            echo ""
+            echo "Installation cancelled. Returning to command prompt."
+            exit 0
+        elif [[ "$web_config_rc" -ne 0 ]]; then
+            exit 1
+        fi
     else
         run_configuration_wizard
     fi
@@ -731,7 +780,15 @@ done
 if [[ "$NONINTERACTIVE" -eq 1 ]]; then
     SELECTED_SERVICES=("${AVAILABLE_PLUGINS[@]}")
 elif [[ "$INSTALLER_FRONTEND" == "web" ]]; then
-    start_web_selection_server
+    web_selection_rc=0
+    start_web_selection_server || web_selection_rc=$?
+    if [[ "$web_selection_rc" -eq 2 ]]; then
+        echo ""
+        echo "Installation cancelled. Returning to command prompt."
+        exit 0
+    elif [[ "$web_selection_rc" -ne 0 ]]; then
+        exit 1
+    fi
 else
     CHOICES=$(whiptail \
         --title "Media Stack Services" \
@@ -863,9 +920,11 @@ echo "services:"
 progress_msg "Generating Docker Compose"
 web_progress_set_phase "installing" "Installing selected plugins"
 web_progress_set_service "Stage: Plugin Install" "in_progress" "Installing plugins"
+web_cancel_install_if_requested "plugin install preparation"
 
 for SERVICE in "${SELECTED_SERVICES[@]}"
 do
+    web_cancel_install_if_requested "plugin install ($SERVICE)"
 
     web_progress_set_service "$SERVICE" "in_progress" "Installing plugin"
     log "Installing $SERVICE"
@@ -892,6 +951,7 @@ done
 web_progress_set_service "Stage: Plugin Install" "done" "All plugins installed"
 web_progress_set_phase "installing" "Validating generated compose file"
 web_progress_set_service "Stage: Compose Validate" "in_progress" "Validating compose configuration"
+web_cancel_install_if_requested "compose validation"
 
 # Validate the generated compose file
 if ! docker compose -f "$TMP_COMPOSE" config >/dev/null 2>&1; then
@@ -912,6 +972,7 @@ mv "$TMP_COMPOSE" "$COMPOSE_FILE"
 progress_msg "Pulling container images"
 web_progress_set_phase "installing" "Pulling container images"
 web_progress_set_service "Stage: Pull Images" "in_progress" "Pulling required images"
+web_cancel_install_if_requested "image pull preparation"
 
 if ! images="$(docker compose -f "$COMPOSE_FILE" config --format json 2>/dev/null | jq -r '.services[]?.image // empty')"; then
     images=""
@@ -930,6 +991,7 @@ fi
 
 while IFS= read -r img; do
     [[ -n "$img" ]] && {
+        web_cancel_install_if_requested "image pull ($img)"
         log "Pulling $img"
         web_progress_set_service "Stage: Pull Images" "in_progress" "Pulling $img"
         if ! docker pull "$img"; then
@@ -950,6 +1012,7 @@ web_progress_set_service "Stage: Pull Images" "done" "All images pulled"
 progress_msg "Starting containers"
 web_progress_set_phase "installing" "Starting containers"
 web_progress_set_service "Stage: Start Containers" "in_progress" "Starting docker compose stack"
+web_cancel_install_if_requested "container startup"
 
 if ! compose_up; then
     web_progress_set_service "Stage: Start Containers" "failed" "Failed to start containers"
@@ -966,6 +1029,7 @@ web_progress_set_service "Stage: Start Containers" "done" "Containers started"
 echo ""
 echo "Waiting for containers to become healthy..."
 sleep 5
+web_cancel_install_if_requested "container health wait"
 
 docker compose -f "$COMPOSE_FILE" ps
 
@@ -976,6 +1040,7 @@ docker compose -f "$COMPOSE_FILE" ps
 mkdir -p "$STACK_DIR/logs"
 web_progress_set_phase "installing" "Running post-install tasks"
 web_progress_set_service "Stage: Post Install" "in_progress" "Post-install tasks running in background"
+web_cancel_install_if_requested "post-install scheduling"
 
 bash "$SCRIPT_DIR/post-install.sh" \
 >> "$STACK_DIR/logs/post-install.log" 2>&1 &
