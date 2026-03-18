@@ -77,7 +77,7 @@ cat > "$DASHBOARDS_DIR/system-metrics.json" <<'EOF'
       "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
       "id": 1,
       "datasource": "Prometheus",
-      "targets": [{"expr": "avg(100 - (rate(node_cpu_seconds_total{mode=\\\"idle\\\"}[5m]) * 100))", "refId": "A"}]
+      "targets": [{"expr": "avg(100 - (rate(node_cpu_seconds_total{mode=\"idle\"}[5m]) * 100))", "refId": "A"}]
     },
     {
       "title": "Memory Usage (%)",
@@ -240,11 +240,11 @@ cat > "$DASHBOARDS_DIR/media-overview.json" <<'EOF'
   "panels": [
     {
       "title": "CPU Usage (%)",
-      "type": "stat",
+      "type": "timeseries",
       "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
       "id": 1,
       "datasource": "Prometheus",
-      "targets": [{"expr": "avg(100 - (rate(node_cpu_seconds_total{mode=\\\"idle\\\"}[5m]) * 100))", "refId": "A"}]
+      "targets": [{"expr": "avg(100 - (rate(node_cpu_seconds_total{mode=\"idle\"}[5m]) * 100))", "refId": "A"}]
     },
     {
       "title": "Memory Usage (%)",
