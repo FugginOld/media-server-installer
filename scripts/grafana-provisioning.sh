@@ -226,6 +226,93 @@ cat > "$DASHBOARDS_DIR/stack-health.json" <<'EOF'
 }
 EOF
 
+# Media Overview (single-pane dashboard)
+cat > "$DASHBOARDS_DIR/media-overview.json" <<'EOF'
+{
+  "title": "Media Stack Overview",
+  "description": "Single-page dashboard for system, Plex, user activity, and stack health",
+  "tags": ["overview", "media", "infrastructure"],
+  "timezone": "browser",
+  "schemaVersion": 27,
+  "version": 0,
+  "refresh": "30s",
+  "uid": "media-overview",
+  "panels": [
+    {
+      "title": "CPU Usage (%)",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "id": 1,
+      "datasource": "Prometheus",
+      "targets": [{"expr": "avg(100 - (rate(node_cpu_seconds_total{mode=\\\"idle\\\"}[5m]) * 100))", "refId": "A"}]
+    },
+    {
+      "title": "Memory Usage (%)",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "id": 2,
+      "datasource": "Prometheus",
+      "targets": [{"expr": "avg((1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100)", "refId": "A"}]
+    },
+    {
+      "title": "Active Streams",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "id": 3,
+      "datasource": "Prometheus",
+      "targets": [{"expr": "plex_streams_active or vector(0)", "refId": "A"}]
+    },
+    {
+      "title": "Active Users",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "id": 4,
+      "datasource": "Prometheus",
+      "targets": [{"expr": "count(tautulli_user_sessions_active) or vector(0)", "refId": "A"}]
+    },
+    {
+      "title": "Load Average",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "id": 5,
+      "datasource": "Prometheus",
+      "targets": [
+        {"expr": "node_load1", "refId": "A", "legendFormat": "1m"},
+        {"expr": "node_load5", "refId": "B", "legendFormat": "5m"},
+        {"expr": "node_load15", "refId": "C", "legendFormat": "15m"}
+      ]
+    },
+    {
+      "title": "Network I/O",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "id": 6,
+      "datasource": "Prometheus",
+      "targets": [
+        {"expr": "rate(node_network_receive_bytes_total[5m]) * 8", "refId": "A", "legendFormat": "In"},
+        {"expr": "rate(node_network_transmit_bytes_total[5m]) * 8", "refId": "B", "legendFormat": "Out"}
+      ]
+    },
+    {
+      "title": "Streaming Bandwidth",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+      "id": 7,
+      "datasource": "Prometheus",
+      "targets": [{"expr": "rate(plex_bandwidth_bytes[5m]) * 8", "refId": "A", "legendFormat": "{{stream_type}}"}]
+    },
+    {
+      "title": "Container Memory Usage",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+      "id": 8,
+      "datasource": "Prometheus",
+      "targets": [{"expr": "container_memory_usage_bytes or vector(0)", "refId": "A", "legendFormat": "{{name}}"}]
+    }
+  ]
+}
+EOF
+
 log "Grafana provisioning configs generated successfully"
 log "- Datasources: $DATASOURCES_DIR/prometheus.yaml"
 log "- Dashboard provider: $PROVISIONING_DIR/dashboards.yaml"
