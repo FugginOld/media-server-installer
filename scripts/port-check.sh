@@ -121,6 +121,11 @@ if [[ "${#CONFLICTS[@]}" -gt 0 ]]; then
 
 MSG=$(printf "%s\n" "${CONFLICTS[@]}")
 
+if [[ "${INSTALLER_FRONTEND:-cli}" == "web" ]]; then
+echo "Port conflicts detected:"
+printf "%s\n" "${CONFLICTS[@]}"
+echo "The installer will attempt automatic reassignment."
+elif command -v whiptail >/dev/null 2>&1; then
 whiptail \
 --title "Port Conflicts Detected" \
 --msgbox "The following ports are already in use:
@@ -129,6 +134,11 @@ $MSG
 
 The installer will attempt automatic reassignment." \
 15 70
+else
+echo "Port conflicts detected:"
+printf "%s\n" "${CONFLICTS[@]}"
+echo "The installer will attempt automatic reassignment."
+fi
 
 else
 
