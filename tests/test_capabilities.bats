@@ -142,7 +142,7 @@ teardown() {
     [[ "$output" == *"CAP_FS="* ]]
     # Must not be empty
     [[ "$output" != *"CAP_FS= "* ]]
-    [[ "$output" != *"CAP_FS=unknown"* ]] || true  # unknown is acceptable but uncommon
+    # In this non-mocked environment CAP_FS=unknown is acceptable (FS type unrecognised).
 }
 
 @test "detect_fs_capability maps ext4 to 'ext'" {

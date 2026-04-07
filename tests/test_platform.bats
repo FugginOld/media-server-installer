@@ -5,10 +5,11 @@ load helpers/common
 
 REPO_DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)"
 
-# Helper: source platform.sh in a subshell with a fake /etc/os-release.
-# $1 = ID value (e.g. "ubuntu")
-# $2 = optional ID_LIKE value (e.g. "debian")
-# $3 = extra commands to run after detect_platform (quoted if multi-word)
+# Helper: run the REAL detect_platform (from core/platform.sh) in a subshell
+# with a synthetic /etc/os-release content.
+# $1 = ID value   (e.g. "ubuntu")
+# $2 = ID_LIKE    (e.g. "debian")  — optional
+# $3 = extra commands to run after detect_platform — optional
 _platform_detect() {
     local id="$1"
     local id_like="${2:-}"
@@ -23,55 +24,15 @@ _platform_detect() {
         export TEMPLATE_DIR='$REPO_DIR/templates'
         export HOST_IP='127.0.0.1'
 
-        # Write a fake os-release
+        # Write a synthetic os-release and point the module at it
         FAKE_OS_RELEASE=\"\$(mktemp)\"
+        trap 'rm -f \"\$FAKE_OS_RELEASE\"' EXIT
         echo 'ID=${id}' > \"\$FAKE_OS_RELEASE\"
         echo 'ID_LIKE=${id_like}' >> \"\$FAKE_OS_RELEASE\"
+        export OS_RELEASE_FILE=\"\$FAKE_OS_RELEASE\"
 
         source '$REPO_DIR/lib/runtime.sh'
-
-        # Patch detect_platform to read from our fake file
-        detect_platform() {
-            if [[ -n \"\${MEDIA_STACK_PLATFORM_DETECTED:-}\" ]]; then return; fi
-            . \"\$FAKE_OS_RELEASE\"
-            PLATFORM_ID=\"\${ID,,}\"
-            PLATFORM_LIKE=\"\${ID_LIKE:-}\"
-
-            if [ -f /etc/unraid-version ]; then NAS_PLATFORM=\"unraid\"; else NAS_PLATFORM=\"none\"; fi
-
-            case \"\$PLATFORM_ID\" in
-                truenas*)       NAS_PLATFORM=\"truenas\" ;;
-                openmediavault) NAS_PLATFORM=\"openmediavault\" ;;
-                casaos)         NAS_PLATFORM=\"casaos\" ;;
-            esac
-
-            case \"\$PLATFORM_ID\" in
-                debian|ubuntu|devuan|linuxmint|pop|elementary)
-                    PLATFORM_FAMILY=\"debian\"; PACKAGE_MANAGER=\"apt\" ;;
-                fedora|rhel|centos|rocky|almalinux)
-                    PLATFORM_FAMILY=\"redhat\"
-                    if command -v dnf >/dev/null 2>&1; then PACKAGE_MANAGER=\"dnf\"; else PACKAGE_MANAGER=\"yum\"; fi ;;
-                arch|manjaro|endeavouros)
-                    PLATFORM_FAMILY=\"arch\"; PACKAGE_MANAGER=\"pacman\" ;;
-                opensuse*|sles)
-                    PLATFORM_FAMILY=\"suse\"; PACKAGE_MANAGER=\"zypper\" ;;
-                alpine)
-                    PLATFORM_FAMILY=\"alpine\"; PACKAGE_MANAGER=\"apk\" ;;
-                *)
-                    if [[ \"\$PLATFORM_LIKE\" == *debian* ]]; then
-                        PLATFORM_FAMILY=\"debian\"; PACKAGE_MANAGER=\"apt\"
-                    elif [[ \"\$PLATFORM_LIKE\" == *rhel* ]]; then
-                        PLATFORM_FAMILY=\"redhat\"; PACKAGE_MANAGER=\"dnf\"
-                    else
-                        PLATFORM_FAMILY=\"unknown\"; PACKAGE_MANAGER=\"unknown\"
-                    fi ;;
-            esac
-
-            if [ \"\$PACKAGE_MANAGER\" = \"unknown\" ]; then exit 1; fi
-
-            export PLATFORM_ID PLATFORM_FAMILY PACKAGE_MANAGER NAS_PLATFORM
-            export MEDIA_STACK_PLATFORM_DETECTED=1
-        }
+        source '$REPO_DIR/core/platform.sh'
 
         detect_platform
         echo \"PLATFORM_ID=\$PLATFORM_ID\"
@@ -79,7 +40,6 @@ _platform_detect() {
         echo \"PACKAGE_MANAGER=\$PACKAGE_MANAGER\"
         echo \"NAS_PLATFORM=\$NAS_PLATFORM\"
         ${extra}
-        rm -f \"\$FAKE_OS_RELEASE\"
     "
 }
 

@@ -148,13 +148,22 @@ teardown() {
 }
 
 @test "port_in_use returns 0 (in use) for an actively listening port" {
-    # Bind a port using nc in the background
-    nc -l -p 62001 >/dev/null 2>&1 &
-    local NC_PID=$!
+    if ! command -v python3 >/dev/null 2>&1; then
+        skip "python3 not available for port listener"
+    fi
+    python3 -c "
+import socket, time
+s = socket.socket()
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+s.bind(('127.0.0.1', 62001))
+s.listen(1)
+time.sleep(10)
+" &
+    local LISTENER_PID=$!
     sleep 0.3
     run port_in_use "62001"
-    kill "$NC_PID" 2>/dev/null || true
-    wait "$NC_PID" 2>/dev/null || true
+    kill "$LISTENER_PID" 2>/dev/null || true
+    wait "$LISTENER_PID" 2>/dev/null || true
     [ "$status" -eq 0 ]
 }
 
@@ -169,12 +178,22 @@ teardown() {
 }
 
 @test "find_next_port increments to next free port when starting port is in use" {
-    nc -l -p 62200 >/dev/null 2>&1 &
-    local NC_PID=$!
+    if ! command -v python3 >/dev/null 2>&1; then
+        skip "python3 not available for port listener"
+    fi
+    python3 -c "
+import socket, time
+s = socket.socket()
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+s.bind(('127.0.0.1', 62200))
+s.listen(1)
+time.sleep(10)
+" &
+    local LISTENER_PID=$!
     sleep 0.3
     run find_next_port "62200"
-    kill "$NC_PID" 2>/dev/null || true
-    wait "$NC_PID" 2>/dev/null || true
+    kill "$LISTENER_PID" 2>/dev/null || true
+    wait "$LISTENER_PID" 2>/dev/null || true
     [ "$status" -eq 0 ]
     # Result must be 62201 or higher
     [ "$output" -gt "62200" ]

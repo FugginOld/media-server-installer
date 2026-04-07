@@ -45,9 +45,11 @@ fi
 
 echo "Detecting operating system..."
 
-if [ -f /etc/os-release ]; then
+OS_RELEASE_FILE="${OS_RELEASE_FILE:-/etc/os-release}"
 
-. /etc/os-release
+if [ -f "$OS_RELEASE_FILE" ]; then
+
+. "$OS_RELEASE_FILE"
 
 PLATFORM_ID="${ID,,}"
 PLATFORM_LIKE="${ID_LIKE:-}"
