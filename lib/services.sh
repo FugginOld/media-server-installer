@@ -104,7 +104,6 @@ register_service() {
     fi
 
     mv "$TMP_FILE" "$SERVICE_REGISTRY" || return 1
-    trap - RETURN
     log "Registered service: $NAME -> $URL"
     if [[ -f "$INSTALL_DIR/scripts/dashboard-generator.sh" ]]; then
         bash "$INSTALL_DIR/scripts/dashboard-generator.sh" >/dev/null 2>&1 || true

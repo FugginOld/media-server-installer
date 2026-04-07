@@ -8,6 +8,8 @@ set -euo pipefail
 source "${INSTALL_DIR:-/opt/media-server-installer}/lib/runtime.sh"
 # shellcheck disable=SC1091
 source "$LIB_DIR/plugins.sh"
+# shellcheck disable=SC1091
+source "$LIB_DIR/ports.sh"
 
 ########################################
 # Port conflict detection
@@ -45,18 +47,6 @@ if [[ "${#SELECTED_SERVICES[@]}" -eq 0 ]]; then
 warn "No services selected"
 exit 0
 fi
-
-########################################
-# Check if port is in use
-########################################
-
-port_in_use() {
-
-local PORT="$1"
-
-ss -tuln | awk '{print $5}' | grep -q ":$PORT$"
-
-}
 
 ########################################
 # Scan selected plugins

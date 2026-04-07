@@ -23,30 +23,31 @@ Most scripts interact with configuration stored in:
 
 # Script Overview
 
-## compose.sh
+## Compose lifecycle (lib/compose.sh)
 
-Controls the Docker Compose lifecycle for the Media Stack.
+Docker Compose lifecycle functions for the Media Stack live in `lib/compose.sh`.
+They are sourced automatically by `bin/media-stack` and `scripts/updates.sh`.
 
-Supported commands:
+Available functions:
 
-compose.sh up  
-compose.sh down  
-compose.sh restart  
-compose.sh pull  
-compose.sh logs  
-compose.sh status  
+compose_up  
+compose_down  
+compose_restart  
+compose_pull  
+compose_logs [service]  
+compose_status  
+compose_validate  
 
-Example:
+These functions are also available as CLI commands:
 
-bash scripts/compose.sh up
-
-or via the CLI:
-
-media-stack restart
+media-stack restart  
+media-stack status  
+media-stack logs [service]  
+media-stack verify  
 
 ---
 
-## service-registry.sh
+## Service registry (lib/services.sh)
 
 Maintains the Media Stack service registry.
 
@@ -73,7 +74,7 @@ This registry powers:
 
 ---
 
-## port-registry.sh
+## Port registry (lib/ports.sh)
 
 Tracks ports assigned to Media Stack services.
 
@@ -90,17 +91,9 @@ Example registry entry:
   "radarr": 7878
 }
 
-Ports are requested dynamically by plugins.
+Ports are requested by plugins using:
 
----
-
-## port-helper.sh
-
-Provides helper functions for plugins to safely allocate ports.
-
-Plugins request ports using:
-
-PORT=$(get_port_mapping "radarr" 7878 7878)
+PORT=$(get_port_mapping "radarr" 7878)
 
 This function:
 

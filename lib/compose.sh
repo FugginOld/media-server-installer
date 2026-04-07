@@ -99,6 +99,22 @@ docker compose -f "$COMPOSE_FILE" ps
 }
 
 ########################################
+# Logs
+########################################
+
+compose_logs() {
+
+local service="${1:-}"
+
+if [[ -n "$service" ]]; then
+    docker compose -f "$COMPOSE_FILE" logs -f "$service"
+else
+    docker compose -f "$COMPOSE_FILE" logs -f
+fi
+
+}
+
+########################################
 # Validate compose file
 ########################################
 
@@ -120,4 +136,5 @@ export -f compose_down
 export -f compose_restart
 export -f compose_pull
 export -f compose_status
+export -f compose_logs
 export -f compose_validate

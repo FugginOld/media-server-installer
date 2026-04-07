@@ -15,10 +15,6 @@ LOG_DIR="$STACK_DIR/logs"
 
 mkdir -p "$LOG_DIR"
 
-log() {
-echo "[POST-INSTALL] $1"
-}
-
 ########################################
 # Wait for container helper
 ########################################

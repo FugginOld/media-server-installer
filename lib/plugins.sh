@@ -19,7 +19,7 @@ find "$PLUGIN_DIR" -type f -name "*.sh" \
 declare -Ag PLUGIN_PATHS
 declare -Ag PLUGIN_CATEGORIES
 declare -Ag PLUGIN_DEPENDENCIES
-declare -Ag PLUGIN_PORT
+declare -Ag PLUGIN_PORT_MAP
 declare -Ag PLUGIN_DASHBOARD
 
 ########################################
@@ -37,7 +37,7 @@ PLUGIN_DEPENDS=()
 PLUGIN_PORT=""
 PLUGIN_DASHBOARD=false
 
-# Load plugin metadata
+# Load plugin metadata (plugin may set PLUGIN_PORT as a plain scalar)
 source "$file"
 
 name=$(basename "$file" .sh)
@@ -45,7 +45,7 @@ name=$(basename "$file" .sh)
 PLUGIN_PATHS["$name"]="$file"
 PLUGIN_CATEGORIES["$name"]="${PLUGIN_CATEGORY:-Misc}"
 PLUGIN_DEPENDENCIES["$name"]="${PLUGIN_DEPENDS[*]:-}"
-PLUGIN_PORT["$name"]="${PLUGIN_PORT:-}"
+PLUGIN_PORT_MAP["$name"]="${PLUGIN_PORT:-}"
 PLUGIN_DASHBOARD["$name"]="${PLUGIN_DASHBOARD:-false}"
 
 done < <(discover_plugins)
@@ -96,7 +96,7 @@ get_plugin_port() {
 
 local name="$1"
 
-echo "${PLUGIN_PORT[$name]:-}"
+echo "${PLUGIN_PORT_MAP[$name]:-}"
 
 }
 

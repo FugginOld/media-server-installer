@@ -110,13 +110,3 @@ export HOST_IP
 }
 
 detect_host_ip
-
-########################################
-# Runtime banner
-########################################
-
-echo ""
-echo "Using PUID=${PUID:-unknown}"
-echo "Using PGID=${PGID:-unknown}"
-echo "Detected HOST_IP=$HOST_IP"
-echo ""
