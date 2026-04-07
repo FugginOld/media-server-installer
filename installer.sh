@@ -424,11 +424,11 @@ start_web_config_server() {
     fi
 
     cat <<EOF > "$STACK_DIR/stack.env"
-TIMEZONE=$TIMEZONE
-PUID=$PUID
-PGID=$PGID
-DOCKER_NETWORK=$DOCKER_NETWORK
-DIR_MODE=$DIR_MODE
+TIMEZONE="$TIMEZONE"
+PUID="$PUID"
+PGID="$PGID"
+DOCKER_NETWORK="$DOCKER_NETWORK"
+DIR_MODE="$DIR_MODE"
 EOF
 
     cleanup_web_session
@@ -908,7 +908,7 @@ COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
 
 {
 echo "networks:"
-echo "  media-network:"
+echo "  ${DOCKER_NETWORK:-media-network}:"
 echo ""
 echo "services:"
 } > "$TMP_COMPOSE"

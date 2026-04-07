@@ -128,11 +128,11 @@ trash "Use Trash Guides directory structure" \
 ########################################
 
 cat <<EOF > "$CONFIG_FILE"
-TIMEZONE=$TIMEZONE
-PUID=$PUID
-PGID=$PGID
-DOCKER_NETWORK=$DOCKER_NETWORK
-DIR_MODE=$DIR_MODE
+TIMEZONE="$TIMEZONE"
+PUID="$PUID"
+PGID="$PGID"
+DOCKER_NETWORK="$DOCKER_NETWORK"
+DIR_MODE="$DIR_MODE"
 EOF
 
 echo ""

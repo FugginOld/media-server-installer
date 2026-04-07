@@ -16,6 +16,8 @@ export INSTALL_DIR
 
 source "$INSTALL_DIR/lib/runtime.sh"
 source "$INSTALL_DIR/core/env.sh"
+# shellcheck disable=SC1091
+source "$INSTALL_DIR/lib/compose.sh"
 
 ########################################
 # CLI Command
@@ -77,7 +79,7 @@ bash "$INSTALL_DIR/scripts/updates.sh"
 
 status_stack() {
 
-bash "$INSTALL_DIR/scripts/compose.sh" status
+compose_status
 
 }
 
@@ -88,8 +90,7 @@ bash "$INSTALL_DIR/scripts/compose.sh" status
 services_stack() {
 
 if ! command -v jq >/dev/null 2>&1; then
-echo "jq required. Install with: apt install jq"
-exit 1
+pkg_install jq
 fi
 
 if [ -f "$SERVICE_REGISTRY" ]; then
@@ -129,7 +130,7 @@ echo ""
 bash "$INSTALL_DIR/scripts/preflight.sh"
 bash "$INSTALL_DIR/scripts/plugin-validator.sh"
 bash "$INSTALL_DIR/scripts/doctor.sh"
-bash "$INSTALL_DIR/scripts/compose.sh" validate
+compose_validate
 
 echo ""
 echo "Verification complete."
@@ -143,7 +144,7 @@ echo ""
 
 restart_stack() {
 
-bash "$INSTALL_DIR/scripts/compose.sh" restart
+compose_restart
 
 }
 
@@ -153,7 +154,7 @@ bash "$INSTALL_DIR/scripts/compose.sh" restart
 
 logs_stack() {
 
-bash "$INSTALL_DIR/scripts/compose.sh" logs "${2:-}"
+compose_logs "${2:-}"
 
 }
 

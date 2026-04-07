@@ -39,6 +39,10 @@ fi
 
 detect_platform() {
 
+if [[ -n "${MEDIA_STACK_PLATFORM_DETECTED:-}" ]]; then
+    return
+fi
+
 echo "Detecting operating system..."
 
 if [ -f /etc/os-release ]; then
@@ -192,6 +196,7 @@ export PLATFORM_ID
 export PLATFORM_FAMILY
 export PACKAGE_MANAGER
 export NAS_PLATFORM
+export MEDIA_STACK_PLATFORM_DETECTED=1
 
 }
 

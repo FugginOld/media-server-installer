@@ -100,12 +100,12 @@ fi
 
 cd "$BACKUP_DIR" || exit 1
 
-OLD_BACKUPS=$(ls -1t media-stack-*.tar.gz 2>/dev/null | tail -n +11) || true
+mapfile -t ALL_BACKUPS < <(find "$BACKUP_DIR" -maxdepth 1 -name "media-stack-*.tar.gz" -printf '%T@\t%p\n' 2>/dev/null | sort -rn | cut -f2-)
 
-if [ -n "$OLD_BACKUPS" ]; then
-    while IFS= read -r old; do
+if (( ${#ALL_BACKUPS[@]} > 10 )); then
+    for old in "${ALL_BACKUPS[@]:10}"; do
         rm -f "$old"
-    done <<< "$OLD_BACKUPS"
+    done
 fi
 
 echo ""

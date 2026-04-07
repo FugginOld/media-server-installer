@@ -24,7 +24,7 @@ echo "PASS  $1"
 ((PASS_COUNT++))
 }
 
-warn() {
+doctor_warn() {
 echo "WARN  $1"
 ((WARN_COUNT++))
 }
@@ -86,7 +86,7 @@ fail "Docker daemon NOT running"
 fi
 
 else
-warn "Skipping daemon check (docker missing)"
+doctor_warn "Skipping daemon check (docker missing)"
 fi
 
 ########################################
@@ -102,7 +102,7 @@ fail "Docker Compose NOT available"
 fi
 
 else
-warn "Skipping compose check"
+doctor_warn "Skipping compose check"
 fi
 
 ########################################
@@ -122,7 +122,7 @@ fi
 if [ -f "${SERVICE_REGISTRY:-}" ]; then
 pass "Service registry present"
 else
-warn "services.json missing"
+doctor_warn "services.json missing"
 fi
 
 ########################################
@@ -135,7 +135,7 @@ if [ -f "${PORT_REGISTRY:-}" ]; then
 pass "Port registry present"
 PORT_REGISTRY_PRESENT=true
 else
-warn "Port registry missing"
+doctor_warn "Port registry missing"
 fi
 
 ########################################
@@ -149,11 +149,11 @@ PLUGIN_COUNT=$(find "$PLUGIN_DIR" -type f -name "*.sh" ! -path "*/_template/*" |
 if [ "$PLUGIN_COUNT" -gt 0 ]; then
 pass "Plugins detected ($PLUGIN_COUNT)"
 else
-warn "No plugins found"
+doctor_warn "No plugins found"
 fi
 
 else
-warn "Plugin directory missing"
+doctor_warn "Plugin directory missing"
 fi
 
 ########################################
@@ -185,7 +185,7 @@ fail "Duplicate ports detected: $DUPLICATES"
 fi
 
 else
-warn "Skipping port conflict check"
+doctor_warn "Skipping port conflict check"
 fi
 
 ########################################
