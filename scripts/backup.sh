@@ -100,7 +100,7 @@ fi
 
 cd "$BACKUP_DIR" || exit 1
 
-mapfile -t ALL_BACKUPS < <(find "$BACKUP_DIR" -maxdepth 1 -name "media-stack-*.tar.gz" -printf '%T@ %p\n' 2>/dev/null | sort -rn | awk '{print $2}')
+mapfile -t ALL_BACKUPS < <(find "$BACKUP_DIR" -maxdepth 1 -name "media-stack-*.tar.gz" -printf '%T@\t%p\n' 2>/dev/null | sort -rn | cut -f2-)
 
 if (( ${#ALL_BACKUPS[@]} > 10 )); then
     for old in "${ALL_BACKUPS[@]:10}"; do
