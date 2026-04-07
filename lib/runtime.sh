@@ -95,11 +95,11 @@ if [[ -n "${HOST_IP:-}" ]]; then
 fi
 
 if command -v ip >/dev/null 2>&1; then
-    HOST_IP="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '/src/ {for (i=1; i<=NF; i++) if ($i=="src") {print $(i+1); exit}}')"
+    HOST_IP="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '/src/ {for (i=1; i<=NF; i++) if ($i=="src") {print $(i+1); exit}}' || true)"
 fi
 
 if [[ -z "${HOST_IP:-}" ]]; then
-    HOST_IP="$(hostname -I 2>/dev/null | awk '{for (i=1; i<=NF; i++) if ($i !~ /^127\./) {print $i; exit}}')"
+    HOST_IP="$(hostname -I 2>/dev/null | awk '{for (i=1; i<=NF; i++) if ($i !~ /^127\./) {print $i; exit}}' || true)"
 fi
 
 if [[ -z "$HOST_IP" ]]; then
