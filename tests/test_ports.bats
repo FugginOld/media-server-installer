@@ -5,6 +5,40 @@ load helpers/common
 
 REPO_DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)"
 
+# ---------------------------------------------------------------------------
+# Helper: start a TCP listener on PORT in the background.
+# Sets LISTENER_PID in the caller's scope.
+# Skips the calling test when python3 is not available.
+# ---------------------------------------------------------------------------
+_start_port_listener() {
+    local port="$1"
+    if ! command -v python3 >/dev/null 2>&1; then
+        skip "python3 not available for port listener"
+    fi
+    python3 -c "
+import socket, time
+s = socket.socket()
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+s.bind(('127.0.0.1', $port))
+s.listen(1)
+time.sleep(10)
+" &
+    # Assign directly — avoids $() subshell which would block waiting for children
+    LISTENER_PID=$!
+}
+
+# Helper: wait (up to 3 s) until PORT shows up in ss output.
+_wait_for_port() {
+    local port="$1"
+    local tries=0
+    while [ "$tries" -lt 30 ]; do
+        ss -tlnp 2>/dev/null | grep -q ":${port}" && return 0
+        sleep 0.1
+        tries=$((tries + 1))
+    done
+    return 1
+}
+
 setup() {
     setup_common
     load_runtime
@@ -148,19 +182,8 @@ teardown() {
 }
 
 @test "port_in_use returns 0 (in use) for an actively listening port" {
-    if ! command -v python3 >/dev/null 2>&1; then
-        skip "python3 not available for port listener"
-    fi
-    python3 -c "
-import socket, time
-s = socket.socket()
-s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-s.bind(('127.0.0.1', 62001))
-s.listen(1)
-time.sleep(10)
-" &
-    local LISTENER_PID=$!
-    sleep 0.3
+    _start_port_listener 62001
+    _wait_for_port 62001 || { kill "$LISTENER_PID" 2>/dev/null; skip "port 62001 did not come up in time"; }
     run port_in_use "62001"
     kill "$LISTENER_PID" 2>/dev/null || true
     wait "$LISTENER_PID" 2>/dev/null || true
@@ -178,19 +201,8 @@ time.sleep(10)
 }
 
 @test "find_next_port increments to next free port when starting port is in use" {
-    if ! command -v python3 >/dev/null 2>&1; then
-        skip "python3 not available for port listener"
-    fi
-    python3 -c "
-import socket, time
-s = socket.socket()
-s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-s.bind(('127.0.0.1', 62200))
-s.listen(1)
-time.sleep(10)
-" &
-    local LISTENER_PID=$!
-    sleep 0.3
+    _start_port_listener 62200
+    _wait_for_port 62200 || { kill "$LISTENER_PID" 2>/dev/null; skip "port 62200 did not come up in time"; }
     run find_next_port "62200"
     kill "$LISTENER_PID" 2>/dev/null || true
     wait "$LISTENER_PID" 2>/dev/null || true
